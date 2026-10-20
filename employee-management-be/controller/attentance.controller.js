@@ -169,6 +169,7 @@ export const todayAttendance = async (req, res) => {
                 remainingHours,
 
                 // isCheckedOut = no session is open right now; they can still check in again.
+                autoCheckedOut: !!attendance.autoCheckedOut && !open,
                 isCheckedIn: !!open,
                 isCheckedOut: !open,
                 currentSessionStart: open ? open.checkIn.time : null,

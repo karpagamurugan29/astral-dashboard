@@ -15,6 +15,7 @@ import { LeaveMixChart } from '../../../components/dashboard/widgets/LeaveMixCha
 import { ProjectMomentum } from '../../../components/dashboard/widgets/ProjectMomentum'
 import { AnnouncementsWidget } from '../../../components/dashboard/widgets/AnnouncementsWidget'
 import { AuditHoursTrend, HoursByClient, TeamWeek, DeadlinesWidget, WorkingNowWidget, MyAuditStrip, AttentionWidget } from '../../../components/dashboard/widgets/AuditWidgets'
+import { DashboardTimer } from '../../../components/dashboard/widgets/DashboardTimer'
 import './DashContent.css'
 import { useAccess } from '../../../hooks/useAccess'
 
@@ -274,6 +275,7 @@ export const DashContent = () => {
                                         <h2>Audit work</h2>
                                         <p>{auditInsights.scope === 'firm' ? 'Hours, clients, deadlines and who is working right now — across the firm' : 'Your hours, your audits and their deadlines'}</p>
                                     </div>
+                                    <DashboardTimer />
                                     <MyAuditStrip me={auditInsights.me} statusCounts={auditInsights.statusCounts} />
                                     <div className="row">
                                         <div className="col-xl-8">

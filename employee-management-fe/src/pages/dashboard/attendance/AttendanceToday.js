@@ -142,7 +142,7 @@ export const AttendanceToday = () => {
                                     <>
                                         <div className="mt-done">
                                             <i className="mdi mdi-check-decagram"></i>
-                                            <div><b>Checked out</b>You've worked {hoursLabel(worked)} today across {sessions.length} session{sessions.length === 1 ? '' : 's'}.</div>
+                                            <div><b>{today.autoCheckedOut ? 'Checked out automatically' : 'Checked out'}</b>{today.autoCheckedOut ? <>You didn't check out, so the system did at the cut-off. If that's wrong, <Link to="/attendance/regularization">request a correction</Link>.</> : <>You've worked {hoursLabel(worked)} today across {sessions.length} session{sessions.length === 1 ? '' : 's'}.</>}</div>
                                         </div>
                                         <div className="mt-mode-label">Going back to work? Where are you now?</div>
                                         <div className="mt-modes" role="radiogroup" aria-label="Work mode">

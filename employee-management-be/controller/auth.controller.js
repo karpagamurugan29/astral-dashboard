@@ -3,6 +3,7 @@ import LeaveBalance from "../models/LeaveBalanceModel.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { DEFAULT_ONBOARDING_TASKS } from "../utils/checklists.js";
+import { sendMail, mailLayout } from "../utils/mailer.js";
 
 
 export const register = async (req, res) => {
@@ -151,11 +152,24 @@ export const forgotPassword = async (req, res) => {
 
         await user.save();
 
+        const mail = await sendMail({
+            to: user.email,
+            subject: "Your Astral password reset code",
+            text: `Your password reset code is ${OTP}. It expires in a few minutes. If you didn't ask for this, ignore this email.`,
+            html: mailLayout("Password reset code", `<p style="font-size:14px;line-height:1.5;margin:0 0 12px">Use this code to reset your password:</p><p style="font-size:28px;font-weight:700;letter-spacing:6px;margin:0 0 16px">${OTP}</p><p style="font-size:13px;color:#64748b;margin:0">It expires in a few minutes. If you didn't ask for this, you can ignore this email.</p>`),
+        });
+
+        // The code is only returned to the browser in local development with no mail server set up —
+        // returning it otherwise would let anyone reset anyone's password knowing just their email.
+        const devEcho = !mail.sent && process.env.NODE_ENV !== "production";
+        if (!mail.sent && !devEcho) {
+            return res.status(503).json({ success: false, message: "Email is not set up, so the reset code could not be sent. Contact HR." });
+        }
+
         return res.status(200).json({
             success: true,
-            message: "OTP sent successfully",
-            // Remove this in production
-            otp: OTP,
+            message: mail.sent ? "A reset code has been sent to your email" : "Mail server not configured (development): code shown here",
+            ...(devEcho ? { otp: OTP } : {}),
         });
     } catch (err) {
         return res.status(500).json({

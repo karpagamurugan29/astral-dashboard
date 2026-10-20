@@ -9,6 +9,7 @@ import { getOnboardingList, updateOnboardingTask, initiateOffboarding, getOffboa
 import { createProject, updateProject, deleteProject, getProjectById, getAllProjects, addProjectMember, removeProjectMember } from "../controller/project.controller.js";
 import { getClients, getClientById, createClient, updateClient, deleteClient } from "../controller/auditClient.controller.js";
 import { getAuditInsights } from "../controller/auditInsights.controller.js";
+import { cronAutoCheckout, runAutoCheckoutNow } from "../controller/cron.controller.js";
 import { getLocationLog } from "../controller/locationLog.controller.js";
 import { createAudit, updateAudit, deleteAudit, getAuditById, getAllAudits, addAuditMember, removeAuditMember, startAuditTimer, stopAuditTimer, getMyActiveAuditTimer } from "../controller/auditEngagement.controller.js";
 import { getDepartments, createDepartment, updateDepartment, deleteDepartment } from "../controller/department.controller.js";
@@ -105,6 +106,9 @@ router.get("/attendance/today", authMiddleWare, todayAttendance);
 router.get("/attendance/history", authMiddleWare, attendanceHistory);
 router.get("/attendance/team", authMiddleWare, adminHRManager("attendance"), teamAttendance);
 router.get("/location-log", authMiddleWare, adminHRManager("attendance"), getLocationLog);
+// 8 PM auto check-out: Vercel Cron → /cron/auto-checkout (secret); Admin can also run it now.
+router.get("/cron/auto-checkout", cronAutoCheckout);
+router.post("/attendance/auto-checkout/run", authMiddleWare, adminOnly("attendance"), runAutoCheckoutNow);
 
 // Attendance regularization — "pending" registered before the ":id" catch-all
 router.post("/attendance/regularize", authMiddleWare, requestRegularization);

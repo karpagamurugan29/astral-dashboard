@@ -88,6 +88,12 @@ const AttendanceSchema = new mongoose.Schema(
             },
         ],
 
+        // True when the day was closed by the 8 PM auto check-out rather than by the employee.
+        autoCheckedOut: {
+            type: Boolean,
+            default: false,
+        },
+
         // Total of all closed sessions, in hours.
         workingHours: {
             type: Number,

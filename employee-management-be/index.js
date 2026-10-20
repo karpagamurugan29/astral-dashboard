@@ -7,6 +7,7 @@ import { fileURLToPath } from "url";
 
 import connectDB from "./config/db.js";
 import router from "./routes/routes.js";
+import { startAutoCheckoutScheduler } from "./utils/autoCheckout.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -74,6 +75,13 @@ if (process.env.NODE_ENV !== "production") {
             process.exit(1);
         }
         console.log(`Server running on port ${PORT}`);
+    });
+
+    // 8 PM auto check-out. On Vercel there is no long-running process: vercel.json's cron calls
+    // /api/cron/auto-checkout instead.
+    startAutoCheckoutScheduler(() => {
+        if (!dbReady) dbReady = connectDB();
+        return dbReady;
     });
 }
 
