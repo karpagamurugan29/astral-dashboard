@@ -6,6 +6,7 @@ import announcementActions from '../../../redux/announcement/Actions'
 import { AUDIENCES, audienceMeta, avatarColor, initials, authorName, relativeTime, DAY } from '../../../components/dashboard/widgets/announcementUtils'
 import { BackButton } from '../../../components/common/BackButton'
 import './AnnouncementFeed.css'
+import { useAccess } from '../../../hooks/useAccess'
 
 const startOfToday = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime() }
 
@@ -52,8 +53,8 @@ const AnnouncementCard = ({ a, canPost, onDelete }) => {
 export const AnnouncementFeed = () => {
     const dispatch = useDispatch()
     const { list, listLoading, error } = useSelector((state) => state.announcementReducer || {})
-    const { isAuthenticated: user } = useSelector((state) => state.authReducer || {})
-    const canPost = ['Admin', 'HR'].includes(user?.role)
+    const { can } = useAccess()
+    const canPost = can(['Admin', 'HR'], 'announcements')
     const { register, handleSubmit, reset, watch, formState: { errors } } = useForm({ defaultValues: { audience: 'Everyone', pinned: false } })
     const [composerOpen, setComposerOpen] = useState(false)
     const [query, setQuery] = useState('')

@@ -63,6 +63,17 @@ export const TopHeader = () => {
         }
     }, [hasSession]);
 
+    // The theme's app.js (which used to wire this button) isn't loaded, so toggle here:
+    // phones/tablets slide the menu in via body.sidebar-enable; desktops collapse it to icons.
+    const toggleMenu = () => {
+        if (window.innerWidth <= 992) {
+            document.body.classList.toggle('sidebar-enable')
+        } else {
+            const collapsed = document.body.getAttribute('data-sidebar-size') === 'sm'
+            document.body.setAttribute('data-sidebar-size', collapsed ? 'lg' : 'sm')
+        }
+    }
+
     const logOut = () => {
         localStorage?.removeItem("session");
         clearLmsCache();
@@ -77,24 +88,24 @@ export const TopHeader = () => {
                         <div className="navbar-brand-box">
                             <a href="/dashboard" onClick={(e) => { e.preventDefault(); navigate('/dashboard') }} className="logo logo-dark">
                                 <span className="logo-sm">
-                                    <img src="assets/images/logo-sm.svg" alt="" height="30" />
+                                    <img src="assets/images/astral-mark.png" alt="Astral" height="30" />
                                 </span>
                                 <span className="logo-lg">
-                                    <span class="logo-txt">Ho<span className='clr-blue'>O</span>ok</span>
+                                    <img src="assets/images/astral-logo.png" alt="Astral Consulting Limited" className="brand-logo" />
                                 </span>
                             </a>
 
                             <a href="/dashboard" onClick={(e) => { e.preventDefault(); navigate('/dashboard') }} className="logo logo-light">
                                 <span className="logo-sm">
-                                    <img src="assets/images/logo-sm.svg" alt="" height="30" />
+                                    <img src="assets/images/astral-mark.png" alt="Astral" height="30" />
                                 </span>
                                 <span className="logo-lg">
-                                    <span class="logo-txt">Ho<span className='clr-black'>O</span>ok</span>
+                                    <img src="assets/images/astral-logo.png" alt="Astral Consulting Limited" className="brand-logo" />
                                 </span>
                             </a>
                         </div>
 
-                        <button type="button" className="btn btn-sm px-3 font-size-16 header-item" id="vertical-menu-btn">
+                        <button type="button" className="btn btn-sm px-3 font-size-16 header-item" id="vertical-menu-btn" onClick={toggleMenu} aria-label="Toggle menu">
                             <i className="fa fa-fw fa-bars"></i>
                         </button>
 

@@ -9,6 +9,7 @@ import {
 } from '../../../components/expense/ExpenseUI'
 import '../../../components/attendance/attendance.css'
 import '../../../components/payroll/payroll.css'
+import { useAccess } from '../../../hooks/useAccess'
 
 const DAY = 24 * 60 * 60 * 1000
 const fmt = (d) => new Date(d).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
@@ -17,10 +18,10 @@ const sum = (arr) => arr.reduce((s, e) => s + (Number(e.amount) || 0), 0)
 export const ExpenseApprovals = () => {
     const dispatch = useDispatch()
     const { list, error } = useSelector((state) => state.expenseReducer || {})
-    const { isAuthenticated: user, permissions } = useSelector((state) => state.authReducer || {})
+    const { isAuthenticated: user } = useSelector((state) => state.authReducer || {})
     // Same rule as the sidebar's Expenses → Approvals entry.
-    const canApprove = ['Admin', 'HR', 'Manager', 'Team Lead'].includes(user?.role) &&
-        (user?.role === 'Admin' || permissions?.includes('expenses'))
+    const { can } = useAccess()
+    const canApprove = can(['Admin', 'HR', 'Manager', 'Team Lead'], 'expenses')
     const [rejecting, setRejecting] = useState(null)
     const [reason, setReason] = useState('')
     const [categoryFilter, setCategoryFilter] = useState('')

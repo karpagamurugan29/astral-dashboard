@@ -17,6 +17,9 @@ import notificationReducer from "./notification/Reducer";
 import documentReducer from "./document/Reducer";
 import payrollReducer from "./payroll/Reducer";
 import projectReducer from "./project/Reducer";
+import auditReducer from "./audit/Reducer";
+import locationLogReducer from "./locationLog/Reducer";
+import accessReducer from "./access/Reducer";
 import taskReducer from "./task/Reducer";
 import reportReducer from "./report/Reducer";
 import licenseReducer from "./license/Reducer";
@@ -43,6 +46,9 @@ const reducers = {
   documentReducer,
   payrollReducer,
   projectReducer,
+  auditReducer,
+  locationLogReducer,
+  accessReducer,
   taskReducer,
   reportReducer,
   licenseReducer,

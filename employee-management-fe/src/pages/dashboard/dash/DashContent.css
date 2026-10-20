@@ -560,3 +560,9 @@
     .db-kpi-value { font-size: 22px; }
     .db-action span { display: none; }
 }
+
+/* location notes under the check-in button */
+.db-punch-error { display: flex; gap: 8px; align-items: flex-start; margin-top: 10px; padding: 9px 11px; border-radius: 10px; font-size: 12.5px; line-height: 1.4; color: #9f1239; background: #fff1f2; border: 1px solid #fecdd3; }
+.db-punch-error i { font-size: 16px; line-height: 1.1; }
+.db-punch-hint { margin-top: 8px; font-size: 12px; color: var(--hero-muted); text-align: center; }
+.db-punch-btn.again { background: linear-gradient(135deg, #059669, #10b981); }

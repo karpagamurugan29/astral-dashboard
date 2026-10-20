@@ -8,6 +8,7 @@ import projectActions from '../../../redux/project/Actions'
 import taskActions from '../../../redux/task/Actions'
 import { PeopleShell, Avatar, StatusPill, ErrorBanner, fullName, fmtDate, tenure } from '../../../components/people/PeopleUI'
 import './EmployeeProfile.css'
+import { useAccess } from '../../../hooks/useAccess'
 
 const TASK_TONE = { 'To Do': '#64748b', 'In Progress': '#0ea5e9', 'In Review': '#f59e0b', Blocked: '#f43f5e', Done: '#10b981' }
 const LEAVE_TONE = { Approved: '#10b981', Pending: '#f59e0b', Rejected: '#f43f5e', Cancelled: '#64748b' }
@@ -33,9 +34,9 @@ export const EmployeeProfile = () => {
     const { list: documents } = useSelector((state) => state.documentReducer || {})
     const { list: projects } = useSelector((state) => state.projectReducer || {})
     const { list: tasks } = useSelector((state) => state.taskReducer || {})
-    const { isAuthenticated: user } = useSelector((state) => state.authReducer || {})
-    const canSeeSalary = ['Admin', 'HR'].includes(user?.role)
-    const canEdit = ['Admin', 'HR'].includes(user?.role)
+    const { can } = useAccess()
+    const canSeeSalary = can(['Admin', 'HR'], 'employees')
+    const canEdit = can(['Admin', 'HR'], 'employees')
     const [tab, setTab] = useState('overview')
 
     useEffect(() => {

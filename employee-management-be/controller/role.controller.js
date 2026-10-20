@@ -2,7 +2,18 @@ import roleSettingModel from "../models/roleSettingModel.js";
 import employeeModel from "../models/employeeModel.js";
 import { logAudit } from "../utils/audit.js";
 import { invalidatePermissionCache } from "../middleware/permission.middleware.js";
+import { getAccess } from "../utils/access.js";
 
+// Screens a person can open (menu + page). Granted through the same layers as modules
+// (role, designation, department, person) and stored in the same permission arrays.
+// Dashboard, Notifications, My Profile and Change Password are always available.
+export const ALL_SCREENS = [
+    "screen:announcements", "screen:attendance", "screen:holidays", "screen:shifts", "screen:leave",
+    "screen:helpdesk", "screen:directory", "screen:org", "screen:documents", "screen:audits",
+    "screen:projects", "screen:payslips", "screen:loans", "screen:expenses", "screen:assets",
+];
+
+// Manage / approve permissions — these are what the API's authorize(module, ...) checks.
 export const ALL_PERMISSION_MODULES = [
     "employees", "departments", "designations", "branches", "attendance", "leave",
     "projects", "tasks", "payroll", "expenses", "assets", "helpdesk",
@@ -10,11 +21,12 @@ export const ALL_PERMISSION_MODULES = [
 ];
 
 const defaultPermissions = {
-    Admin: ALL_PERMISSION_MODULES,
+    Admin: [...ALL_PERMISSION_MODULES, ...ALL_SCREENS],
     HR: ["employees", "departments", "designations", "branches", "attendance", "leave", "projects", "tasks", "expenses", "assets", "helpdesk", "announcements", "reports", "payroll", "audit-logs"],
     Manager: ["attendance", "leave", "projects", "tasks", "expenses", "helpdesk", "reports"],
     "Team Lead": ["attendance", "leave", "projects", "tasks", "expenses", "helpdesk", "reports"],
-    Employee: ["attendance", "leave", "expenses", "helpdesk", "announcements"],
+    // Employees only use self-service screens (granted per department / designation); no manage modules.
+    Employee: [],
 };
 
 const ensureRoleSettings = async () => {
@@ -49,23 +61,26 @@ export const getRoles = async (req, res) => {
             success: true,
             data: roles,
             allPermissions: ALL_PERMISSION_MODULES,
+            allScreens: ALL_SCREENS,
         });
     } catch (error) {
         return res.status(500).json({ success: false, message: error.message });
     }
 };
 
-// Any authenticated user can call this — it only ever returns their own
-// role's permission list, never the full admin roles/employee-count view.
+// Any authenticated user can call this — it only ever returns their own effective access
+// (role + department + personal grants, minus personal blocks), never the admin view.
+// `granted` lists modules opened beyond their role, so the sidebar can show those screens too.
 export const getMyPermissions = async (req, res) => {
     try {
         await ensureRoleSettings();
 
-        const setting = await roleSettingModel.findOne({ role: req.user.role });
+        const access = await getAccess(req.user, [...ALL_PERMISSION_MODULES, ...ALL_SCREENS]);
 
         return res.status(200).json({
             success: true,
-            data: setting?.permissions || defaultPermissions[req.user.role] || [],
+            data: access.effective,
+            granted: access.granted,
         });
     } catch (error) {
         return res.status(500).json({ success: false, message: error.message });
@@ -84,7 +99,7 @@ export const updateRolePermissions = async (req, res) => {
         );
 
         logAudit(req, "role.permissions_update", `Updated permissions for role ${role}`, { type: "RoleSetting", id: updated._id });
-        invalidatePermissionCache(role);
+        invalidatePermissionCache();
 
         return res.status(200).json({
             success: true,

@@ -119,8 +119,8 @@ export const Payslips = () => {
                         <article className="pp-card ps-doc" aria-label="Payslip">
                             <div className="ps-doc-head">
                                 <div className="ps-brand">
-                                    <span className="ps-brand-mark">H</span>
-                                    <div><b>HoOok</b><small>Salary slip</small></div>
+                                    <span className="ps-brand-mark"><img src="assets/images/astral-mark.png" alt="" /></span>
+                                    <div><b>Astral Consulting Limited</b><small>Salary slip</small></div>
                                 </div>
                                 <div className="ps-doc-period"><small>Pay period</small><b>{periodLabel(listItem?.period)}</b></div>
                             </div>

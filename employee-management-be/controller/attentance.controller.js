@@ -5,67 +5,74 @@ import employeeModel from "../models/employeeModel.js";
 import leaveModel from "../models/leaveModel.js";
 import { notify, notifyApprovers } from "../utils/notify.js";
 import { logAudit } from "../utils/audit.js";
+import { parseLocation, fillAddressLater, LOCATION_REQUIRED } from "../utils/location.js";
+import { sessionsOf, openSession, workedHoursOf, ensureSessions, statusFor } from "../utils/attendanceSessions.js";
 
 export const checkIn = async (req, res) => {
     try {
         const employeeId = req.user.id;
         const {
             attendanceType,
-            latitude,
-            longitude,
             address,
             device,
             remarks,
         } = req.body;
 
+        const location = parseLocation(req.body);
+        if (!location) {
+            return res.status(400).json({ success: false, message: LOCATION_REQUIRED });
+        }
+
         const attendanceDate = new Date().toISOString().split("T")[0];
+        const checkInTime = new Date();
+        const punchIn = { time: checkInTime, ...location, address, device, ipAddress: req.ip, remarks };
 
-        const existingAttendance = await attendanceModel.findOne({
-            employeeId,
-            attendanceDate,
-        });
+        let attendance = await attendanceModel.findOne({ employeeId, attendanceDate });
 
-        if (existingAttendance) {
-            return res.status(400).json({
-                success: false,
-                message: "Already checked in today.",
+        if (attendance) {
+            // Checking in again later the same day starts a new session.
+            if (openSession(attendance)) {
+                return res.status(400).json({ success: false, message: "You're already checked in. Check out first." });
+            }
+            ensureSessions(attendance);
+            attendance.sessions.push({ mode: attendanceType || attendance.attendanceType, checkIn: punchIn, checkOut: { time: null } });
+            attendance.checkOut = { time: null };
+            await attendance.save();
+        } else {
+            const companySettings = await CompanySettings.findOne();
+            const expectedCheckIn = companySettings?.workingHours?.checkInTime || "09:30";
+            const graceMinutes = companySettings?.workingHours?.gracePeriodMinutes ?? 15;
+
+            const [expectedHour, expectedMinute] = expectedCheckIn.split(":").map(Number);
+            const expectedWithGrace = new Date(checkInTime);
+            expectedWithGrace.setHours(expectedHour, expectedMinute + graceMinutes, 0, 0);
+
+            // Lateness is judged on the first check-in of the day only.
+            const lateByMinutes = checkInTime > expectedWithGrace
+                ? Math.round((checkInTime - expectedWithGrace) / 60000)
+                : 0;
+
+            attendance = await attendanceModel.create({
+                employeeId,
+                attendanceDate,
+                attendanceType,
+                checkIn: punchIn,
+                sessions: [{ mode: attendanceType, checkIn: punchIn, checkOut: { time: null } }],
+                lateByMinutes,
+                status: lateByMinutes > 0 ? "Late" : "Present",
             });
         }
 
-        const checkInTime = new Date();
-
-        const companySettings = await CompanySettings.findOne();
-        const expectedCheckIn = companySettings?.workingHours?.checkInTime || "09:30";
-        const graceMinutes = companySettings?.workingHours?.gracePeriodMinutes ?? 15;
-
-        const [expectedHour, expectedMinute] = expectedCheckIn.split(":").map(Number);
-        const expectedWithGrace = new Date(checkInTime);
-        expectedWithGrace.setHours(expectedHour, expectedMinute + graceMinutes, 0, 0);
-
-        const lateByMinutes = checkInTime > expectedWithGrace
-            ? Math.round((checkInTime - expectedWithGrace) / 60000)
-            : 0;
-
-        const attendance = await attendanceModel.create({
-            employeeId,
-            attendanceDate,
-            attendanceType,
-            checkIn: {
-                time: checkInTime,
-                latitude,
-                longitude,
-                address,
-                device,
-                ipAddress: req.ip,
-                remarks,
-            },
-            lateByMinutes,
-            status: lateByMinutes > 0 ? "Late" : "Present",
+        const idx = attendance.sessions.length - 1;
+        fillAddressLater({ ...location, address }, (addr) => {
+            const set = { [`sessions.${idx}.checkIn.address`]: addr };
+            if (idx === 0) set["checkIn.address"] = addr;
+            attendanceModel.updateOne({ _id: attendance._id }, { $set: set }).catch(() => {});
         });
 
         return res.status(201).json({
             success: true,
-            message: "Checked in successfully.",
+            message: idx === 0 ? "Checked in successfully." : "Checked in again.",
             data: attendance,
         });
     } catch (err) {
@@ -138,18 +145,8 @@ export const todayAttendance = async (req, res) => {
         }
 
         const requiredHours = 9;
-
-        let workedHours = 0;
-
-        if (attendance.checkOut?.time) {
-            workedHours = attendance.workingHours;
-        } else if (attendance.checkIn?.time) {
-            workedHours =
-                (new Date() - attendance.checkIn.time) /
-                (1000 * 60 * 60);
-        }
-
-        workedHours = Number(workedHours.toFixed(2));
+        const open = openSession(attendance);
+        const workedHours = Number(workedHoursOf(attendance, new Date()).toFixed(2));
 
         const remainingHours = Math.max(
             0,
@@ -165,14 +162,23 @@ export const todayAttendance = async (req, res) => {
                 lateByMinutes: attendance.lateByMinutes,
 
                 checkIn: attendance.checkIn.time,
-                checkOut: attendance.checkOut.time,
+                checkOut: open ? null : attendance.checkOut?.time || null,
 
                 workedHours,
                 requiredHours,
                 remainingHours,
 
-                isCheckedIn: !!attendance.checkIn.time,
-                isCheckedOut: !!attendance.checkOut.time,
+                // isCheckedOut = no session is open right now; they can still check in again.
+                isCheckedIn: !!open,
+                isCheckedOut: !open,
+                currentSessionStart: open ? open.checkIn.time : null,
+                sessions: sessionsOf(attendance).map((x) => ({
+                    mode: x.mode || attendance.attendanceType,
+                    checkIn: x.checkIn?.time || null,
+                    checkOut: x.checkOut?.time || null,
+                    checkInAddress: x.checkIn?.address || "",
+                    checkOutAddress: x.checkOut?.address || "",
+                })),
             },
         });
 
@@ -189,12 +195,15 @@ export const checkOut = async (req, res) => {
         const employeeId = req.user.id;
 
         const {
-            latitude,
-            longitude,
             address,
             device,
             remarks,
         } = req.body;
+
+        const location = parseLocation(req.body);
+        if (!location) {
+            return res.status(400).json({ success: false, message: LOCATION_REQUIRED });
+        }
 
         const attendanceDate = new Date()
             .toISOString()
@@ -212,48 +221,34 @@ export const checkOut = async (req, res) => {
             });
         }
 
-        if (attendance.checkOut?.time) {
+        if (!openSession(attendance)) {
             return res.status(400).json({
                 success: false,
-                message: "Already checked out.",
+                message: "You're not checked in right now.",
             });
         }
 
-        const checkOutTime = new Date();
+        const punchOut = { time: new Date(), ...location, address, device, ipAddress: req.ip, remarks };
 
-        attendance.checkOut = {
-            time: checkOutTime,
-            latitude,
-            longitude,
-            address,
-            device,
-            ipAddress: req.ip,
-            remarks,
-        };
-
-        const workedHours =
-            (checkOutTime - attendance.checkIn.time) /
-            (1000 * 60 * 60);
-
-        attendance.workingHours = Number(workedHours.toFixed(2));
+        ensureSessions(attendance);
+        const idx = attendance.sessions.length - 1;
+        attendance.sessions[idx].checkOut = punchOut;
+        attendance.checkOut = punchOut;
+        attendance.workingHours = Number(workedHoursOf(attendance).toFixed(2));
 
         const companySettings = await CompanySettings.findOne();
-
-        const requiredHours =
-            companySettings?.workingHours?.requiredHours || 9;
-
         const halfDayHours =
             companySettings?.workingHours?.halfDayHours || 4.5;
-
-        if (attendance.workingHours < halfDayHours) {
-            attendance.status = "Half Day";
-        } else if (attendance.lateByMinutes > 0) {
-            attendance.status = "Late";
-        } else {
-            attendance.status = "Present";
-        }
+        attendance.status = statusFor(attendance, halfDayHours);
 
         await attendance.save();
+
+        fillAddressLater({ ...location, address }, (addr) =>
+            attendanceModel.updateOne(
+                { _id: attendance._id },
+                { $set: { [`sessions.${idx}.checkOut.address`]: addr, "checkOut.address": addr } }
+            ).catch(() => {})
+        );
 
         return res.status(200).json({
             success: true,
@@ -412,18 +407,27 @@ export const decideRegularization = async (req, res) => {
         await regularization.save();
 
         if (status === "Approved") {
-            const update = {};
+            // The corrected check-in is the day's first; the corrected check-out closes the day's last session.
+            const at = (hhmm) => new Date(`${regularization.attendanceDate}T${hhmm}:00`);
+            let attendance = await attendanceModel.findOne({ employeeId: regularization.employeeId, attendanceDate: regularization.attendanceDate });
+            if (!attendance) {
+                attendance = new attendanceModel({ employeeId: regularization.employeeId, attendanceDate: regularization.attendanceDate, attendanceType: "Office" });
+            }
+            ensureSessions(attendance);
             if (regularization.requestedCheckIn) {
-                update["checkIn.time"] = new Date(`${regularization.attendanceDate}T${regularization.requestedCheckIn}:00`);
+                const t = at(regularization.requestedCheckIn);
+                if (!attendance.sessions.length) attendance.sessions.push({ mode: attendance.attendanceType, checkIn: { time: t }, checkOut: { time: null } });
+                else attendance.sessions[0].checkIn.time = t;
+                attendance.set("checkIn.time", t);
             }
-            if (regularization.requestedCheckOut) {
-                update["checkOut.time"] = new Date(`${regularization.attendanceDate}T${regularization.requestedCheckOut}:00`);
+            if (regularization.requestedCheckOut && attendance.sessions.length) {
+                const t = at(regularization.requestedCheckOut);
+                attendance.sessions[attendance.sessions.length - 1].checkOut.time = t;
+                attendance.set("checkOut.time", t);
             }
-            await attendanceModel.updateOne(
-                { employeeId: regularization.employeeId, attendanceDate: regularization.attendanceDate },
-                { $set: { ...update, status: "Present" } },
-                { upsert: true }
-            );
+            attendance.workingHours = Number(workedHoursOf(attendance).toFixed(2));
+            attendance.status = "Present";
+            await attendance.save();
         }
 
         notify(regularization.employeeId, `Regularization ${status}`, `Your attendance correction for ${regularization.attendanceDate} was ${status.toLowerCase()}.`, "General", "/attendance/regularization");

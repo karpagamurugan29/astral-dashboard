@@ -143,3 +143,40 @@
 .card:hover .kpi-icon {
   transform: scale(1.08) rotate(-4deg);
 }
+
+/* Topbar brand — the logo artwork is red/grey on white, so give it a white chip on the dark topbar */
+.navbar-brand-box .brand-logo {
+  height: 40px;
+  width: auto;
+  padding: 5px 10px;
+  border-radius: 8px;
+  background: #fff;
+}
+
+/* Mobile menu — the sidebar slides over the page with a tap-to-close backdrop */
+.sidebar-backdrop { display: none; }
+@media (max-width: 992px) {
+  body.sidebar-enable .vertical-menu {
+    position: fixed;
+    top: 70px;
+    bottom: 0;
+    left: 0;
+    width: 260px !important;
+    z-index: 1003;
+    overflow-y: auto;
+    box-shadow: 0 20px 40px rgba(15, 23, 42, .35);
+    animation: sidebarIn .22s var(--ease) both;
+  }
+  body.sidebar-enable .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 70px 0 0 0;
+    z-index: 1002;
+    background: rgba(15, 23, 42, .45);
+  }
+  body.sidebar-enable { overflow: hidden; }
+}
+@keyframes sidebarIn {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}

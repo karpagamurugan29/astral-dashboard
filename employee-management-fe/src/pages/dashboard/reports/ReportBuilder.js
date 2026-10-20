@@ -13,6 +13,7 @@ import { PROJECT_STATUS, ProjectStatus, TaskStatus, PriorityTag } from '../../..
 import '../../../components/attendance/attendance.css'
 import '../../../components/payroll/payroll.css'
 import './ReportBuilder.css'
+import { useAccess } from '../../../hooks/useAccess'
 
 const REPORTS = [
     { key: 'headcount', label: 'Headcount', icon: 'mdi-account-group-outline', color: '#0284c7', desc: 'Current employees by department' },
@@ -59,8 +60,8 @@ export const ReportBuilder = () => {
     const { headcount, attendance, leave, payroll, expense, projects, tasks, error } = useSelector((state) => state.reportReducer || {})
     const { list: allProjects } = useSelector((state) => state.projectReducer || {})
     const { list: allEmployees } = useSelector((state) => state.employeeReducer || {})
-    const { isAuthenticated: user, permissions } = useSelector((state) => state.authReducer || {})
-    const canView = ['Admin', 'HR', 'Manager', 'Team Lead'].includes(user?.role) && (user?.role === 'Admin' || permissions?.includes('reports'))
+    const { can } = useAccess()
+    const canView = can(['Admin', 'HR', 'Manager', 'Team Lead'], 'reports')
     const routeKey = location.pathname.split('/').pop()
     const [tab, setTab] = useState(ROUTE_TO_REPORT[routeKey] || 'headcount')
 

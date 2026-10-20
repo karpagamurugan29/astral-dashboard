@@ -8,13 +8,15 @@ import { TASK_STATUS, PriorityTag, DueTag, priorityMeta } from '../../../compone
 import '../../../components/people/people.css'
 import '../../../components/projects/projects.css'
 import './TaskDetailModal.css'
+import { useAccess } from '../../../hooks/useAccess'
 
 // Kept as TaskDetailModal so existing callers don't change — it now renders as a side drawer.
 export const TaskDetailModal = ({ taskId, onClose, onDeleted }) => {
     const dispatch = useDispatch()
     const { detail } = useSelector((state) => state.taskReducer || {})
     const { isAuthenticated: user } = useSelector((state) => state.authReducer || {})
-    const canDelete = ['Admin', 'HR', 'Manager', 'Team Lead'].includes(user?.role)
+    const { can } = useAccess()
+    const canDelete = can(['Admin', 'HR', 'Manager', 'Team Lead'], 'tasks')
     const [comment, setComment] = useState('')
     const [status, setStatus] = useState(null)
 

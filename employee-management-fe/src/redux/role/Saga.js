@@ -2,6 +2,7 @@ import { all, put, takeEvery } from "redux-saga/effects";
 import { Get, Put } from "../../components/common/ApiCall";
 import { API_URL } from "../../utils/Constants";
 import actions from "./Actions";
+import authActions from "../auth/Actions";
 
 const rootSaga = function* () {
   yield all([
@@ -16,6 +17,9 @@ const fetchMyPermissions = function* () {
     const result = yield Get(`${API_URL}/roles/my-permissions`);
     if (result?.success) {
       yield put({ type: actions.SET_MY_PERMISSIONS, payload: result?.data });
+      // Keep the sidebar's copy in step, so access changes show up on the next header refresh.
+      yield put({ type: authActions.SET_PERMISSIONS, payload: result?.data });
+      yield put({ type: authActions.SET_GRANTED_PERMISSIONS, payload: result?.granted });
     }
   } catch (err) {
     yield put({ type: actions.SET_ROLE_ERROR, payload: err.message });

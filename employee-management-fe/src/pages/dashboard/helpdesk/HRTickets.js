@@ -8,6 +8,7 @@ import {
     HELPDESK_ROOT, TICKET_CATEGORIES, TICKET_STATUS, TicketStatus, CategoryBadge, ticketAge, ownerOf,
 } from '../../../components/helpdesk/HelpdeskUI'
 import '../../../components/attendance/attendance.css'
+import { useAccess } from '../../../hooks/useAccess'
 
 const PRIO_RANK = { High: 0, Medium: 1, Low: 2 }
 const DAY = 864e5
@@ -23,10 +24,10 @@ const NEXT = {
 export const HRTickets = () => {
     const dispatch = useDispatch()
     const { list, listLoading, error } = useSelector((state) => state.ticketReducer || {})
-    const { isAuthenticated: user, permissions } = useSelector((state) => state.authReducer || {})
+    const { isAuthenticated: user } = useSelector((state) => state.authReducer || {})
     // Same rule as the sidebar's HR Helpdesk → HR Tickets entry.
-    const canManage = ['Admin', 'HR', 'Manager', 'Team Lead'].includes(user?.role) &&
-        (user?.role === 'Admin' || permissions?.includes('helpdesk'))
+    const { can } = useAccess()
+    const canManage = can(['Admin', 'HR', 'Manager', 'Team Lead'], 'helpdesk')
     const [statusFilter, setStatusFilter] = useState('active')
     const [categoryFilter, setCategoryFilter] = useState('')
     const [search, setSearch] = useState('')

@@ -8,6 +8,7 @@ import designationActions from '../../../redux/designation/Actions'
 import branchActions from '../../../redux/branch/Actions'
 import { PeopleShell, Avatar, EmptyState, ErrorBanner, fullName } from '../../../components/people/PeopleUI'
 import './AddEditEmployee.css'
+import { useAccess } from '../../../hooks/useAccess'
 
 const ROLES = ['Employee', 'Team Lead', 'Manager', 'HR', 'Admin']
 
@@ -38,8 +39,8 @@ export const AddEditEmployee = () => {
     const { list: departments } = useSelector((state) => state.departmentReducer || {})
     const { list: designations } = useSelector((state) => state.designationReducer || {})
     const { list: branches } = useSelector((state) => state.branchReducer || {})
-    const { isAuthenticated: user } = useSelector((state) => state.authReducer || {})
-    const canEdit = ['Admin', 'HR'].includes(user?.role)
+    const { can } = useAccess()
+    const canEdit = can(['Admin', 'HR'], 'employees')
     const { register, handleSubmit, reset, watch, formState: { errors } } = useForm()
     const [showPassword, setShowPassword] = useState(false)
 
@@ -203,7 +204,7 @@ export const AddEditEmployee = () => {
                             <div><h3>Job details</h3><p>Position, reporting line and pay.</p></div>
                         </div>
                         <div className="pp-card-body">
-                            <Field label="Access role" required error={errors.role} help="Controls what they can see and do in HoOok.">
+                            <Field label="Access role" required error={errors.role} help="Controls what they can see and do in Astral.">
                                 <div className={`ae-roles ${errors.role ? 'is-invalid' : ''}`} role="radiogroup">
                                     {ROLES.map((r) => (
                                         <label key={r}>

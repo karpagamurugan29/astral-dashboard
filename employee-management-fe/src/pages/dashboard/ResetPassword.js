@@ -28,7 +28,7 @@ export const ResetPassword = () => {
                                 <div className="d-flex flex-column h-100">
                                     <div className="mb-4 mb-md-5 text-center">
                                         <Link to="/" className="d-block auth-logo">
-                                            <span className="logo-txt">Ho<span className='clr-blue'>O</span>ok</span>
+                                            <img src="assets/images/astral-logo.png" alt="Astral Consulting Limited" height="48" />
                                         </Link>
                                     </div>
                                     <div className="auth-content my-auto">

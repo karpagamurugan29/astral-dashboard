@@ -13,6 +13,7 @@ import {
 import { TaskDetailModal } from './TaskDetailModal'
 import '../../../components/attendance/attendance.css'
 import './ProjectDetail.css'
+import { useAccess } from '../../../hooks/useAccess'
 
 const FORMER = ['Resigned', 'Terminated']
 
@@ -22,8 +23,8 @@ export const ProjectDetail = () => {
     const { detail: project, error } = useSelector((state) => state.projectReducer || {})
     const { list: allTasks } = useSelector((state) => state.taskReducer || {})
     const { list: employees } = useSelector((state) => state.employeeReducer || {})
-    const { isAuthenticated: user } = useSelector((state) => state.authReducer || {})
-    const canManage = ['Admin', 'HR', 'Manager', 'Team Lead'].includes(user?.role)
+    const { can } = useAccess()
+    const canManage = can(['Admin', 'HR', 'Manager', 'Team Lead'], 'projects')
     const [tab, setTab] = useState('overview')
     const [toAdd, setToAdd] = useState([])
     const [openTask, setOpenTask] = useState(null)

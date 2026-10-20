@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom'
 import employeeActions from '../../../redux/employee/Actions'
 import { PeopleShell, Avatar, EmptyState, ErrorBanner, ProgressRing, fullName, fmtDate } from '../../../components/people/PeopleUI'
 import './Lifecycle.css'
+import { useAccess } from '../../../hooks/useAccess'
 
 const DAY = 24 * 60 * 60 * 1000
 
@@ -30,8 +31,8 @@ const progressOf = (emp) => {
 export const EmployeeOffboarding = () => {
     const dispatch = useDispatch()
     const { offboardingList, list: employees, error } = useSelector((state) => state.employeeReducer || {})
-    const { isAuthenticated: user } = useSelector((state) => state.authReducer || {})
-    const canManage = ['Admin', 'HR'].includes(user?.role)
+    const { can } = useAccess()
+    const canManage = can(['Admin', 'HR'], 'employees')
     const [starting, setStarting] = useState(false)
     const { register, handleSubmit, reset, formState: { errors } } = useForm()
 

@@ -10,6 +10,7 @@ import { PROJECTS_ROOT, TASK_STATUS, TASK_COLUMNS, PRIORITY, priorityMeta, DueTa
 import { TaskDetailModal } from './TaskDetailModal'
 import '../../../components/attendance/attendance.css'
 import './TasksBoard.css'
+import { useAccess } from '../../../hooks/useAccess'
 
 const FORMER = ['Resigned', 'Terminated']
 const TASK_PRIORITIES = ['Low', 'Medium', 'High']
@@ -21,7 +22,8 @@ export const TasksBoard = () => {
     const { list: projects } = useSelector((state) => state.projectReducer || {})
     const { list: employees } = useSelector((state) => state.employeeReducer || {})
     const { isAuthenticated: user } = useSelector((state) => state.authReducer || {})
-    const canCreate = ['Admin', 'HR', 'Manager', 'Team Lead'].includes(user?.role)
+    const { can } = useAccess()
+    const canCreate = can(['Admin', 'HR', 'Manager', 'Team Lead'], 'tasks')
     const presetProject = location.state?.projectId || ''
     const blank = { title: '', projectId: presetProject, assignedTo: '', priority: 'Medium', dueDate: '', description: '' }
     const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm({ defaultValues: blank })

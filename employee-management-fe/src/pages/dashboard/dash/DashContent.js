@@ -15,6 +15,7 @@ import { LeaveMixChart } from '../../../components/dashboard/widgets/LeaveMixCha
 import { ProjectMomentum } from '../../../components/dashboard/widgets/ProjectMomentum'
 import { AnnouncementsWidget } from '../../../components/dashboard/widgets/AnnouncementsWidget'
 import './DashContent.css'
+import { useAccess } from '../../../hooks/useAccess'
 
 const WORKDAY_HOURS = 9
 
@@ -45,9 +46,10 @@ export const DashContent = () => {
     const { headcount } = useSelector((state) => state.reportReducer || {})
     const { list: announcements, listLoading: announcementsLoading } = useSelector((state) => state.announcementReducer || {})
     const { pending: pendingLeaves, balance } = useSelector((state) => state.leaveReducer || {})
-    const { today: todayAttendance, saving: checkingInOut } = useSelector((state) => state.attendanceReducer || {})
+    const { today: todayAttendance, saving: checkingInOut, error: attendanceError } = useSelector((state) => state.attendanceReducer || {})
     const { isAuthenticated: user, permissions } = useSelector((state) => state.authReducer || {})
-    const canApprove = ['Admin', 'HR', 'Manager', 'Team Lead'].includes(user?.role)
+    const { can, canSee } = useAccess()
+    const canApprove = can(['Admin', 'HR', 'Manager', 'Team Lead'], 'leave')
     // Same rule the Sidebar uses, so a KPI tile only links to a screen this user can open.
     const canOpen = (roles, module) =>
         (!roles || roles.includes(user?.role)) &&
@@ -151,7 +153,7 @@ export const DashContent = () => {
     const punchStatus = !todayAttendance
         ? { cls: 'is-out', text: 'Not checked in' }
         : todayAttendance.isCheckedOut
-            ? { cls: 'is-done', text: 'Checked out' }
+            ? { cls: 'is-done', text: todayAttendance.sessions?.length > 1 ? `Checked out · ${todayAttendance.sessions.length} sessions` : 'Checked out' }
             : { cls: 'is-in', text: todayAttendance.status || 'Checked in' }
 
     return (
@@ -182,7 +184,8 @@ export const DashContent = () => {
                                     </div>
                                 </div>
 
-                                <div className="db-punch">
+                                {/* Check in / out only for people given the My Attendance screen. */}
+                                {canSee('screen:attendance') && <div className="db-punch">
                                     <div className="db-punch-head">
                                         <div className="db-clock">
                                             {now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -203,16 +206,23 @@ export const DashContent = () => {
 
                                     {!todayAttendance ? (
                                         <button className="db-punch-btn" onClick={onCheckIn} disabled={checkingInOut}>
-                                            <i className="mdi mdi-login-variant"></i> {checkingInOut ? 'Checking in…' : 'Check in'}
+                                            <i className="mdi mdi-login-variant"></i> {checkingInOut === 'locating' ? 'Getting your location…' : checkingInOut ? 'Checking in…' : 'Check in'}
                                         </button>
                                     ) : !todayAttendance.isCheckedOut ? (
                                         <button className="db-punch-btn" onClick={onCheckOut} disabled={checkingInOut}>
-                                            <i className="mdi mdi-logout-variant"></i> {checkingInOut ? 'Checking out…' : 'Check out'}
+                                            <i className="mdi mdi-logout-variant"></i> {checkingInOut === 'locating' ? 'Getting your location…' : checkingInOut ? 'Checking out…' : 'Check out'}
                                         </button>
                                     ) : (
-                                        <div className="db-done"><i className="mdi mdi-check-circle-outline"></i> Day complete — nice work!</div>
+                                        <button className="db-punch-btn again" onClick={onCheckIn} disabled={checkingInOut}>
+                                            <i className="mdi mdi-login-variant"></i> {checkingInOut === 'locating' ? 'Getting your location…' : checkingInOut ? 'Checking in…' : 'Check in again'}
+                                        </button>
                                     )}
-                                </div>
+                                    {/* "No attendance found" only means not checked in yet; anything else (e.g. location blocked) is shown. */}
+                                    {attendanceError && !/no attendance found/i.test(attendanceError) && (
+                                        <div className="db-punch-error" role="alert"><i className="mdi mdi-map-marker-alert-outline"></i>{attendanceError}</div>
+                                    )}
+                                    <div className="db-punch-hint"><i className="mdi mdi-map-marker-outline"></i> Location is recorded at every check in &amp; check out</div>
+                                </div>}
                             </section>
 
                             <div className="db-section">

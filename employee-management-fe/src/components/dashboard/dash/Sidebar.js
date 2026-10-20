@@ -15,27 +15,39 @@ import { useSelector } from 'react-redux';
 /*  list — this is UI convenience only. The backend enforces the real        */
 /*  authorization on every route regardless of what the sidebar shows.       */
 /* -------------------------------------------------------------------------- */
-const isAllowedFor = (menuItem, userRole, permissions) => {
-    if (menuItem.roles && !menuItem.roles.includes(userRole)) return false;
+// A module granted beyond the role (Access Control: department or personal) opens items
+// whose role list would otherwise hide them.
+const roleOk = (menuItem, userRole, granted) =>
+    !menuItem.roles || menuItem.roles.includes(userRole) || (!!menuItem.module && !!granted?.includes(menuItem.module));
+
+// item.screen — a screen permission (Access Control) needed to see this item at all.
+const screenOk = (menuItem, userRole, permissions) => !menuItem.screen || userRole === 'Admin' || !!permissions?.includes(menuItem.screen);
+
+const isAllowedFor = (menuItem, userRole, permissions, granted) => {
+    if (!roleOk(menuItem, userRole, granted)) return false;
+    if (!screenOk(menuItem, userRole, permissions)) return false;
     if (menuItem.module && userRole !== 'Admin' && !permissions?.includes(menuItem.module)) return false;
     return true;
 };
 
-const isVisibleFor = (menuItem, userRole, permissions) => {
-    if (!isAllowedFor(menuItem, userRole, permissions)) return false;
+const isVisibleFor = (menuItem, userRole, permissions, granted) => {
+    if (!isAllowedFor(menuItem, userRole, permissions, granted)) return false;
     if (menuItem.link && !menuItem.children) return true;
-    return (menuItem.children || []).some((c) => isVisibleFor(c, userRole, permissions));
+    return (menuItem.children || []).some((c) => isVisibleFor(c, userRole, permissions, granted));
 };
 
-const MenuItem = ({ item, level = 0, openMenus, handleMenuClick, userRole, permissions }) => {
+const MenuItem = ({ item, level = 0, openMenus, handleMenuClick, userRole, permissions, granted }) => {
     const location = useLocation();
     const hasSubMenu = item.children && item.children.length > 0;
     const isOpen = !!openMenus[item.name];
     const isLink = item.link && !hasSubMenu;
-    const isActiveLink = isLink && (location.pathname === item.link || location.pathname.startsWith(item.link + '/'));
+    // `exclude` keeps a parent path (e.g. /audits) from lighting up on a sibling's pages (/audits/clients).
+    const isActiveLink = isLink && (location.pathname === item.link || location.pathname.startsWith(item.link + '/'))
+        && !(item.exclude || []).some((p) => location.pathname.startsWith(p));
 
     const isAllowed = (menuItem) => {
-        if (menuItem.roles && !menuItem.roles.includes(userRole)) return false;
+        if (!roleOk(menuItem, userRole, granted)) return false;
+        if (!screenOk(menuItem, userRole, permissions)) return false;
         if (menuItem.module && userRole !== 'Admin' && !permissions?.includes(menuItem.module)) return false;
         return true;
     };
@@ -105,6 +117,7 @@ const MenuItem = ({ item, level = 0, openMenus, handleMenuClick, userRole, permi
                             handleMenuClick={handleMenuClick}
                             userRole={userRole}
                             permissions={permissions}
+                            granted={granted}
                         />
                     ))}
                 </ul>
@@ -120,6 +133,7 @@ MenuItem.propTypes = {
     handleMenuClick: PropTypes.func.isRequired,
     userRole: PropTypes.string,
     permissions: PropTypes.array,
+    granted: PropTypes.array,
 };
 
 const ADMIN = ['Admin'];
@@ -135,7 +149,7 @@ export const Sidebar = () => {
     /*  than left as dead links: those are full modules of their own that     */
     /*  aren't built, not a missing screen or two.                            */
     /* ---------------------------------------------------------------------- */
-    const { isAuthenticated: user, permissions } = useSelector((state) => state.authReducer || {});
+    const { isAuthenticated: user, permissions, granted } = useSelector((state) => state.authReducer || {});
     const userRole = user?.role;
     const isAdminHR = ADMIN_HR.includes(userRole);
 
@@ -145,7 +159,7 @@ export const Sidebar = () => {
         { name: "main-title", isTitle: true, label: "Main" },
         { name: "dashboard", label: "Dashboard", icon: "home", link: "/dashboard" },
         { name: "notifications", label: "Notifications", icon: "bell", link: "/notifications" },
-        { name: "announcements", label: "Announcements", icon: "volume-2", link: "/announcements" },
+        { name: "announcements", label: "Announcements", icon: "volume-2", link: "/announcements", screen: "screen:announcements" },
 
         { name: "people-title", isTitle: true, label: "People" },
         {
@@ -153,10 +167,10 @@ export const Sidebar = () => {
             label: "Employees",
             icon: "users",
             children: [
-                { name: "employees-directory", label: "Employee Directory", link: "/employees" },
-                { name: "employees-departments", label: "Departments", link: "/departments" },
-                { name: "employees-designations", label: "Designations", link: "/designations" },
-                { name: "employees-documents", label: "Employee Documents", link: "/documents" },
+                { name: "employees-directory", label: "Employee Directory", link: "/employees", screen: "screen:directory" },
+                { name: "employees-departments", label: "Departments", link: "/departments", screen: "screen:org" },
+                { name: "employees-designations", label: "Designations", link: "/designations", screen: "screen:org" },
+                { name: "employees-documents", label: "Employee Documents", link: "/documents", screen: "screen:documents" },
                 { name: "employees-onboarding", label: "Onboarding", link: "/employees/onboarding", roles: ADMIN_HR, module: "employees" },
                 { name: "employees-offboarding", label: "Offboarding", link: "/employees/offboarding", roles: ADMIN_HR, module: "employees" },
             ],
@@ -166,21 +180,22 @@ export const Sidebar = () => {
             label: "Attendance",
             icon: "clock",
             children: [
-                { name: "attendance-my", label: "My Attendance", link: "/attendance/today" },
-                { name: "attendance-regularization", label: "Regularization", link: "/attendance/regularization" },
-                { name: "attendance-holidays", label: "Holidays", link: "/attendance/holidays" },
-                { name: "attendance-shifts", label: "Shifts", link: "/attendance/shifts" },
+                { name: "attendance-my", label: "My Attendance", link: "/attendance/today", screen: "screen:attendance" },
+                { name: "attendance-regularization", label: "Regularization", link: "/attendance/regularization", screen: "screen:attendance" },
+                { name: "attendance-holidays", label: "Holidays", link: "/attendance/holidays", screen: "screen:holidays" },
+                { name: "attendance-shifts", label: "Shifts", link: "/attendance/shifts", screen: "screen:shifts" },
                 { name: "attendance-team", label: "Team Attendance", link: "/attendance/team", roles: ADMIN_HR_MANAGER, module: "attendance" },
             ],
         },
+        { name: "location-log", label: "Location Log", icon: "map-pin", link: "/location-log", roles: ADMIN_HR_MANAGER, module: "attendance" },
         {
             name: "leave",
             label: "Leave",
             icon: "calendar",
             children: [
-                { name: "leave-my", label: "My Leave", link: "/leave" },
-                { name: "leave-apply", label: "Apply Leave", link: "/leave/apply" },
-                { name: "leave-team-calendar", label: "Team Calendar", link: "/leave/team-calendar" },
+                { name: "leave-my", label: "My Leave", link: "/leave", screen: "screen:leave" },
+                { name: "leave-apply", label: "Apply Leave", link: "/leave/apply", screen: "screen:leave" },
+                { name: "leave-team-calendar", label: "Team Calendar", link: "/leave/team-calendar", screen: "screen:leave" },
                 { name: "leave-approvals", label: "Approvals", link: "/leave/approvals", roles: ADMIN_HR_MANAGER, module: "leave" },
                 { name: "leave-settings", label: "Leave Settings", link: "/settings/company", roles: ADMIN, module: "settings" },
             ],
@@ -190,19 +205,28 @@ export const Sidebar = () => {
             label: "HR Helpdesk",
             icon: "life-buoy",
             children: [
-                { name: "helpdesk-my", label: "My Tickets", link: "/helpdesk" },
+                { name: "helpdesk-my", label: "My Tickets", link: "/helpdesk", screen: "screen:helpdesk" },
                 { name: "helpdesk-all", label: "HR Tickets", link: "/helpdesk/all", roles: ADMIN_HR_MANAGER, module: "helpdesk" },
             ],
         },
 
         { name: "work-title", isTitle: true, label: "Work" },
         {
+            name: "audits",
+            label: "Audits",
+            icon: "briefcase",
+            children: [
+                { name: "audits-clients", label: "Clients", link: "/audits/clients", screen: "screen:audits" },
+                { name: "audits-projects", label: "Audit Projects", link: "/audits", exclude: ["/audits/clients"], screen: "screen:audits" },
+            ],
+        },
+        {
             name: "projects",
             label: "Projects",
             icon: "folder",
             children: [
-                { name: "projects-list", label: "Projects", link: "/projects" },
-                { name: "projects-tasks", label: "Task Board", link: "/tasks" },
+                { name: "projects-list", label: "Projects", link: "/projects", screen: "screen:projects" },
+                { name: "projects-tasks", label: "Task Board", link: "/tasks", screen: "screen:projects" },
             ],
         },
 
@@ -212,8 +236,8 @@ export const Sidebar = () => {
             label: "Payroll",
             icon: "dollar-sign",
             children: [
-                { name: "payroll-payslips", label: "My Payslips", link: "/payroll/payslips" },
-                { name: "payroll-loans", label: "Loans / Advances", link: "/payroll/loans" },
+                { name: "payroll-payslips", label: "My Payslips", link: "/payroll/payslips", screen: "screen:payslips" },
+                { name: "payroll-loans", label: "Loans / Advances", link: "/payroll/loans", screen: "screen:loans" },
                 { name: "payroll-salary-structure", label: "Salary Structure", link: "/payroll/salary-structure", roles: ADMIN_HR, module: "payroll" },
                 { name: "payroll-runs", label: "Payroll Runs", link: "/payroll/process", roles: ADMIN, module: "payroll" },
             ],
@@ -223,7 +247,7 @@ export const Sidebar = () => {
             label: "Expenses",
             icon: "credit-card",
             children: [
-                { name: "expenses-my", label: "My Expenses", link: "/expenses" },
+                { name: "expenses-my", label: "My Expenses", link: "/expenses", screen: "screen:expenses" },
                 { name: "expenses-approvals", label: "Approvals", link: "/expenses/approvals", roles: ADMIN_HR_MANAGER, module: "expenses" },
             ],
         },
@@ -232,8 +256,9 @@ export const Sidebar = () => {
             label: "Assets",
             icon: "monitor",
             children: [
-                { name: "assets-assignments", label: isAdminHR ? "Assignments" : "My Assets", link: "/assets/assignments" },
-                { name: "assets-list", label: "Asset Register", link: "/assets" },
+                { name: "assets-assignments", label: isAdminHR ? "Assignments" : "My Assets", link: "/assets/assignments", screen: "screen:assets" },
+                // The full register is a management screen.
+                { name: "assets-list", label: "Asset Register", link: "/assets", roles: ADMIN_HR, module: "assets" },
             ],
         },
 
@@ -245,13 +270,14 @@ export const Sidebar = () => {
             name: "settings",
             label: "Settings",
             icon: "settings",
-            roles: ADMIN,
+            // Admin-only per item (not on the group), so a module granted in Access Control can open just that item.
             children: [
-                { name: "settings-company", label: "Company Profile", link: "/settings/company" },
-                { name: "settings-branches", label: "Branches", link: "/settings/branches" },
-                { name: "settings-holidays", label: "Holidays", link: "/settings/holidays" },
-                { name: "settings-roles", label: "Roles & Permissions", link: "/roles" },
-                { name: "settings-license", label: "License", link: "/license" },
+                { name: "settings-company", label: "Company Profile", link: "/settings/company", roles: ADMIN, module: "settings" },
+                { name: "settings-branches", label: "Branches", link: "/settings/branches", roles: ADMIN, module: "branches" },
+                { name: "settings-holidays", label: "Holidays", link: "/settings/holidays", roles: ADMIN, module: "settings" },
+                { name: "settings-access", label: "Access Control", link: "/settings/access", roles: ADMIN, module: "roles" },
+                { name: "settings-roles", label: "Roles & Permissions", link: "/roles", roles: ADMIN, module: "roles" },
+                { name: "settings-license", label: "License", link: "/license", roles: ADMIN },
             ],
         },
         // Top level (not inside Admin-only Settings) so HR with the permission can reach it.
@@ -266,7 +292,7 @@ export const Sidebar = () => {
     const visibleItems = menuItems.filter((item, i) => {
         if (!item.isTitle) return true;
         for (let j = i + 1; j < menuItems.length && !menuItems[j].isTitle; j += 1) {
-            if (isVisibleFor(menuItems[j], userRole, permissions)) return true;
+            if (isVisibleFor(menuItems[j], userRole, permissions, granted)) return true;
         }
         return false;
     });
@@ -321,6 +347,11 @@ export const Sidebar = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [location.pathname]);
 
+    // On phones the menu is an overlay: close it after navigating.
+    useEffect(() => {
+        document.body.classList.remove('sidebar-enable')
+    }, [location.pathname]);
+
     // Re-render feather icons every time the menu tree changes (open/close, role loaded)
     useEffect(() => {
         if (window.feather) {
@@ -330,6 +361,7 @@ export const Sidebar = () => {
 
     return (
         <div>
+            <div className="sidebar-backdrop" onClick={() => document.body.classList.remove('sidebar-enable')} aria-hidden="true"></div>
             <div className="vertical-menu">
                 <div data-simplebar className="h-100">
                     <div id="sidebar-menu">
@@ -343,6 +375,7 @@ export const Sidebar = () => {
                                     handleMenuClick={handleMenuClick}
                                     userRole={userRole}
                                     permissions={permissions}
+                                    granted={granted}
                                 />
                             ))}
                         </ul>

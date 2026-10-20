@@ -5,6 +5,7 @@ import attendanceActions from '../../../redux/attendance/Actions'
 import { PeopleShell, Avatar, EmptyState, ErrorBanner, fullName } from '../../../components/people/PeopleUI'
 import { ATTENDANCE_ROOT, AttStatus, statusMeta, ymd } from '../../../components/attendance/AttendanceUI'
 import './AttendanceRegularization.css'
+import { useAccess } from '../../../hooks/useAccess'
 
 const niceDate = (v) => {
     if (!v) return '—'
@@ -15,8 +16,8 @@ const niceDate = (v) => {
 export const AttendanceRegularization = () => {
     const dispatch = useDispatch()
     const { myRegularizations, pendingRegularizations, error } = useSelector((state) => state.attendanceReducer || {})
-    const { isAuthenticated: user } = useSelector((state) => state.authReducer || {})
-    const canApprove = ['Admin', 'HR', 'Manager', 'Team Lead'].includes(user?.role)
+    const { can } = useAccess()
+    const canApprove = can(['Admin', 'HR', 'Manager', 'Team Lead'], 'attendance')
     const { register, handleSubmit, reset, watch, formState: { errors } } = useForm()
 
     useEffect(() => {

@@ -4,6 +4,10 @@ const initialState = {
   isAuthenticated: "",
   checkSession: localStorage.getItem('session') || false,
   permissions: [],
+  // Modules opened beyond the user's role (by their department or for them personally).
+  granted: [],
+  // False until the first permission list arrives, so screen guards don't flash "No access".
+  permissionsLoaded: false,
   message: "",
   error: "",
 };
@@ -17,11 +21,18 @@ const authReducer = (state = initialState, action) => {
         // A fresh user (login/session-restore) clears any stale permission set from a
         // previous account on this browser until the real one comes back from the API.
         permissions: action.payload?.role ? state.permissions : [],
+        granted: action.payload?.role ? state.granted : [],
       };
     case actions.SET_PERMISSIONS:
       return {
         ...state,
-        permissions: action.payload || []
+        permissions: action.payload || [],
+        permissionsLoaded: true
+      };
+    case actions.SET_GRANTED_PERMISSIONS:
+      return {
+        ...state,
+        granted: action.payload || []
       };
     case actions.CHECK_SESSION:
       return {

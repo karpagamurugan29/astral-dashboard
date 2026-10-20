@@ -42,10 +42,11 @@ export const AttendanceToday = () => {
     const onCheckOut = () => dispatch({ type: attendanceActions.CHECK_OUT, payload: {} })
 
     const required = today?.requiredHours || WORKDAY_HOURS
-    // While checked in, count worked time live instead of waiting for the next fetch.
-    const worked = today?.checkIn && !today?.isCheckedOut
-        ? Math.max(0, (now - new Date(today.checkIn)) / 36e5)
-        : Number(today?.workedHours) || 0
+    const sessions = today?.sessions || []
+    const isIn = !!today?.currentSessionStart
+    // Finished sessions plus the open one counted live, instead of waiting for the next fetch.
+    const closedHours = sessions.reduce((s, x) => s + (x.checkIn && x.checkOut ? (new Date(x.checkOut) - new Date(x.checkIn)) / 36e5 : 0), 0)
+    const worked = isIn ? closedHours + Math.max(0, (now - new Date(today.currentSessionStart)) / 36e5) : (Number(today?.workedHours) || closedHours)
     const pct = Math.min(100, (worked / required) * 100)
     const remaining = Math.max(0, required - worked)
 
@@ -111,7 +112,7 @@ export const AttendanceToday = () => {
                                 </div>
                                 <div className="mt-facts">
                                     <div className="mt-fact" style={{ '--c': '#059669' }}><span><i className="mdi mdi-login-variant"></i>Checked in</span><b>{formatTime(today?.checkIn)}</b></div>
-                                    <div className="mt-fact" style={{ '--c': '#e11d48' }}><span><i className="mdi mdi-logout-variant"></i>Checked out</span><b>{formatTime(today?.checkOut)}</b></div>
+                                    <div className="mt-fact" style={{ '--c': '#e11d48' }}><span><i className="mdi mdi-logout-variant"></i>{sessions.length > 1 ? 'Last out' : 'Checked out'}</span><b>{isIn ? 'In now' : formatTime(today?.checkOut)}</b></div>
                                     <div className="mt-fact" style={{ '--c': '#0284c7' }}><span><i className="mdi mdi-timer-sand"></i>Remaining</span><b>{today ? hoursLabel(remaining) : `${required}h`}</b></div>
                                     <div className="mt-fact" style={{ '--c': '#7c3aed' }}><span><i className="mdi mdi-percent-outline"></i>Day done</span><b>{Math.round(pct)}%</b></div>
                                 </div>
@@ -130,19 +131,56 @@ export const AttendanceToday = () => {
                                             ))}
                                         </div>
                                         <button type="button" className="mt-big" onClick={onCheckIn} disabled={saving}>
-                                            <i className="mdi mdi-fingerprint"></i>{saving ? 'Checking in…' : 'Check in'}
+                                            <i className="mdi mdi-fingerprint"></i>{saving === 'locating' ? 'Getting your location…' : saving ? 'Checking in…' : 'Check in'}
                                         </button>
                                     </>
                                 ) : !today.isCheckedOut ? (
                                     <button type="button" className="mt-big out" onClick={onCheckOut} disabled={saving}>
-                                        <i className="mdi mdi-logout-variant"></i>{saving ? 'Checking out…' : 'Check out'}
+                                        <i className="mdi mdi-logout-variant"></i>{saving === 'locating' ? 'Getting your location…' : saving ? 'Checking out…' : 'Check out'}
                                     </button>
                                 ) : (
-                                    <div className="mt-done">
-                                        <i className="mdi mdi-check-decagram"></i>
-                                        <div><b>Day complete — nice work!</b>You worked {hoursLabel(worked)} today.</div>
+                                    <>
+                                        <div className="mt-done">
+                                            <i className="mdi mdi-check-decagram"></i>
+                                            <div><b>Checked out</b>You've worked {hoursLabel(worked)} today across {sessions.length} session{sessions.length === 1 ? '' : 's'}.</div>
+                                        </div>
+                                        <div className="mt-mode-label">Going back to work? Where are you now?</div>
+                                        <div className="mt-modes" role="radiogroup" aria-label="Work mode">
+                                            {Object.entries(MODE_META).map(([m, meta]) => (
+                                                <label key={m} style={{ '--c': meta.color }}>
+                                                    <input type="radio" name="mode" value={m} checked={mode === m} onChange={() => setMode(m)} />
+                                                    <span><i className={`mdi ${meta.icon}`}></i>{m}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                        <button type="button" className="mt-big again" onClick={onCheckIn} disabled={saving}>
+                                            <i className="mdi mdi-login-variant"></i>{saving === 'locating' ? 'Getting your location…' : saving ? 'Checking in…' : 'Check in again'}
+                                        </button>
+                                    </>
+                                )}
+                                {sessions.length > 0 && (
+                                    <div className="mt-sessions">
+                                        <div className="mt-sessions-head">Today's sessions <span>{hoursLabel(worked)}</span></div>
+                                        <ol>
+                                            {sessions.map((x, i) => {
+                                                const open = !x.checkOut
+                                                const hrs = ((open ? now : new Date(x.checkOut)) - new Date(x.checkIn)) / 36e5
+                                                return (
+                                                    <li key={i} className={open ? 'open' : ''}>
+                                                        <span className="mt-sess-n">{i + 1}</span>
+                                                        <span className="mt-sess-main">
+                                                            <b>{formatTime(x.checkIn)} → {open ? <span className="mt-sess-live">now</span> : formatTime(x.checkOut)}</b>
+                                                            {(x.checkInAddress || x.checkOutAddress) && <small title={x.checkInAddress}><i className="mdi mdi-map-marker-outline"></i>{x.checkInAddress || x.checkOutAddress}</small>}
+                                                        </span>
+                                                        <ModeTag mode={x.mode} />
+                                                        <span className="mt-sess-hrs">{hoursLabel(Math.max(0, hrs))}</span>
+                                                    </li>
+                                                )
+                                            })}
+                                        </ol>
                                     </div>
                                 )}
+                                <p className="mt-hint"><i className="mdi mdi-map-marker-outline"></i> Your location is recorded every time you check in and check out.</p>
                                 <p className="mt-hint">Missed a punch? <Link to="/attendance/regularization">Request a correction</Link></p>
                             </div>
                         </>
@@ -175,7 +213,7 @@ export const AttendanceToday = () => {
                                         return (
                                             <li className="mt-day" key={r._id}>
                                                 <span className="mt-day-date"><b>{d.getDate()}</b><small>{d.toLocaleDateString(undefined, { weekday: 'short' })}</small></span>
-                                                <span className="mt-day-main"><b>{formatTime(r.checkIn?.time)}</b> → <b>{formatTime(r.checkOut?.time)}</b> · {hoursLabel(r.workingHours)}</span>
+                                                <span className="mt-day-main"><b>{formatTime(r.checkIn?.time)}</b> → <b>{formatTime(r.checkOut?.time)}</b> · {hoursLabel(r.workingHours)}{r.sessions?.length > 1 ? ` · ${r.sessions.length} sessions` : ''}</span>
                                                 <AttStatus status={r.status} />
                                             </li>
                                         )

@@ -12,6 +12,7 @@ import {
 } from '../../../components/projects/ProjectUI'
 import '../../../components/attendance/attendance.css'
 import './ProjectsList.css'
+import { useAccess } from '../../../hooks/useAccess'
 
 const DAY = 24 * 60 * 60 * 1000
 const FORMER = ['Resigned', 'Terminated']
@@ -37,8 +38,8 @@ export const ProjectsList = () => {
     const { list, error } = useSelector((state) => state.projectReducer || {})
     const { list: tasks } = useSelector((state) => state.taskReducer || {})
     const { list: employees } = useSelector((state) => state.employeeReducer || {})
-    const { isAuthenticated: user } = useSelector((state) => state.authReducer || {})
-    const canManage = ['Admin', 'HR', 'Manager', 'Team Lead'].includes(user?.role)
+    const { can } = useAccess()
+    const canManage = can(['Admin', 'HR', 'Manager', 'Team Lead'], 'projects')
     const { register, handleSubmit, reset, watch, formState: { errors } } = useForm({ defaultValues: BLANK })
     const [team, setTeam] = useState([])
     const [creating, setCreating] = useState(false)

@@ -8,6 +8,7 @@ import { PeopleShell, Avatar, DeptTag, EmptyState, ErrorBanner, fullName, fmtDat
 import { ASSET_ROOT, ASSET_TYPES, ASSET_STATUS, AssetStatus, AssetIcon, assetTypeMeta, since } from '../../../components/asset/AssetUI'
 import '../../../components/attendance/attendance.css'
 import './AssetList.css'
+import { useAccess } from '../../../hooks/useAccess'
 
 const FORMER = ['Resigned', 'Terminated']
 const BLANK = { assetName: '', assetType: '', serialNumber: '', notes: '' }
@@ -62,7 +63,8 @@ export const AssetList = () => {
     const { list, listLoading, error } = useSelector((state) => state.assetReducer || {})
     const { list: employees } = useSelector((state) => state.employeeReducer || {})
     const { isAuthenticated: user } = useSelector((state) => state.authReducer || {})
-    const isAdmin = ['Admin', 'HR'].includes(user?.role)
+    const { can } = useAccess()
+    const isAdmin = can(['Admin', 'HR'], 'assets')
     const { register, handleSubmit, reset, formState: { errors } } = useForm({ defaultValues: BLANK })
     const [adding, setAdding] = useState(false)
     const [assigning, setAssigning] = useState(null)

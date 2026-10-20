@@ -5,10 +5,53 @@ import { useForm } from 'react-hook-form'
 import { Link, useNavigate } from 'react-router-dom'
 import './Login.css'
 
+// TEST ONLY: one-click sign-in for test accounts. Shown in development, or in a build made with
+// REACT_APP_DEMO_LOGINS=true. The condition must stay inline in the ternary (and the variable must be
+// defined — see .env.production) so webpack can resolve it at build time and leave the account list,
+// with its passwords, out of production bundles. Remove before going live.
+const DEMO_ACCOUNTS = (process.env.NODE_ENV === 'development' || process.env.REACT_APP_DEMO_LOGINS === 'true')
+    ? require('./demoAccounts').DEMO_ACCOUNTS
+    : []
+const SHOW_DEMO_LOGINS = DEMO_ACCOUNTS.length > 0
+
+const DemoAccounts = ({ onPick, disabled }) => {
+    const [open, setOpen] = useState(false)
+    const [q, setQ] = useState('')
+    const groups = DEMO_ACCOUNTS
+        .filter((a) => !q || `${a.name} ${a.designation} ${a.department} ${a.email}`.toLowerCase().includes(q.toLowerCase()))
+        .reduce((acc, a) => ({ ...acc, [a.designation]: [...(acc[a.designation] || []), a] }), {})
+    return (
+        <div className={`lg-demo ${open ? 'open' : ''}`}>
+            <button type="button" className="lg-demo-toggle" onClick={() => setOpen(!open)} aria-expanded={open}>
+                <i className="mdi mdi-flask-outline"></i>
+                <span>Test accounts <small>{DEMO_ACCOUNTS.length} users · testing only</small></span>
+                <i className={`mdi ${open ? 'mdi-chevron-up' : 'mdi-chevron-down'}`}></i>
+            </button>
+            {open && (
+                <div className="lg-demo-body">
+                    <input type="search" className="lg-demo-search" placeholder="Search name or designation…" value={q} onChange={(e) => setQ(e.target.value)} />
+                    {Object.entries(groups).map(([designation, list]) => (
+                        <div key={designation} className="lg-demo-group">
+                            <div className="lg-demo-head">{designation}</div>
+                            {list.map((a) => (
+                                <button key={a.email} type="button" className="lg-demo-user" disabled={disabled} onClick={() => onPick(a)} title={`Sign in as ${a.name}`}>
+                                    <span className="lg-demo-main"><b>{a.name}</b><small>{a.email} · {a.department}</small></span>
+                                    <code>{a.password}</code>
+                                    <i className="mdi mdi-login"></i>
+                                </button>
+                            ))}
+                        </div>
+                    ))}
+                    {!Object.keys(groups).length && <p className="lg-demo-none">No match</p>}
+                </div>
+            )}
+        </div>
+    )
+}
+
 const Logo = ({ className = '' }) => (
     <Link to="/" className={`lg-logo ${className}`}>
-        <span className="lg-logo-mark"><i className="mdi mdi-account-group"></i></span>
-        <span>Ho<span className="lg-o">O</span>ok</span>
+        <img src="assets/images/astral-logo.png" alt="Astral Consulting Limited" />
     </Link>
 )
 
@@ -36,10 +79,7 @@ export const Login = () => {
 
     useEffect(() => {
         dispatch({ type: authActions.CLEAR_AUTH_MESSAGES })
-        reset({
-            email: 'admin@hoook.com',
-            password: 'Admin@2026'
-        })
+        reset({ email: '', password: '' })
     }, [dispatch, reset])
 
     const onPasswordKey = (e) => setCapsLock(e.getModifierState?.('CapsLock') || false)
@@ -72,7 +112,7 @@ export const Login = () => {
                     </div>
                 </div>
 
-                <div className="lg-brand-foot">HoOok Employee Management</div>
+                <div className="lg-brand-foot">Astral Consulting Limited</div>
             </aside>
 
             <main className="lg-main">
@@ -80,7 +120,7 @@ export const Login = () => {
 
                 <div className="lg-card">
                     <h2>Welcome back 👋</h2>
-                    <p className="lg-sub">Sign in to continue to your HoOok workspace.</p>
+                    <p className="lg-sub">Sign in to continue to your Astral workspace.</p>
 
                     {error && (
                         <div className="lg-alert" role="alert">
@@ -150,12 +190,16 @@ export const Login = () => {
                         </button>
                     </form>
 
+                    {SHOW_DEMO_LOGINS && DEMO_ACCOUNTS.length > 0 && (
+                        <DemoAccounts disabled={submitting} onPick={(a) => { reset({ email: a.email, password: a.password }); OnLogin({ email: a.email, password: a.password }) }} />
+                    )}
+
                     <div className="lg-secure">
                         <i className="mdi mdi-shield-check-outline"></i> Secured with encrypted, HTTP-only sessions
                     </div>
                 </div>
 
-                <p className="lg-foot">© {new Date().getFullYear()} HoOok. All rights reserved.</p>
+                <p className="lg-foot">© {new Date().getFullYear()} Astral Consulting Limited. All rights reserved.</p>
             </main>
         </div>
     )

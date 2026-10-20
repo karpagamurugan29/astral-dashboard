@@ -30,6 +30,8 @@ import { AnnouncementFeed } from './pages/dashboard/announcements/AnnouncementFe
 import { ShiftList } from './pages/dashboard/calendar/ShiftList';
 import { HolidayList } from './pages/dashboard/calendar/HolidayList';
 import { RolesList } from './pages/dashboard/roles/RolesList';
+import { AccessControl } from './pages/dashboard/access/AccessControl';
+import { ScreenGuard } from './components/common/ScreenGuard';
 import { AuditLogViewer } from './pages/dashboard/audit/AuditLogViewer';
 import { CompanySettings } from './pages/dashboard/settings/CompanySettings';
 import { DocumentCenter } from './pages/dashboard/documents/DocumentCenter';
@@ -40,6 +42,11 @@ import { LoansAdvances } from './pages/dashboard/payroll/LoansAdvances';
 import { ProjectsList } from './pages/dashboard/projects/ProjectsList';
 import { ProjectDetail } from './pages/dashboard/projects/ProjectDetail';
 import { TasksBoard } from './pages/dashboard/projects/TasksBoard';
+import { AuditsList } from './pages/dashboard/audits/AuditsList';
+import { AuditDetail } from './pages/dashboard/audits/AuditDetail';
+import { ClientsList } from './pages/dashboard/audits/ClientsList';
+import { ClientDetail } from './pages/dashboard/audits/ClientDetail';
+import { LocationLog } from './pages/dashboard/locationLog/LocationLog';
 import { ReportBuilder } from './pages/dashboard/reports/ReportBuilder';
 import { LicenseStatus } from './pages/dashboard/license/LicenseStatus';
 import { EmployeeProfile } from './pages/dashboard/employees/EmployeeProfile';
@@ -82,44 +89,49 @@ function App() {
             <Route path="/change-password" element={<ChangePassword />} />
             <Route path="/notifications" element={<NotificationCenter />} />
 
-            <Route path="/employees" element={<EmployeeGrid />} />
+            <Route path="/employees" element={<ScreenGuard screen="screen:directory"><EmployeeGrid /></ScreenGuard>} />
             <Route path="/employees/create" element={<AddEditEmployee />} />
             <Route path="/employees/edit/:id" element={<AddEditEmployee />} />
             <Route path="/employees/onboarding" element={<EmployeeOnboarding />} />
             <Route path="/employees/offboarding" element={<EmployeeOffboarding />} />
-            <Route path="/employees/:id" element={<EmployeeProfile />} />
-            <Route path="/departments" element={<DepartmentList />} />
-            <Route path="/designations" element={<DesignationList />} />
-            <Route path="/documents" element={<DocumentCenter />} />
+            <Route path="/employees/:id" element={<ScreenGuard screen="screen:directory"><EmployeeProfile /></ScreenGuard>} />
+            <Route path="/departments" element={<ScreenGuard screen="screen:org"><DepartmentList /></ScreenGuard>} />
+            <Route path="/designations" element={<ScreenGuard screen="screen:org"><DesignationList /></ScreenGuard>} />
+            <Route path="/documents" element={<ScreenGuard screen="screen:documents"><DocumentCenter /></ScreenGuard>} />
 
-            <Route path="/attendance/today" element={<AttendanceToday />} />
-            <Route path="/attendance/history" element={<AttendanceHistory />} />
+            <Route path="/attendance/today" element={<ScreenGuard screen="screen:attendance"><AttendanceToday /></ScreenGuard>} />
+            <Route path="/attendance/history" element={<ScreenGuard screen="screen:attendance"><AttendanceHistory /></ScreenGuard>} />
             <Route path="/attendance/team" element={<TeamAttendance />} />
-            <Route path="/attendance/regularization" element={<AttendanceRegularization />} />
-            <Route path="/attendance/shifts" element={<ShiftList />} />
-            <Route path="/attendance/holidays" element={<HolidayList />} />
-            <Route path="/leave" element={<LeaveHistory />} />
-            <Route path="/leave/apply" element={<ApplyLeave />} />
-            <Route path="/leave/balance" element={<LeaveHistory />} />
+            <Route path="/attendance/regularization" element={<ScreenGuard screen="screen:attendance"><AttendanceRegularization /></ScreenGuard>} />
+            <Route path="/location-log" element={<LocationLog />} />
+            <Route path="/attendance/shifts" element={<ScreenGuard screen="screen:shifts"><ShiftList /></ScreenGuard>} />
+            <Route path="/attendance/holidays" element={<ScreenGuard screen="screen:holidays"><HolidayList /></ScreenGuard>} />
+            <Route path="/leave" element={<ScreenGuard screen="screen:leave"><LeaveHistory /></ScreenGuard>} />
+            <Route path="/leave/apply" element={<ScreenGuard screen="screen:leave"><ApplyLeave /></ScreenGuard>} />
+            <Route path="/leave/balance" element={<ScreenGuard screen="screen:leave"><LeaveHistory /></ScreenGuard>} />
             <Route path="/leave/approvals" element={<LeaveApprovals />} />
-            <Route path="/leave/team-calendar" element={<TeamLeaveCalendar />} />
+            <Route path="/leave/team-calendar" element={<ScreenGuard screen="screen:leave"><TeamLeaveCalendar /></ScreenGuard>} />
 
             <Route path="/payroll/salary-structure" element={<SalaryStructure />} />
             <Route path="/payroll/process" element={<PayrollProcess />} />
-            <Route path="/payroll/payslips" element={<Payslips />} />
-            <Route path="/payroll/loans" element={<LoansAdvances />} />
+            <Route path="/payroll/payslips" element={<ScreenGuard screen="screen:payslips"><Payslips /></ScreenGuard>} />
+            <Route path="/payroll/loans" element={<ScreenGuard screen="screen:loans"><LoansAdvances /></ScreenGuard>} />
 
-            <Route path="/expenses" element={<ExpenseList />} />
+            <Route path="/expenses" element={<ScreenGuard screen="screen:expenses"><ExpenseList /></ScreenGuard>} />
             <Route path="/expenses/approvals" element={<ExpenseApprovals />} />
             <Route path="/assets" element={<AssetList />} />
-            <Route path="/assets/assignments" element={<AssetList />} />
-            <Route path="/helpdesk" element={<TicketList />} />
+            <Route path="/assets/assignments" element={<ScreenGuard screen="screen:assets"><AssetList /></ScreenGuard>} />
+            <Route path="/helpdesk" element={<ScreenGuard screen="screen:helpdesk"><TicketList /></ScreenGuard>} />
             <Route path="/helpdesk/all" element={<HRTickets />} />
-            <Route path="/announcements" element={<AnnouncementFeed />} />
+            <Route path="/announcements" element={<ScreenGuard screen="screen:announcements"><AnnouncementFeed /></ScreenGuard>} />
 
-            <Route path="/projects" element={<ProjectsList />} />
-            <Route path="/projects/:id" element={<ProjectDetail />} />
-            <Route path="/tasks" element={<TasksBoard />} />
+            <Route path="/projects" element={<ScreenGuard screen="screen:projects"><ProjectsList /></ScreenGuard>} />
+            <Route path="/projects/:id" element={<ScreenGuard screen="screen:projects"><ProjectDetail /></ScreenGuard>} />
+            <Route path="/tasks" element={<ScreenGuard screen="screen:projects"><TasksBoard /></ScreenGuard>} />
+            <Route path="/audits" element={<ScreenGuard screen="screen:audits"><AuditsList /></ScreenGuard>} />
+            <Route path="/audits/clients" element={<ScreenGuard screen="screen:audits"><ClientsList /></ScreenGuard>} />
+            <Route path="/audits/clients/:id" element={<ScreenGuard screen="screen:audits"><ClientDetail /></ScreenGuard>} />
+            <Route path="/audits/:id" element={<ScreenGuard screen="screen:audits"><AuditDetail /></ScreenGuard>} />
 
             <Route path="/reports/employees" element={<ReportBuilder />} />
             <Route path="/reports/attendance" element={<ReportBuilder />} />
@@ -127,6 +139,7 @@ function App() {
             <Route path="/reports/payroll" element={<ReportBuilder />} />
 
             <Route path="/roles" element={<RolesList />} />
+            <Route path="/settings/access" element={<AccessControl />} />
             <Route path="/license" element={<LicenseStatus />} />
             <Route path="/settings/company" element={<CompanySettings />} />
             <Route path="/settings/branches" element={<BranchList />} />

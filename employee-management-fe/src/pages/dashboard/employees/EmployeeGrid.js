@@ -4,6 +4,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import employeeActions from '../../../redux/employee/Actions'
 import { PeopleShell, Avatar, StatusPill, TypeTag, DeptTag, deptColor, EmptyState, ErrorBanner, fullName, fmtDate, tenure } from '../../../components/people/PeopleUI'
 import './EmployeeGrid.css'
+import { useAccess } from '../../../hooks/useAccess'
 
 const FORMER = ['Resigned', 'Terminated']
 const PAGE_SIZE = 12
@@ -52,7 +53,8 @@ export const EmployeeGrid = () => {
     const location = useLocation()
     const { list: employeeList, listLoading, error } = useSelector((state) => state.employeeReducer || {})
     const { isAuthenticated: user } = useSelector((state) => state.authReducer || {})
-    const canEdit = ['Admin', 'HR'].includes(user?.role)
+    const { can } = useAccess()
+    const canEdit = can(['Admin', 'HR'], 'employees')
     const canDelete = user?.role === 'Admin'
 
     const [search, setSearch] = useState('')

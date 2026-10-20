@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import roleActions from '../../../redux/role/Actions'
 import { PeopleShell, EmptyState, ErrorBanner } from '../../../components/people/PeopleUI'
+import { moduleMeta } from '../../../components/settings/modules'
 import '../../../components/settings/settings.css'
 
 const SETTINGS_ROOT = { label: 'Settings', to: '/settings/company' }
@@ -14,34 +15,15 @@ const ROLE_META = {
     Employee: { color: '#d97706', icon: 'mdi-account-outline' },
 }
 
-// Friendly label + icon for each permission module the backend knows about.
-const MODULE_META = {
-    employees: ['Employees', 'mdi-account-group-outline', '#0284c7'],
-    departments: ['Departments', 'mdi-office-building-outline', '#0284c7'],
-    designations: ['Designations', 'mdi-badge-account-horizontal-outline', '#0284c7'],
-    branches: ['Branches', 'mdi-office-building-marker-outline', '#0284c7'],
-    attendance: ['Attendance', 'mdi-clock-check-outline', '#059669'],
-    leave: ['Leave', 'mdi-beach', '#7c3aed'],
-    projects: ['Projects', 'mdi-folder-outline', '#0d9488'],
-    tasks: ['Tasks', 'mdi-format-list-checks', '#0d9488'],
-    payroll: ['Payroll', 'mdi-cash-multiple', '#0b0f19'],
-    expenses: ['Expenses', 'mdi-receipt', '#ea580c'],
-    assets: ['Assets', 'mdi-laptop', '#2563eb'],
-    helpdesk: ['HR Helpdesk', 'mdi-lifebuoy', '#e11d48'],
-    announcements: ['Announcements', 'mdi-bullhorn-outline', '#d97706'],
-    reports: ['Reports', 'mdi-chart-bar', '#db2777'],
-    settings: ['Settings', 'mdi-cog-outline', '#475569'],
-    roles: ['Roles', 'mdi-shield-key-outline', '#475569'],
-    'audit-logs': ['Audit logs', 'mdi-history', '#475569'],
-}
-const moduleMeta = (m) => MODULE_META[m] || [m, 'mdi-puzzle-outline', '#64748b']
 const sameSet = (a = [], b = []) => a.length === b.length && a.every((x) => b.includes(x))
 
 export const RolesList = () => {
     const dispatch = useDispatch()
     const { list, allPermissions, error } = useSelector((state) => state.roleReducer || {})
     const { isAuthenticated: user } = useSelector((state) => state.authReducer || {})
-    const isAdmin = user?.role === 'Admin'
+    const { permissions } = useSelector((state) => state.authReducer || {})
+    // Admin, or anyone granted the Roles module in Access Control.
+    const isAdmin = user?.role === 'Admin' || !!permissions?.includes('roles')
     const [draft, setDraft] = useState({})
 
     useEffect(() => {

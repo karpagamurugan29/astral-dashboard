@@ -6,6 +6,7 @@ import { PeopleShell, Avatar, EmptyState, ErrorBanner, fullName, fmtDate } from 
 import { PAYROLL_ROOT, CURRENCY, money, moneyShort, PayStatus, payStatusMeta } from '../../../components/payroll/PayrollUI'
 import '../../../components/attendance/attendance.css'
 import './LoansAdvances.css'
+import { useAccess } from '../../../hooks/useAccess'
 
 const monthsToRepay = (amount, monthly) => (amount > 0 && monthly > 0 ? Math.ceil(amount / monthly) : 0)
 const lastDeductionMonth = (months) => {
@@ -51,8 +52,8 @@ const LoanCard = ({ loan, showWho, children }) => {
 export const LoansAdvances = () => {
     const dispatch = useDispatch()
     const { myLoans, allLoans, error } = useSelector((state) => state.payrollReducer || {})
-    const { isAuthenticated: user } = useSelector((state) => state.authReducer || {})
-    const canManage = ['Admin', 'HR'].includes(user?.role)
+    const { can } = useAccess()
+    const canManage = can(['Admin', 'HR'], 'payroll')
     const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm()
 
     useEffect(() => {

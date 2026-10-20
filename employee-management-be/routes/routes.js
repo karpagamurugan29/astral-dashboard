@@ -7,6 +7,9 @@ import { attendanceHistory, checkIn, checkOut, todayAttendance, teamAttendance, 
 import { applyLeave, approveLeave, cancelLeave, getAllLeaves, leaveBalance, leaveDetails, leaveHistory, pendingLeaves, rejectLeave, teamLeaveCalendar } from "../controller/leave.controller.js";
 import { getOnboardingList, updateOnboardingTask, initiateOffboarding, getOffboardingList, updateOffboardingTask, completeOffboarding } from "../controller/lifecycle.controller.js";
 import { createProject, updateProject, deleteProject, getProjectById, getAllProjects, addProjectMember, removeProjectMember } from "../controller/project.controller.js";
+import { getClients, getClientById, createClient, updateClient, deleteClient } from "../controller/auditClient.controller.js";
+import { getLocationLog } from "../controller/locationLog.controller.js";
+import { createAudit, updateAudit, deleteAudit, getAuditById, getAllAudits, addAuditMember, removeAuditMember, startAuditTimer, stopAuditTimer, getMyActiveAuditTimer } from "../controller/auditEngagement.controller.js";
 import { getDepartments, createDepartment, updateDepartment, deleteDepartment } from "../controller/department.controller.js";
 import { getDesignations, createDesignation, updateDesignation, deleteDesignation } from "../controller/designation.controller.js";
 import { getExpenses, createExpense, updateExpenseStatus, deleteExpense } from "../controller/expense.controller.js";
@@ -16,6 +19,7 @@ import { getAnnouncements, createAnnouncement, deleteAnnouncement } from "../con
 import { getBranches, createBranch, updateBranch, deleteBranch } from "../controller/branch.controller.js";
 import { getHolidays, createHoliday, updateHoliday, deleteHoliday, getShifts, createShift, updateShift, assignShift } from "../controller/calendar.controller.js";
 import { getRoles, updateRolePermissions, getMyPermissions } from "../controller/role.controller.js";
+import { getAccessOverview, updateDepartmentAccess, updateDesignationAccess, updateEmployeeAccess } from "../controller/access.controller.js";
 import { getAuditLogs } from "../controller/auditLog.controller.js";
 import { getCompanySettings, updateCompanySettings, getLeaveSettings, updateLeaveSettings } from "../controller/settings.controller.js";
 import { getNotifications, markNotificationRead, markAllNotificationsRead } from "../controller/notification.controller.js";
@@ -84,6 +88,10 @@ router.put("/employees/:id/offboard/complete", authMiddleWare, adminHR("employee
 router.get("/roles/my-permissions", authMiddleWare, getMyPermissions);
 router.get("/roles", authMiddleWare, adminOnly("roles"), getRoles);
 router.put("/roles/:role/permissions", authMiddleWare, adminOnly("roles"), updateRolePermissions);
+router.get("/access", authMiddleWare, adminOnly("roles"), getAccessOverview);
+router.put("/access/department/:name", authMiddleWare, adminOnly("roles"), updateDepartmentAccess);
+router.put("/access/designation/:name", authMiddleWare, adminOnly("roles"), updateDesignationAccess);
+router.put("/access/employee/:id", authMiddleWare, adminOnly("roles"), updateEmployeeAccess);
 
 // Audit Logs
 router.get("/audit-logs", authMiddleWare, adminHR("audit-logs"), getAuditLogs);
@@ -95,6 +103,7 @@ router.post("/attendance/check-out", authMiddleWare, checkOut);
 router.get("/attendance/today", authMiddleWare, todayAttendance);
 router.get("/attendance/history", authMiddleWare, attendanceHistory);
 router.get("/attendance/team", authMiddleWare, adminHRManager("attendance"), teamAttendance);
+router.get("/location-log", authMiddleWare, adminHRManager("attendance"), getLocationLog);
 
 // Attendance regularization — "pending" registered before the ":id" catch-all
 router.post("/attendance/regularize", authMiddleWare, requestRegularization);
@@ -130,6 +139,25 @@ router.put("/projects/:id", authMiddleWare, adminHRManager("projects"), updatePr
 router.delete("/projects/:id", authMiddleWare, adminHRManager("projects"), deleteProject);
 router.post("/projects/:id/members", authMiddleWare, adminHRManager("projects"), addProjectMember);
 router.delete("/projects/:id/members/:userId", authMiddleWare, adminHRManager("projects"), removeProjectMember);
+
+// Audit clients — one client has many audit engagements
+router.get("/audit-clients", authMiddleWare, getClients);
+router.get("/audit-clients/:id", authMiddleWare, getClientById);
+router.post("/audit-clients", authMiddleWare, adminHRManager("projects"), createClient);
+router.put("/audit-clients/:id", authMiddleWare, adminHRManager("projects"), updateClient);
+router.delete("/audit-clients/:id", authMiddleWare, adminHRManager("projects"), deleteClient);
+
+// Audit engagements — managed under the "projects" permission; any assigned member can run the timer
+router.get("/audits", authMiddleWare, getAllAudits);
+router.get("/audits/timer/active", authMiddleWare, getMyActiveAuditTimer);
+router.get("/audits/:id", authMiddleWare, getAuditById);
+router.post("/audits", authMiddleWare, adminHRManager("projects"), createAudit);
+router.put("/audits/:id", authMiddleWare, adminHRManager("projects"), updateAudit);
+router.delete("/audits/:id", authMiddleWare, adminHRManager("projects"), deleteAudit);
+router.post("/audits/:id/members", authMiddleWare, adminHRManager("projects"), addAuditMember);
+router.delete("/audits/:id/members/:userId", authMiddleWare, adminHRManager("projects"), removeAuditMember);
+router.post("/audits/:id/timer/start", authMiddleWare, startAuditTimer);
+router.post("/audits/:id/timer/stop", authMiddleWare, stopAuditTimer);
 
 // Tasks
 router.get("/tasks", authMiddleWare, getTasks);

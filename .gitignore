@@ -85,3 +85,5 @@ Thumbs.db
 *.temp
 .vercel
 .env*
+# Non-secret build defaults for the frontend
+!employee-management-fe/.env.production

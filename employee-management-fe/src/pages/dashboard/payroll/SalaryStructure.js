@@ -7,6 +7,7 @@ import employeeActions from '../../../redux/employee/Actions'
 import { PeopleShell, Avatar, DeptTag, EmptyState, ErrorBanner, fullName } from '../../../components/people/PeopleUI'
 import { PAYROLL_ROOT, CURRENCY, EARNINGS, DEDUCTIONS, money, sumOf, BreakdownBar } from '../../../components/payroll/PayrollUI'
 import './SalaryStructure.css'
+import { useAccess } from '../../../hooks/useAccess'
 
 const FIELDS = [...EARNINGS, ...DEDUCTIONS].map((p) => p.key)
 const FORMER = ['Resigned', 'Terminated']
@@ -28,8 +29,8 @@ export const SalaryStructure = () => {
     const location = useLocation()
     const { structure, error } = useSelector((state) => state.payrollReducer || {})
     const { list: employees } = useSelector((state) => state.employeeReducer || {})
-    const { isAuthenticated: user } = useSelector((state) => state.authReducer || {})
-    const canEdit = ['Admin', 'HR'].includes(user?.role)
+    const { can } = useAccess()
+    const canEdit = can(['Admin', 'HR'], 'payroll')
     const [employeeId, setEmployeeId] = useState(location.state?.employeeId || '')
     const [search, setSearch] = useState('')
     const { register, handleSubmit, reset, watch, formState: { isDirty, errors } } = useForm()

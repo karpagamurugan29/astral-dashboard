@@ -18,6 +18,9 @@ import notificationSaga from "./notification/Saga";
 import documentSaga from "./document/Saga";
 import payrollSaga from "./payroll/Saga";
 import projectSaga from "./project/Saga";
+import auditSaga from "./audit/Saga";
+import locationLogSaga from "./locationLog/Saga";
+import accessSaga from "./access/Saga";
 import taskSaga from "./task/Saga";
 import reportSaga from "./report/Saga";
 import licenseSaga from "./license/Saga";
@@ -45,6 +48,9 @@ export default function* rootSaga() {
     documentSaga(),
     payrollSaga(),
     projectSaga(),
+    auditSaga(),
+    locationLogSaga(),
+    accessSaga(),
     taskSaga(),
     reportSaga(),
     licenseSaga(),

@@ -1,31 +1,15 @@
-import roleSettingModel from "../models/roleSettingModel.js";
+import { getAccess, invalidateAccessCache } from "../utils/access.js";
 
-// Short in-memory cache so a burst of requests from one role doesn't hit the DB every time —
-// Roles & Permissions edits take effect within this window, not instantly.
-const CACHE_MS = 15000;
-const cache = new Map();
+// Kept for callers that invalidate after a role edit; any permission change clears everything.
+export const invalidatePermissionCache = () => invalidateAccessCache();
 
-const getRolePermissions = async (role) => {
-    const cached = cache.get(role);
-    if (cached && cached.expiresAt > Date.now()) return cached.permissions;
-
-    const setting = await roleSettingModel.findOne({ role }).select("permissions");
-    const permissions = setting?.permissions || [];
-    cache.set(role, { permissions, expiresAt: Date.now() + CACHE_MS });
-    return permissions;
-};
-
-// Called after a permission edit is saved so the change is effective immediately
-// instead of waiting out the cache window.
-export const invalidatePermissionCache = (role) => {
-    if (role) cache.delete(role);
-    else cache.clear();
-};
-
-// authorize(module, ...roles) — module is one of ALL_PERMISSION_MODULES (role.controller.js) and
-// gates against that role's configured permission list; pass null/undefined to skip the module
-// check and fall back to a plain role-name gate. Admin is always unrestricted, regardless of what
-// is (or isn't) configured, so an admin can never lock themselves out of Roles & Permissions itself.
+// authorize(module, ...roles) — module is one of ALL_PERMISSION_MODULES (role.controller.js).
+//  - Admin always passes (when listed, which every route does), so an admin can never lock themselves out.
+//  - A module blocked for this person personally (Access Control screen) is always refused.
+//  - Otherwise allowed if their role is listed for the route AND the role has the module, or if the
+//    module was granted to their department or to them personally — a grant is an explicit admin
+//    decision, so it opens the route even when their role normally couldn't.
+// Pass null/undefined as module for a plain role-name gate.
 const authorize = (module, ...roles) => {
     return async (req, res, next) => {
         try {
@@ -33,21 +17,31 @@ const authorize = (module, ...roles) => {
                 return res.status(401).json({ success: false, message: "Unauthorized" });
             }
 
-            if (!roles.includes(req.user.role)) {
-                return res.status(403).json({ success: false, message: "Access denied" });
+            const roleListed = roles.includes(req.user.role);
+
+            if (req.user.role === "Admin") {
+                return roleListed ? next() : res.status(403).json({ success: false, message: "Access denied" });
             }
 
-            if (module && req.user.role !== "Admin") {
-                const permissions = await getRolePermissions(req.user.role);
-                if (!permissions.includes(module)) {
-                    return res.status(403).json({
-                        success: false,
-                        message: `Your role does not currently have access to this feature. Contact your administrator.`,
-                    });
-                }
+            if (!module) {
+                return roleListed ? next() : res.status(403).json({ success: false, message: "Access denied" });
             }
 
-            next();
+            const access = await getAccess(req.user);
+
+            if (access.denied.includes(module)) {
+                return res.status(403).json({ success: false, message: "Your access to this feature has been turned off. Contact your administrator." });
+            }
+            if ((roleListed && access.roleAllow.includes(module)) || access.granted.includes(module)) {
+                return next();
+            }
+
+            return res.status(403).json({
+                success: false,
+                message: roleListed
+                    ? "Your role does not currently have access to this feature. Contact your administrator."
+                    : "Access denied",
+            });
         } catch (err) {
             return res.status(500).json({ success: false, message: err.message });
         }

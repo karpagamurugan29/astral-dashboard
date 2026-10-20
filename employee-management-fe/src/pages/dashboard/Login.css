@@ -60,19 +60,15 @@
 
 .lg-logo:hover { color: inherit; }
 
-.lg-logo-mark {
-    width: 36px;
-    height: 36px;
-    border-radius: 10px;
-    display: grid;
-    place-items: center;
-    font-size: 18px;
-    background: linear-gradient(135deg, #0ea5e9, #38bdf8);
-    color: #fff;
-    box-shadow: 0 6px 20px rgba(56, 189, 248, .35);
+/* the logo artwork is red/grey on white, so it sits on a white chip over the dark panel */
+.lg-logo img {
+    height: 44px;
+    width: auto;
+    padding: 8px 14px;
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 6px 20px rgba(15, 23, 42, .25);
 }
-
-.lg-logo .lg-o { color: #7dd3fc; }
 
 .lg-pitch h1 {
     font-size: clamp(28px, 3vw, 40px);
@@ -471,3 +467,23 @@
     .lg-mobile-logo { display: inline-flex; align-self: center; margin: 8px 0 32px; }
     .lg-card { margin: 0 auto auto; }
 }
+
+/* ---------- TEST ONLY: test account quick sign-in (remove before going live) ---------- */
+.lg-demo { margin-top: 18px; border: 1px dashed #f59e0b; border-radius: 12px; background: #fffbeb; overflow: hidden; }
+.lg-demo-toggle { width: 100%; display: flex; align-items: center; gap: 10px; padding: 10px 14px; border: 0; background: none; text-align: left; color: #92400e; }
+.lg-demo-toggle > i:first-child { font-size: 18px; }
+.lg-demo-toggle span { flex: 1; font-size: 13.5px; font-weight: 700; }
+.lg-demo-toggle small { display: block; font-size: 11.5px; font-weight: 500; color: #b45309; }
+.lg-demo-body { max-height: 340px; overflow-y: auto; padding: 0 10px 10px; }
+.lg-demo-search { width: 100%; height: 34px; margin-bottom: 8px; padding: 0 10px; border: 1px solid #fde68a; border-radius: 8px; font-size: 13px; background: #fff; }
+.lg-demo-head { margin: 8px 4px 4px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #b45309; }
+.lg-demo-user { width: 100%; display: flex; align-items: center; gap: 10px; margin-bottom: 4px; padding: 7px 10px; border: 1px solid #fde68a; border-radius: 8px; background: #fff; text-align: left; transition: border-color .12s, transform .12s; }
+.lg-demo-user:hover:not(:disabled) { border-color: #f59e0b; transform: translateY(-1px); }
+.lg-demo-user:disabled { opacity: .6; cursor: progress; }
+.lg-demo-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.lg-demo-main b { font-size: 13px; color: var(--lg-ink); }
+.lg-demo-main small { font-size: 11px; color: var(--lg-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lg-demo-user code { flex: none; padding: 2px 6px; border-radius: 6px; font-size: 11.5px; color: #92400e; background: #fef3c7; }
+.lg-demo-user > i { flex: none; font-size: 16px; color: #d97706; }
+.lg-demo-none { margin: 8px 4px; font-size: 12.5px; color: #92400e; }
+@media (max-width: 420px) { .lg-demo-user code { display: none; } }

@@ -208,7 +208,7 @@ export const CompanySettings = () => {
                         <section id="cs-company" className="pp-card cs-section">
                             <div className="pp-card-head">
                                 <span className="cs-head-icon" style={{ '--c': '#0b0f19' }}><i className="mdi mdi-domain"></i></span>
-                                <div><h3>Company profile</h3><p>How your organisation appears across HoOok.</p></div>
+                                <div><h3>Company profile</h3><p>How your organisation appears across Astral.</p></div>
                             </div>
                             <div className="pp-card-body">
                                 <div className="cs-company">

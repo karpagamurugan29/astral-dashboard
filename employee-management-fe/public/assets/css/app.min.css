@@ -187,9 +187,11 @@ body:not([data-sidebar-size=sm]) #vertical-menu-btn {
     }
 }
 
+
 .page-content {
-    padding: calc(70px + 1.5rem) calc(1.5rem / 2) 0px calc(1.5rem / 2);
+    padding: calc(50px + 1.5rem) calc(1.5rem / 2) 0px calc(1.5rem / 2);
 }
+
 
 .header-item {
     height: 70px;

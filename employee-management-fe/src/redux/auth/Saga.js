@@ -90,6 +90,7 @@ const fetchMyPermissions = function* () {
     const result = yield Get(`${API_URL}/roles/my-permissions`);
     if (result?.success) {
       yield put({ type: actions.SET_PERMISSIONS, payload: result.data });
+      yield put({ type: actions.SET_GRANTED_PERMISSIONS, payload: result.granted });
     }
   } catch (err) {
     // Non-fatal — pages fall back to their role-based checks if this fails.

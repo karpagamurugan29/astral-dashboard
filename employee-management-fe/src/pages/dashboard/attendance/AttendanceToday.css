@@ -219,3 +219,24 @@
     .mt-body { flex-direction: column; gap: 18px; }
     .mt-facts { width: 100%; }
 }
+
+/* checking in again after a check-out */
+.mt-big.again { margin-top: 2px; background: #059669; }
+.mt-big.again:hover:not(:disabled) { background: #047857; }
+.mt-done + .mt-mode-label { margin-top: 14px; }
+
+/* today's sessions */
+.mt-sessions { margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--pp-line); text-align: left; }
+.mt-sessions-head { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--pp-muted); }
+.mt-sessions-head span { color: var(--pp-ink); letter-spacing: 0; text-transform: none; font-size: 13px; }
+.mt-sessions ol { list-style: none; margin: 0; padding: 0; }
+.mt-sessions li { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--pp-line); }
+.mt-sessions li:last-child { border-bottom: 0; }
+.mt-sess-n { flex: none; width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%; font-size: 12px; font-weight: 700; color: var(--pp-muted); background: var(--pp-soft); }
+.mt-sessions li.open .mt-sess-n { color: #fff; background: #059669; }
+.mt-sess-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.mt-sess-main b { font-size: 13.5px; color: var(--pp-ink); font-variant-numeric: tabular-nums; }
+.mt-sess-main small { font-size: 11.5px; color: var(--pp-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mt-sess-main small i { margin-right: 2px; }
+.mt-sess-live { color: #059669; }
+.mt-sess-hrs { flex: none; min-width: 52px; text-align: right; font-size: 13px; font-weight: 700; color: var(--pp-ink); font-variant-numeric: tabular-nums; }

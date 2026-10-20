@@ -1,7 +1,8 @@
-import { all, put, takeEvery } from "redux-saga/effects";
+import { all, call, put, takeEvery } from "redux-saga/effects";
 import { Get, Post, Put } from "../../components/common/ApiCall";
 import { API_URL } from "../../utils/Constants";
 import actions from "./Actions";
+import { getCurrentLocation } from "../../utils/geo";
 
 const rootSaga = function* () {
   yield all([
@@ -32,9 +33,12 @@ const fetchToday = function* () {
 
 const checkIn = function* (action) {
   const { payload } = action;
-  yield put({ type: actions.SET_ATTENDANCE_SAVING, payload: true });
+  // "locating" is truthy, so buttons stay disabled while the browser finds the position.
+  yield put({ type: actions.SET_ATTENDANCE_SAVING, payload: "locating" });
   try {
-    const result = yield Post(`${API_URL}/attendance/check-in`, payload);
+    const location = yield call(getCurrentLocation);
+    yield put({ type: actions.SET_ATTENDANCE_SAVING, payload: true });
+    const result = yield Post(`${API_URL}/attendance/check-in`, { ...payload, ...location });
     if (result?.success) {
       yield fetchToday();
     } else {
@@ -49,9 +53,11 @@ const checkIn = function* (action) {
 
 const checkOut = function* (action) {
   const { payload } = action;
-  yield put({ type: actions.SET_ATTENDANCE_SAVING, payload: true });
+  yield put({ type: actions.SET_ATTENDANCE_SAVING, payload: "locating" });
   try {
-    const result = yield Post(`${API_URL}/attendance/check-out`, payload);
+    const location = yield call(getCurrentLocation);
+    yield put({ type: actions.SET_ATTENDANCE_SAVING, payload: true });
+    const result = yield Post(`${API_URL}/attendance/check-out`, { ...payload, ...location });
     if (result?.success) {
       yield fetchToday();
     } else {

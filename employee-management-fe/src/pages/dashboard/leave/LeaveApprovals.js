@@ -6,6 +6,7 @@ import { PeopleShell, Avatar, EmptyState, ErrorBanner, fullName } from '../../..
 import { LEAVE_ROOT, leaveMeta, LeaveTypeTag, dateRange, daysLabel, startOfDay, DateTile } from '../../../components/leave/LeaveUI'
 import '../../../components/attendance/attendance.css'
 import './LeaveApprovals.css'
+import { useAccess } from '../../../hooks/useAccess'
 
 const DAY = 24 * 60 * 60 * 1000
 const overlaps = (a, b) => startOfDay(a.fromDate) <= startOfDay(b.toDate) && startOfDay(b.fromDate) <= startOfDay(a.toDate)
@@ -18,10 +19,9 @@ const waitingLabel = (d) => {
 export const LeaveApprovals = () => {
     const dispatch = useDispatch()
     const { pending, teamCalendar, error } = useSelector((state) => state.leaveReducer || {})
-    const { isAuthenticated: user, permissions } = useSelector((state) => state.authReducer || {})
     // Same rule as the sidebar's Leave → Approvals entry.
-    const canApprove = ['Admin', 'HR', 'Manager', 'Team Lead'].includes(user?.role) &&
-        (user?.role === 'Admin' || permissions?.includes('leave'))
+    const { can } = useAccess()
+    const canApprove = can(['Admin', 'HR', 'Manager', 'Team Lead'], 'leave')
     const [rejecting, setRejecting] = useState(null)
     const [rejectReason, setRejectReason] = useState('')
     const [typeFilter, setTypeFilter] = useState('')

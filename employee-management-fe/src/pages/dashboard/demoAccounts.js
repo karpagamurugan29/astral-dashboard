@@ -1,0 +1,30 @@
+// TEST ONLY — quick sign-in list for the login page while the app is being tested.
+// Delete this file (and the DemoAccounts block in Login.js) before going live.
+// It is only bundled in development (npm start) or when REACT_APP_DEMO_LOGINS=true is set.
+export const DEMO_ACCOUNTS = [
+    { name: "Company Partner Demo", designation: "Company Partner", department: "Management", email: "company.partner@astral.test", password: "Cg*y5d7hSkzz" },
+    { name: "John Doe", designation: "Company Partner", department: "Management", email: "john.doe@example.com", password: "$TiZU22apKLp" },
+    { name: "Director Demo", designation: "Director", department: "Management", email: "director@astral.test", password: "Hd9EhQR8X&sv" },
+    { name: "Arun Admin", designation: "Director", department: "Management", email: "admin@hoook.com", password: "u2*ScHj9AGKC" },
+    { name: "HR Head Demo", designation: "HR Head", department: "Human Resources", email: "hr.head@astral.test", password: "&7qaHG6XtUHT" },
+    { name: "Hema HR", designation: "HR Head", department: "Human Resources", email: "hr@hoook.com", password: "kVvK$JuCk8ZG" },
+    { name: "Accounts Head Demo", designation: "Accounts Head", department: "Accounts & Finance", email: "accounts.head@astral.test", password: "VApQchuc5L&L" },
+    { name: "Priya Sharma", designation: "Accounts Head", department: "Accounts & Finance", email: "priya.sharma@example.com", password: "uTGRN9WdEsv#" },
+    { name: "Senior Manager Demo", designation: "Senior Manager", department: "Audit & Assurance", email: "senior.manager@astral.test", password: "2PRiq22ivcp&" },
+    { name: "Anjali Patel", designation: "Senior Manager", department: "Audit & Assurance", email: "anjali.patel@example.com", password: "cY6xpcTrP@XZ" },
+    { name: "Manager Demo", designation: "Manager", department: "Audit & Assurance", email: "manager@astral.test", password: "Q59%xSdH4UHw" },
+    { name: "Mahesh Manager", designation: "Manager", department: "Audit & Assurance", email: "manager@hoook.com", password: "Z8mNw#7amE6C" },
+    { name: "Senior Consultant Demo", designation: "Senior Consultant", department: "Audit & Assurance", email: "senior.consultant@astral.test", password: "ZeZXhVn@E3ma" },
+    { name: "Vikram Singh", designation: "Senior Consultant", department: "Audit & Assurance", email: "vikram.singh@example.com", password: "uxStdV#5z9ky" },
+    { name: "Tara Lead", designation: "Senior Consultant", department: "Audit & Assurance", email: "teamlead@hoook.com", password: "F&tiY2XL36dT" },
+    { name: "Consultant Demo", designation: "Consultant", department: "Audit & Assurance", email: "consultant@astral.test", password: "AUf@et9twvY4" },
+    { name: "John Doe", designation: "Consultant", department: "Audit & Assurance", email: "john.doe4@example.com", password: "$pLX9Z58SWU4" },
+    { name: "Rahul Verma", designation: "Consultant", department: "Audit & Assurance", email: "rahul.verma@example.com", password: "cXwrJHPv*3Cn" },
+    { name: "Karthi Kumar", designation: "Consultant", department: "Audit & Assurance", email: "karthi@gmail.com", password: "wxR3&JpGBmpu" },
+    { name: "Junior Consultant Demo", designation: "Junior Consultant", department: "Audit & Assurance", email: "junior.consultant@astral.test", password: "NPa*h2KpUsG9" },
+    { name: "Sneha Reddy", designation: "Junior Consultant", department: "Audit & Assurance", email: "sneha.reddy@example.com", password: "S&A7rP3wugDu" },
+    { name: "Divya Nair", designation: "Junior Consultant", department: "Audit & Assurance", email: "divya.nair@example.com", password: "#7aeYPvnR9jL" },
+    { name: "Associate Demo", designation: "Associate", department: "Audit & Assurance", email: "associate@astral.test", password: "vxVae%K7b7DP" },
+    { name: "Mohan Krishna", designation: "Associate", department: "Audit & Assurance", email: "mohan.krishna@example.com", password: "E3C#eGCPCm9b" },
+    { name: "Elan Staff", designation: "Associate", department: "Audit & Assurance", email: "staff@hoook.com", password: "*FF3wzJh8RFz" },
+]
