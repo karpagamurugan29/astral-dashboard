@@ -15,24 +15,22 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Allow local dev + deployed frontend (set FRONTEND_URL in Vercel env vars)
 const allowedOrigins = [
     "http://localhost:3000",
     "http://localhost:3001",
     "http://127.0.0.1:3000",
-   "http://astral-dashboard-sooty.vercel.app/",
-   "https://astral-dashboard-sooty.vercel.app/",
+    "https://astral-dashboard-sooty.vercel.app",
     process.env.FRONTEND_URL,
 ].filter(Boolean);
 
 app.use(cors({
-    origin: function (origin, callback) {
-        // allow requests with no origin (e.g. curl, Postman, server-to-server)
+    origin: (origin, callback) => {
         if (!origin || allowedOrigins.includes(origin)) {
-            callback(null, true);
-        } else {
-            callback(new Error("Not allowed by CORS"));
+            return callback(null, true);
         }
+
+        console.error("Blocked CORS origin:", origin);
+        return callback(new Error("Not allowed by CORS"));
     },
     credentials: true,
 }));
