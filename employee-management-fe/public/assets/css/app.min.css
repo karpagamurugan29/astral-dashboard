@@ -187,7 +187,6 @@ body:not([data-sidebar-size=sm]) #vertical-menu-btn {
     }
 }
 
-
 .page-content {
     padding: calc(50px + 1.5rem) calc(1.5rem / 2) 0px calc(1.5rem / 2);
 }
@@ -1851,7 +1850,9 @@ body[data-layout=horizontal][data-layout-size=boxed] .navbar-header {
 .waves-circle {
     -webkit-transform: translateZ(0);
     transform: translateZ(0);
-    -webkit-mask-image: -webkit-radial-gradient(circle, #fff 100%, #000 100%)
+
+    -webkit-mask-image: -webkit-radial-gradient(circle, #fff 100%, #000 100%);
+    mask-image: radial-gradient(circle, #fff 100%, #000 100%);
 }
 
 .waves-button,
@@ -1908,10 +1909,13 @@ body[data-layout=horizontal][data-layout-size=boxed] .navbar-header {
 
 .waves-float {
     -webkit-mask-image: none;
+    mask-image: none;
+
     -webkit-box-shadow: 0 1px 1.5px 1px rgba(0, 0, 0, .12);
     box-shadow: 0 1px 1.5px 1px rgba(0, 0, 0, .12);
+
     -webkit-transition: all .3s;
-    transition: all .3s
+    transition: all .3s;
 }
 
 .waves-float:active {
@@ -6171,12 +6175,24 @@ body[data-layout=horizontal] .chat-conversation {
 
 .error-title {
     text-transform: uppercase;
-    background: repeating-linear-gradient(45deg, rgba(var(--bs-primary-rgb), 1), rgba(var(--bs-primary-rgb), 1) 20px, #34c38f 40px, #34c38f 10px);
+
+    background: repeating-linear-gradient(
+        45deg,
+        rgba(var(--bs-primary-rgb), 1),
+        rgba(var(--bs-primary-rgb), 1) 20px,
+        #34c38f 40px,
+        #34c38f 10px
+    );
+
     -webkit-background-clip: text;
+    background-clip: text;
+
     -webkit-text-fill-color: transparent;
+    color: transparent;
+
     font-size: 12rem;
     line-height: .8;
-    position: relative
+    position: relative;
 }
 
 /*# sourceMappingURL=app.min.css.map */
