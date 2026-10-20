@@ -19,6 +19,7 @@ const allowedOrigins = [
     "http://localhost:3000",
     "http://localhost:3001",
     "http://127.0.0.1:3000",
+    "https://astral-dashboard-iid5.vercel.app",
     "https://astral-dashboard-sooty.vercel.app",
     process.env.FRONTEND_URL,
 ].filter(Boolean);
@@ -34,6 +35,7 @@ app.use(cors({
     },
     credentials: true,
 }));
+
 
 app.use(express.json());
 app.use(cookieParser());
