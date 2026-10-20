@@ -1,0 +1,51 @@
+/* ---------- Attendance history ---------- */
+.ah-top { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 18px; margin-bottom: 18px; align-items: start; }
+.ah-top .at-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: 0; }
+
+/* month heatmap */
+.ah-cal { padding: 18px 20px 16px; }
+
+.ah-cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.ah-cal-head h3 { margin: 0; font-size: 15px; font-weight: 700; color: var(--pp-ink); }
+
+.ah-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+
+.ah-dow { padding-bottom: 4px; text-align: center; font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--pp-muted); }
+
+.ah-day {
+    position: relative;
+    aspect-ratio: 1 / .82;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 6px 7px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--pp-ink);
+    background: var(--pp-soft);
+    border: 1px solid transparent;
+}
+
+.ah-day.has { color: var(--c); background: color-mix(in srgb, var(--c) 13%, transparent); border-color: color-mix(in srgb, var(--c) 22%, transparent); }
+.ah-day.has i { align-self: flex-end; font-size: 15px; line-height: 1; }
+.ah-day.weekend:not(.has) { background: transparent; border: 1px dashed var(--pp-line); color: var(--pp-muted); }
+.ah-day.future { opacity: .45; }
+.ah-day.today { box-shadow: 0 0 0 2px #0b0f19; }
+.ah-day.blank { background: transparent; }
+
+.ah-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 14px; font-size: 12px; color: var(--pp-muted); }
+.ah-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.ah-legend i { width: 10px; height: 10px; border-radius: 3px; background: var(--c); }
+
+.ah-filter-note { display: flex; align-items: center; gap: 10px; margin: 0 0 10px 2px; font-size: 13px; color: var(--pp-muted); }
+.ah-filter-note b { color: var(--pp-ink); }
+.ah-filter-note button { border: 0; background: none; padding: 0; font-size: 13px; font-weight: 600; color: #0284c7; }
+
+@media (max-width: 1199px) { .ah-top { grid-template-columns: 1fr; } }
+@media (max-width: 575px) {
+    .ah-cal { padding: 14px; }
+    .ah-grid { gap: 4px; }
+    .ah-day { padding: 4px; font-size: 11px; }
+    .ah-day.has i { font-size: 12px; }
+}

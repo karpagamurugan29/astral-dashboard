@@ -1,0 +1,65 @@
+/* ---------- Task drawer ---------- */
+.td-overlay { position: fixed; inset: 0; z-index: 1060; background: rgba(11, 15, 25, .45); backdrop-filter: blur(2px); animation: td-fade .2s ease; }
+
+.td-drawer {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1061;
+    width: min(520px, 100vw);
+    display: flex;
+    flex-direction: column;
+    background: var(--bs-secondary-bg, #fff);
+    box-shadow: -20px 0 50px -20px rgba(11, 15, 25, .45);
+    animation: td-slide .25s cubic-bezier(.22, 1, .36, 1);
+    --pp-ink: var(--bs-emphasis-color, #0f172a);
+    --pp-muted: var(--bs-secondary-color, #64748b);
+    --pp-line: var(--bs-border-color, #e6e8f0);
+    --pp-soft: var(--bs-tertiary-bg, #f7f8fb);
+    --pp-card: var(--bs-secondary-bg, #fff);
+}
+
+@keyframes td-fade { from { opacity: 0; } }
+@keyframes td-slide { from { transform: translateX(40px); opacity: 0; } }
+
+.td-head { display: flex; align-items: flex-start; gap: 12px; padding: 20px 22px 16px; border-bottom: 1px solid var(--pp-line); border-top: 4px solid var(--p); }
+.td-head h3 { flex: 1; margin: 0 0 8px; font-size: 18px; font-weight: 700; line-height: 1.35; color: var(--pp-ink); }
+.td-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.td-close { width: 34px; height: 34px; flex-shrink: 0; display: grid; place-items: center; border: 0; border-radius: 10px; font-size: 20px; color: var(--pp-muted); background: transparent; }
+.td-close:hover { background: var(--pp-soft); color: var(--pp-ink); }
+
+.td-body { flex: 1; overflow-y: auto; padding: 18px 22px; }
+
+.td-status { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 18px; }
+.td-status button { display: inline-flex; align-items: center; gap: 5px; height: 32px; padding: 0 11px; border-radius: 99px; font-size: 12.5px; font-weight: 600; color: var(--pp-muted); background: var(--pp-card); border: 1px solid var(--pp-line); transition: all .15s; }
+.td-status button i { font-size: 15px; color: var(--c); }
+.td-status button:hover { border-color: color-mix(in srgb, var(--c) 45%, transparent); color: var(--pp-ink); }
+.td-status button.active { color: #fff; background: var(--c); border-color: transparent; }
+.td-status button.active i { color: #fff; }
+
+.td-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px; }
+.td-fact { padding: 10px 12px; border-radius: 12px; border: 1px solid var(--pp-line); }
+.td-fact small { display: flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--pp-muted); margin-bottom: 4px; }
+.td-fact small i { font-size: 14px; color: var(--c); }
+.td-fact > div { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: var(--pp-ink); }
+.td-fact a { color: #0369a1; text-decoration: none; }
+.td-fact a:hover { text-decoration: underline; }
+
+.td-label { margin: 0 0 6px; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--pp-muted); }
+.td-desc { margin: 0 0 20px; padding: 12px 14px; border-radius: 12px; font-size: 14px; line-height: 1.6; color: var(--pp-ink); background: var(--pp-soft); white-space: pre-line; }
+.td-meta { margin: -12px 0 20px; font-size: 12.5px; color: var(--pp-muted); }
+
+.td-comments { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 12px; }
+.td-comment { display: flex; gap: 10px; }
+.td-bubble { flex: 1; min-width: 0; padding: 10px 12px; border-radius: 4px 14px 14px 14px; background: var(--pp-soft); }
+.td-comment.mine .td-bubble { background: #e0f2fe; }
+.td-bubble-head { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 3px; font-size: 12.5px; }
+.td-bubble-head b { color: var(--pp-ink); }
+.td-bubble-head span { color: var(--pp-muted); }
+.td-bubble p { margin: 0; font-size: 14px; line-height: 1.5; color: var(--pp-ink); white-space: pre-line; word-break: break-word; }
+
+.td-compose { display: flex; gap: 8px; padding: 14px 22px; border-top: 1px solid var(--pp-line); background: var(--pp-card); }
+.td-compose .pp-input { flex: 1; }
+
+.td-foot { display: flex; justify-content: space-between; gap: 8px; padding: 12px 22px; border-top: 1px solid var(--pp-line); }

@@ -1,0 +1,86 @@
+/* ---------- Payslips ---------- */
+.ps-layout { display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); gap: 20px; align-items: start; }
+
+/* trend */
+.ps-trend { padding: 16px 18px 12px; }
+.ps-trend-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
+.ps-trend-head b { font-size: 14px; color: var(--pp-ink); }
+.ps-trend-head small { font-size: 12px; color: var(--pp-muted); }
+.ps-bars { display: flex; align-items: flex-end; gap: 6px; height: 90px; }
+
+.ps-bar { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; justify-content: flex-end; border: 0; padding: 0; background: none; }
+.ps-bar span { width: 100%; max-width: 26px; border-radius: 6px 6px 3px 3px; background: #bae6fd; transition: background .15s; }
+.ps-bar small { font-size: 10px; color: var(--pp-muted); }
+.ps-bar:hover span { background: #7dd3fc; }
+.ps-bar.active span { background: #0ea5e9; }
+
+/* list */
+.ps-list { list-style: none; margin: 0; padding: 6px; }
+
+.ps-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 10px;
+    border: 0;
+    border-radius: 12px;
+    text-align: left;
+    background: transparent;
+    transition: background .12s;
+}
+
+.ps-item:hover { background: var(--pp-soft); }
+.ps-item.active { background: #f0f9ff; box-shadow: inset 3px 0 0 #0ea5e9; }
+[data-bs-theme=dark] .ps-item.active { background: var(--pp-soft); }
+.ps-item-main { flex: 1; min-width: 0; }
+.ps-item-main b { display: block; font-size: 14px; color: var(--pp-ink); }
+.ps-item-main small { font-size: 12px; color: var(--pp-muted); }
+.ps-item .py-amount { font-size: 15px; color: #047857; }
+
+/* payslip document */
+.ps-doc { overflow: hidden; }
+
+.ps-doc-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; padding: 22px 24px; color: #fff; background: linear-gradient(135deg, #0b0f19, #1e293b); }
+.ps-brand { display: flex; align-items: center; gap: 12px; }
+.ps-brand-mark { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 12px; font-size: 18px; font-weight: 800; background: #0ea5e9; }
+.ps-brand b { display: block; font-size: 17px; }
+.ps-brand small { font-size: 12px; color: #cbd5e1; }
+.ps-doc-period { text-align: right; }
+.ps-doc-period small { display: block; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #7dd3fc; }
+.ps-doc-period b { font-size: 18px; }
+
+.ps-emp { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; padding: 18px 24px; border-bottom: 1px solid var(--pp-line); background: var(--pp-soft); }
+.ps-emp small { display: block; font-size: 11px; color: var(--pp-muted); text-transform: uppercase; letter-spacing: .04em; }
+.ps-emp b { font-size: 14px; color: var(--pp-ink); }
+
+.ps-cols { display: grid; grid-template-columns: 1fr 1fr; }
+.ps-col { padding: 18px 24px; }
+.ps-col + .ps-col { border-left: 1px solid var(--pp-line); }
+.ps-col h4 { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; font-size: 13px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--c); }
+
+.ps-net { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin: 0 24px 20px; padding: 16px 20px; border-radius: 14px; background: #ecfdf5; border: 1px solid #a7f3d0; }
+.ps-net small { display: block; font-size: 12px; font-weight: 600; color: #047857; text-transform: uppercase; letter-spacing: .06em; }
+.ps-net b { font-size: 28px; font-weight: 800; color: #065f46; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.ps-net .py-bar { flex: 1 1 220px; max-width: 320px; }
+
+.ps-doc-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 14px 24px; border-top: 1px solid var(--pp-line); font-size: 12px; color: var(--pp-muted); }
+
+/* print just the payslip */
+@media print {
+    body * { visibility: hidden !important; }
+    .ps-doc, .ps-doc * { visibility: visible !important; }
+    .ps-doc { position: absolute; left: 0; top: 0; width: 100%; border: 0 !important; box-shadow: none !important; }
+    .ps-doc-head { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .ps-net, .ps-emp, .py-bar span { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .ps-no-print { display: none !important; }
+}
+
+@media (max-width: 1199px) { .ps-layout { grid-template-columns: 1fr; } }
+
+@media (max-width: 767px) {
+    .ps-emp { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .ps-cols { grid-template-columns: 1fr; }
+    .ps-col + .ps-col { border-left: 0; border-top: 1px solid var(--pp-line); }
+    .ps-doc-period { text-align: left; }
+}

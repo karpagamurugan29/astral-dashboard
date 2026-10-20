@@ -1,0 +1,110 @@
+/* Premium dashboard widgets (ChartWidget + the 3D/animated charts it hosts) */
+
+.chart-widget-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    flex-shrink: 0;
+}
+
+.chart-widget-icon i {
+    width: 17px;
+    height: 17px;
+}
+
+.chart-widget-toggle {
+    display: inline-flex;
+    background: var(--bs-tertiary-bg, rgba(0, 0, 0, 0.04));
+    border-radius: 999px;
+    padding: 3px;
+    gap: 2px;
+}
+
+.chart-widget-toggle button {
+    border: none;
+    background: transparent;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    padding: 4px 12px;
+    border-radius: 999px;
+    color: var(--bs-secondary-color, #74788d);
+    transition: background 0.2s ease, color 0.2s ease;
+    cursor: pointer;
+}
+
+.chart-widget-toggle button.active {
+    background: #5156be;
+    color: #fff;
+}
+
+.chart-widget-graph {
+    animation: chartWidgetFadeIn 0.45s ease;
+}
+
+.chart-widget-table {
+    animation: chartWidgetFadeIn 0.3s ease;
+}
+
+@keyframes chartWidgetFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.chart-widget-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: var(--bs-secondary-color, #adb5bd);
+    font-size: 0.85rem;
+}
+
+.chart-widget-empty i {
+    width: 28px;
+    height: 28px;
+    opacity: 0.5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    .chart-widget-graph,
+    .chart-widget-table {
+        animation: none;
+    }
+}
+
+.bg-primary {
+    background-color: rgb(0 23 46) !important;
+}
+/* Page content column: let it shrink to the viewport so wide children (tables, charts)
+   never push the whole page into a sideways scroll. */
+.dash-body-right {
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
+  overflow-x: hidden;
+}
+
+/* Header profile: initials avatar for people without a photo */
+.header-profile-user.hk-initials {
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  background: #0b0f19;
+  box-shadow: 0 0 0 2px #e0f2fe;
+}

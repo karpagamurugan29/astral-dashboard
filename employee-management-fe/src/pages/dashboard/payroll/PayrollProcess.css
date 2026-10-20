@@ -1,0 +1,64 @@
+/* ---------- Payroll runs ---------- */
+.pr-run { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 18px; align-items: center; padding: 20px; margin-bottom: 18px; border-top: 3px solid #0b0f19; }
+.pr-run h3 { margin: 0 0 4px; font-size: 16px; font-weight: 700; color: var(--pp-ink); }
+.pr-run p { margin: 0; font-size: 13px; color: var(--pp-muted); }
+.pr-run-ctrl { display: flex; align-items: flex-end; gap: 10px; }
+.pr-run-ctrl .pp-field { margin: 0; }
+.pr-run-ctrl .pp-input { width: 180px; }
+.pr-exists { display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 12.5px; font-weight: 600; color: #b45309; }
+
+/* run list */
+.pr-row { padding: 16px 20px; }
+.pr-row + .pr-row { border-top: 1px solid var(--pp-line); }
+
+.pr-main { display: grid; grid-template-columns: auto minmax(0, 1.3fr) repeat(3, minmax(0, 1fr)) auto; gap: 18px; align-items: center; }
+
+.pr-period b { display: block; font-size: 15px; color: var(--pp-ink); }
+.pr-period small { font-size: 12.5px; color: var(--pp-muted); }
+
+.pr-fig small { display: block; font-size: 11.5px; color: var(--pp-muted); }
+.pr-fig b { font-size: 15px; font-variant-numeric: tabular-nums; color: var(--pp-ink); }
+.pr-fig.ded b { color: #be123c; }
+.pr-fig.net b { color: #047857; }
+
+.pr-actions { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+
+/* pipeline: Draft → Approved → Paid */
+.pr-pipe { display: flex; align-items: center; gap: 4px; margin-top: 12px; }
+
+.pr-stage { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--pp-muted); }
+.pr-stage i { width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; font-size: 13px; border: 1.5px solid var(--pp-line); background: var(--pp-card); color: var(--pp-muted); }
+.pr-stage.done { color: var(--pp-ink); }
+.pr-stage.done i { color: #fff; border-color: var(--c); background: var(--c); }
+.pr-stage.current i { box-shadow: 0 0 0 4px color-mix(in srgb, var(--c) 20%, transparent); }
+.pr-link { flex: 0 0 36px; height: 2px; border-radius: 2px; background: var(--pp-line); }
+.pr-link.done { background: #10b981; }
+.pr-pipe small { margin-left: 10px; font-size: 12px; color: var(--pp-muted); }
+
+.pr-btn { height: 36px; display: inline-flex; align-items: center; gap: 6px; padding: 0 14px; border-radius: 10px; font-size: 13px; font-weight: 600; border: 0; color: #fff; transition: filter .15s; }
+.pr-btn:hover { filter: brightness(.93); }
+.pr-btn.approve { background: #0284c7; }
+.pr-btn.pay { background: #059669; }
+
+.pr-toggle { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 10px; border: 1px solid var(--pp-line); background: var(--pp-card); color: var(--pp-ink); font-size: 18px; transition: transform .2s; }
+.pr-toggle.open i { transform: rotate(180deg); }
+.pr-toggle i { transition: transform .2s; }
+
+/* expanded detail */
+.pr-detail { margin-top: 14px; border-radius: 12px; border: 1px solid var(--pp-line); overflow: hidden; }
+.pr-detail .at-table th { background: var(--pp-soft); }
+.pr-detail .at-table th:first-child, .pr-detail .at-table th:last-child { border-radius: 0; }
+
+@media (max-width: 1199px) {
+    .pr-main { grid-template-columns: auto minmax(0, 1fr) auto; }
+    .pr-fig { display: none; }
+    .pr-fig.net { display: block; }
+}
+
+@media (max-width: 767px) {
+    .pr-run { grid-template-columns: 1fr; }
+    .pr-run-ctrl { flex-wrap: wrap; }
+    .pr-main { grid-template-columns: auto minmax(0, 1fr); }
+    .pr-actions { grid-column: 1 / -1; justify-content: flex-start; }
+    .pr-pipe { flex-wrap: wrap; }
+}

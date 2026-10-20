@@ -1,0 +1,37 @@
+/* ---------- Projects list ---------- */
+.pl-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 16px; }
+.pl-toolbar .pp-search { flex: 1 1 240px; max-width: 320px; }
+.pl-toolbar .pp-select { width: auto; }
+
+.pl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+
+.pl-card { position: relative; display: flex; flex-direction: column; padding: 18px 20px 16px; border-top: 4px solid var(--c); transition: transform .2s, box-shadow .2s; }
+.pl-card:hover { transform: translateY(-2px); box-shadow: 0 16px 32px -18px rgba(15, 23, 42, .35); }
+
+.pl-top { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 10px; }
+.pl-titles { flex: 1; min-width: 0; }
+.pl-code { display: inline-block; margin-bottom: 4px; padding: 0 6px; border-radius: 5px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; line-height: 18px; color: #475569; background: #f1f5f9; }
+.pl-titles h3 { margin: 0; font-size: 16px; font-weight: 700; line-height: 1.3; }
+.pl-titles h3 a { color: var(--pp-ink); text-decoration: none; }
+.pl-titles h3 a::after { content: ""; position: absolute; inset: 0; }
+.pl-titles h3 a:hover { color: #0369a1; }
+.pl-client { font-size: 12.5px; color: var(--pp-muted); }
+
+.pl-desc { margin: 0 0 12px; font-size: 13.5px; line-height: 1.5; color: var(--pp-text); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 40px; }
+
+.pl-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+
+.pl-progress { margin-bottom: 14px; }
+.pl-progress-head { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 12.5px; color: var(--pp-muted); }
+.pl-progress-head b { color: var(--pp-ink); }
+.pl-track { height: 8px; border-radius: 99px; background: var(--pp-soft); overflow: hidden; }
+.pl-track span { display: block; height: 100%; border-radius: inherit; background: var(--c); transition: width .6s ease; }
+
+.pl-foot { display: flex; align-items: center; gap: 10px; margin-top: auto; padding-top: 12px; border-top: 1px solid var(--pp-line); font-size: 12.5px; color: var(--pp-muted); }
+.pl-foot b { color: var(--pp-ink); font-weight: 600; }
+.pl-mgr { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.pl-mgr span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pl-foot .pj-stack { margin-left: auto; }
+
+.pl-archive { position: relative; z-index: 2; width: 30px; height: 30px; display: grid; place-items: center; border: 1px solid var(--pp-line); border-radius: 8px; font-size: 15px; color: var(--pp-muted); background: var(--pp-card); transition: all .15s; }
+.pl-archive:hover { color: #fff; background: #f43f5e; border-color: #f43f5e; }

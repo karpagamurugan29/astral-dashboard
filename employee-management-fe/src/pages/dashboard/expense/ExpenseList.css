@@ -1,0 +1,37 @@
+/* ---------- My expenses ---------- */
+.ec-panel { margin-bottom: 18px; border-top: 3px solid #0b0f19; }
+.ec-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 20px; }
+
+.ec-cats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 16px; }
+.ec-cats label { margin: 0; cursor: pointer; }
+.ec-cats input { position: absolute; opacity: 0; pointer-events: none; }
+.ec-cat { display: flex; align-items: center; gap: 8px; height: 100%; padding: 10px 12px; border-radius: 12px; font-size: 13px; font-weight: 600; color: var(--pp-ink); background: var(--pp-card); border: 1.5px solid var(--pp-line); transition: all .15s; }
+.ec-cat i { width: 30px; height: 30px; flex-shrink: 0; display: grid; place-items: center; border-radius: 9px; font-size: 17px; color: var(--c); background: color-mix(in srgb, var(--c) 12%, transparent); }
+.ec-cat:hover { border-color: color-mix(in srgb, var(--c) 45%, transparent); }
+.ec-cats input:checked + .ec-cat { border-color: var(--c); background: color-mix(in srgb, var(--c) 6%, var(--pp-card)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 15%, transparent); }
+.ec-cats input:checked + .ec-cat i { color: #fff; background: var(--c); }
+.ec-cats input:focus-visible + .ec-cat { outline: 2px solid #0ea5e9; outline-offset: 2px; }
+
+.ec-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
+.ec-fields .span-2 { grid-column: span 2; }
+.ec-money { position: relative; }
+.ec-money span { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--pp-muted); pointer-events: none; }
+.ec-money .pp-input { padding-left: 28px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* receipt drop zone */
+.ec-drop { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: 180px; padding: 16px; margin: 0; border-radius: 14px; border: 2px dashed #bae6fd; background: #f8fcff; text-align: center; cursor: pointer; transition: border-color .15s, background .15s; }
+.ec-drop:hover, .ec-drop.over { border-color: #0ea5e9; background: #f0f9ff; }
+[data-bs-theme=dark] .ec-drop { background: var(--pp-soft); }
+.ec-drop input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.ec-drop > i { font-size: 34px; color: #0ea5e9; }
+.ec-drop b { font-size: 14px; color: var(--pp-ink); }
+.ec-drop small { font-size: 12px; color: var(--pp-muted); }
+.ec-preview { max-width: 100%; max-height: 120px; border-radius: 10px; object-fit: contain; box-shadow: 0 6px 16px -10px rgba(15, 23, 42, .5); }
+.ec-file { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 6px 10px; border-radius: 8px; font-size: 13px; font-weight: 600; color: var(--pp-ink); background: var(--pp-card); border: 1px solid var(--pp-line); }
+.ec-file span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ec-clear { position: relative; z-index: 2; border: 0; background: none; font-size: 12.5px; font-weight: 600; color: #e11d48; }
+
+.ec-foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+
+@media (max-width: 991px) { .ec-grid { grid-template-columns: 1fr; } }
+@media (max-width: 575px) { .ec-cats { grid-template-columns: repeat(2, minmax(0, 1fr)); } .ec-fields { grid-template-columns: 1fr; } .ec-fields .span-2 { grid-column: auto; } }

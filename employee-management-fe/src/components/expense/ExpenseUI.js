@@ -1,0 +1,64 @@
+import React from 'react'
+import { API_URL } from '../../utils/Constants'
+import './expense.css'
+
+/* -------------------------------------------------------------------------- */
+/*  Shared bits for My expenses and Expense approvals.                        */
+/* -------------------------------------------------------------------------- */
+
+export const EXPENSE_ROOT = { label: 'Expenses', to: '/expenses' }
+
+export const CATEGORIES = [
+    { value: 'Travel', icon: 'mdi-airplane', color: '#0284c7' },
+    { value: 'Food', icon: 'mdi-food', color: '#ea580c' },
+    { value: 'Accommodation', icon: 'mdi-bed-outline', color: '#7c3aed' },
+    { value: 'Office Supplies', icon: 'mdi-paperclip', color: '#0d9488' },
+    { value: 'Client Entertainment', icon: 'mdi-glass-cocktail', color: '#db2777' },
+    { value: 'Other', icon: 'mdi-dots-horizontal-circle-outline', color: '#64748b' },
+]
+export const categoryMeta = (c) => CATEGORIES.find((x) => x.value === c) || CATEGORIES[CATEGORIES.length - 1]
+
+const STATUS = {
+    Pending: { color: '#d97706', icon: 'mdi-timer-sand' },
+    Approved: { color: '#0284c7', icon: 'mdi-check-circle-outline' },
+    Rejected: { color: '#e11d48', icon: 'mdi-close-circle-outline' },
+    Reimbursed: { color: '#059669', icon: 'mdi-cash-check' },
+}
+export const expenseStatusMeta = (s) => STATUS[s] || { color: '#64748b', icon: 'mdi-circle-outline' }
+export const EXPENSE_STATUSES = Object.keys(STATUS)
+
+export const ExpenseStatus = ({ status }) => {
+    const m = expenseStatusMeta(status)
+    return <span className="ex-status" style={{ '--c': m.color }}><i className={`mdi ${m.icon}`}></i>{status}</span>
+}
+
+export const CategoryIcon = ({ category, size = 40 }) => {
+    const m = categoryMeta(category)
+    return (
+        <span className="ex-cat-icon" style={{ '--c': m.color, width: size, height: size, fontSize: Math.round(size * 0.48) }} title={m.value}>
+            <i className={`mdi ${m.icon}`}></i>
+        </span>
+    )
+}
+
+export const CategoryTag = ({ category }) => {
+    const m = categoryMeta(category)
+    return <span className="pp-tag" style={{ '--tag': m.color }}><i className={`mdi ${m.icon}`}></i>{m.value}</span>
+}
+
+const SERVER_ORIGIN = API_URL.replace(/\/api$/, '')
+export const receiptHref = (url) => (url ? (/^https?:\/\//.test(url) ? url : `${SERVER_ORIGIN}${url}`) : null)
+export const isImage = (url) => /\.(png|jpe?g|gif|webp)$/i.test(url || '')
+
+export const ReceiptLink = ({ url, compact = false }) => {
+    const href = receiptHref(url)
+    if (!href) return <span className="ex-noreceipt" title="No bill attached"><i className="mdi mdi-receipt"></i>{!compact && 'No bill'}</span>
+    return (
+        <a className="ex-receipt" href={href} target="_blank" rel="noreferrer" title="Open bill in a new tab" onClick={(e) => e.stopPropagation()}>
+            <i className={`mdi ${/\.pdf$/i.test(url) ? 'mdi-file-pdf-box' : 'mdi-image-outline'}`}></i>{!compact && 'View bill'}
+        </a>
+    )
+}
+
+// Claims for approvers come back for everyone; this tells mine apart.
+export const ownerId = (ex) => ex.employeeId?._id || ex.employeeId

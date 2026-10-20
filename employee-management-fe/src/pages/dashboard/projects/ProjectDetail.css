@@ -1,0 +1,77 @@
+/* ---------- Project detail ---------- */
+.pd-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 20px; align-items: center; padding: 22px 24px; margin-bottom: 18px; border-top: 4px solid var(--c); }
+.pd-code { display: inline-block; margin-bottom: 6px; padding: 0 7px; border-radius: 6px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; line-height: 20px; color: #475569; background: #f1f5f9; }
+.pd-head h2 { margin: 0 0 4px; font-size: 22px; font-weight: 700; letter-spacing: -.02em; color: var(--pp-ink); }
+.pd-head p { margin: 0 0 12px; font-size: 14px; color: var(--pp-muted); max-width: 720px; }
+.pd-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.pd-status-select { width: auto; height: 32px; padding-top: 0; padding-bottom: 0; font-size: 13px; font-weight: 600; color: var(--c); border-color: color-mix(in srgb, var(--c) 35%, transparent); background-color: color-mix(in srgb, var(--c) 8%, var(--pp-card)); }
+.pd-ring { text-align: center; }
+.pd-ring small { display: block; margin-top: 6px; font-size: 12px; color: var(--pp-muted); }
+
+/* timeline */
+.pd-time { margin-top: 18px; grid-column: 1 / -1; }
+.pd-time-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin-bottom: 8px; font-size: 12.5px; color: var(--pp-muted); }
+.pd-time-head b { color: var(--pp-ink); }
+.pd-health { display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px; border-radius: 99px; font-weight: 700; color: var(--h); background: color-mix(in srgb, var(--h) 12%, transparent); }
+.pd-track { position: relative; height: 12px; border-radius: 99px; background: var(--pp-soft); border: 1px solid var(--pp-line); }
+.pd-track .elapsed { position: absolute; top: 0; bottom: 0; left: 0; border-radius: inherit; background: repeating-linear-gradient(45deg, #e2e8f0 0 5px, #f1f5f9 5px 10px); }
+.pd-track .done { position: absolute; top: 2px; bottom: 2px; left: 2px; border-radius: inherit; background: var(--c); }
+.pd-today { position: absolute; top: -5px; bottom: -5px; width: 2px; margin-left: -1px; background: #0b0f19; border-radius: 2px; }
+.pd-today::after { content: "Today"; position: absolute; top: -16px; left: 50%; transform: translateX(-50%); font-size: 10px; font-weight: 700; color: #0b0f19; white-space: nowrap; }
+.pd-dates { display: flex; justify-content: space-between; margin-top: 6px; font-size: 12px; color: var(--pp-muted); }
+
+/* tabs (same look as the profile) */
+.pd-tabs { display: flex; gap: 4px; padding: 0 8px; border-bottom: 1px solid var(--pp-line); overflow-x: auto; scrollbar-width: none; }
+.pd-tabs::-webkit-scrollbar { display: none; }
+.pd-tab { position: relative; display: inline-flex; align-items: center; gap: 6px; padding: 14px 12px; border: 0; background: none; font-size: 14px; font-weight: 500; color: var(--pp-muted); white-space: nowrap; }
+.pd-tab i { font-size: 17px; }
+.pd-tab:hover { color: var(--pp-ink); }
+.pd-tab.active { color: var(--pp-ink); font-weight: 600; }
+.pd-tab.active::after { content: ""; position: absolute; left: 8px; right: 8px; bottom: -1px; height: 2px; border-radius: 2px 2px 0 0; background: #0ea5e9; }
+.pd-tab b { min-width: 20px; padding: 0 6px; border-radius: 99px; font-size: 11px; line-height: 18px; text-align: center; color: var(--pp-muted); background: var(--pp-soft); }
+.pd-tab.active b { color: #0369a1; background: #e0f2fe; }
+
+.pd-panel { padding: 20px; }
+
+.pd-facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 20px; }
+.pd-fact { padding: 12px 14px; border-radius: 12px; border: 1px solid var(--pp-line); }
+.pd-fact span { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--pp-muted); }
+.pd-fact span i { font-size: 15px; color: var(--c); }
+.pd-fact b { display: block; margin-top: 4px; font-size: 14.5px; color: var(--pp-ink); }
+
+.pd-breakdown-title { margin: 0 0 10px; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--pp-muted); }
+.pd-bar { display: flex; height: 12px; border-radius: 99px; overflow: hidden; background: var(--pp-soft); margin-bottom: 10px; }
+.pd-bar span { height: 100%; }
+.pd-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--pp-muted); }
+.pd-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.pd-legend i { width: 10px; height: 10px; border-radius: 3px; background: var(--c); }
+.pd-legend b { color: var(--pp-ink); }
+
+/* team */
+.pd-add { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 16px; max-width: 520px; }
+.pd-add .pj-picker { flex: 1; }
+.pd-team { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.pd-member { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--pp-line); }
+.pd-member-main { flex: 1; min-width: 0; }
+.pd-member-main a { display: block; font-size: 14px; font-weight: 600; color: var(--pp-ink); text-decoration: none; }
+.pd-member-main a:hover { color: #0369a1; }
+.pd-member-main small { font-size: 12px; color: var(--pp-muted); }
+.pd-role { font-size: 11px; font-weight: 700; color: #0369a1; }
+.pd-remove { width: 30px; height: 30px; display: grid; place-items: center; border: 1px solid var(--pp-line); border-radius: 8px; font-size: 15px; color: #e11d48; background: var(--pp-card); }
+.pd-remove:hover { color: #fff; background: #f43f5e; border-color: #f43f5e; }
+
+/* tasks */
+.pd-task { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 6px; border: 0; text-align: left; background: transparent; border-radius: 10px; transition: background .12s; }
+.pd-task + .pd-task { border-top: 1px solid var(--pp-line); border-radius: 0; }
+.pd-task:hover { background: #f8fbff; }
+.pd-task-dot { width: 10px; height: 10px; flex-shrink: 0; border-radius: 50%; background: var(--c); }
+.pd-task-main { flex: 1; min-width: 0; }
+.pd-task-main b { display: block; font-size: 14px; font-weight: 600; color: var(--pp-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pd-task-main small { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 12px; color: var(--pp-muted); }
+.pd-task-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+
+@media (max-width: 991px) {
+    .pd-head { grid-template-columns: 1fr; }
+    .pd-ring { justify-self: start; }
+    .pd-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

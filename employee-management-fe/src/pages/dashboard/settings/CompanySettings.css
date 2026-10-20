@@ -1,0 +1,199 @@
+/* ---------- Company settings ---------- */
+.cs-layout { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 20px; align-items: start; }
+
+.cs-nav { position: sticky; top: 90px; padding: 8px; }
+.cs-nav-label { padding: 8px 12px 6px; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--pp-muted); }
+
+.cs-nav a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--pp-text);
+    text-decoration: none;
+    transition: background .15s, color .15s;
+}
+
+.cs-nav a i { font-size: 18px; color: var(--c); }
+.cs-nav a:hover { background: var(--pp-soft); color: var(--pp-ink); }
+.cs-nav a.active { background: #f0f9ff; color: var(--pp-ink); font-weight: 600; }
+
+.cs-form { margin-bottom: 24px; }
+.cs-section { margin-bottom: 16px; scroll-margin-top: 90px; }
+.cs-section .pp-card-head { justify-content: flex-start; gap: 12px; }
+.cs-section .pp-card-head p { margin: 2px 0 0; font-size: 13px; color: var(--pp-muted); }
+
+.cs-head-icon {
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    border-radius: 10px;
+    font-size: 19px;
+    color: var(--c);
+    background: color-mix(in srgb, var(--c) 12%, transparent);
+}
+
+/* company */
+.cs-company { display: flex; align-items: center; gap: 18px; }
+.cs-company .pp-field { flex: 1; margin-bottom: 0; }
+
+.cs-logo {
+    width: 64px;
+    height: 64px;
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    border-radius: 18px;
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: -.02em;
+    color: #fff;
+    background: linear-gradient(135deg, #0b0f19, #1e293b);
+    box-shadow: 0 10px 22px -12px rgba(11, 15, 25, .6);
+}
+
+.cs-logo span { color: #38bdf8; }
+
+/* working hours */
+.cs-hours { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0 14px; }
+
+.cs-day { margin-top: 6px; padding: 16px; border-radius: 12px; background: var(--pp-soft); border: 1px solid var(--pp-line); }
+.cs-day-title { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 13px; color: var(--pp-muted); }
+.cs-day-title b { color: var(--pp-ink); }
+
+.cs-track { position: relative; height: 16px; border-radius: 99px; background: var(--pp-card); border: 1px solid var(--pp-line); }
+.cs-track .work { position: absolute; top: 2px; bottom: 2px; border-radius: 99px; background: linear-gradient(90deg, #0ea5e9, #0284c7); }
+.cs-track .grace { position: absolute; top: 2px; bottom: 2px; border-radius: 99px 0 0 99px; background: repeating-linear-gradient(45deg, #f59e0b 0 4px, #fcd34d 4px 8px); }
+.cs-ticks { display: flex; justify-content: space-between; margin-top: 5px; font-size: 10.5px; color: var(--pp-muted); font-variant-numeric: tabular-nums; }
+
+.cs-day-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; font-size: 12px; color: var(--pp-muted); }
+.cs-day-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.cs-day-legend i { width: 14px; height: 8px; border-radius: 3px; }
+.cs-day-legend b { color: var(--pp-ink); }
+
+/* toggle cards */
+.cs-toggles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+
+.cs-toggle {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 0;
+    padding: 14px;
+    border-radius: 12px;
+    border: 1.5px solid var(--pp-line);
+    background: var(--pp-card);
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
+}
+
+.cs-toggle:hover { border-color: color-mix(in srgb, var(--c) 40%, transparent); }
+.cs-toggle.on { border-color: var(--c); background: color-mix(in srgb, var(--c) 5%, var(--pp-card)); }
+
+.cs-toggle > i {
+    width: 38px;
+    height: 38px;
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    border-radius: 10px;
+    font-size: 20px;
+    color: var(--c);
+    background: color-mix(in srgb, var(--c) 12%, transparent);
+}
+
+.cs-toggle-text { flex: 1; min-width: 0; }
+.cs-toggle-text b { display: block; font-size: 14px; color: var(--pp-ink); }
+.cs-toggle-text small { font-size: 12.5px; color: var(--pp-muted); }
+
+.cs-toggle input { position: absolute; opacity: 0; pointer-events: none; }
+
+.cs-switch { position: relative; width: 40px; height: 22px; flex-shrink: 0; border-radius: 99px; background: #cbd5e1; transition: background .15s; }
+.cs-switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, .25); transition: transform .15s; }
+.cs-toggle input:checked ~ .cs-switch { background: var(--c); }
+.cs-toggle input:checked ~ .cs-switch::after { transform: translateX(18px); }
+.cs-toggle input:focus-visible ~ .cs-switch { outline: 2px solid #0ea5e9; outline-offset: 2px; }
+
+/* leave allowances */
+.cs-allow { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+
+.cs-allow-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    border: 1px solid var(--pp-line);
+    border-left: 4px solid var(--c);
+}
+
+.cs-allow-row > i { font-size: 20px; color: var(--c); }
+.cs-allow-row span { flex: 1; min-width: 0; font-size: 14px; font-weight: 600; color: var(--pp-ink); }
+.cs-allow-row small { display: block; font-size: 12px; font-weight: 400; color: var(--pp-muted); }
+
+.cs-stepper { display: inline-flex; align-items: center; border: 1px solid var(--pp-line); border-radius: 10px; overflow: hidden; }
+.cs-stepper button { width: 32px; height: 34px; border: 0; background: var(--pp-soft); color: var(--pp-ink); font-size: 16px; }
+.cs-stepper button:hover { background: #e0f2fe; color: #0369a1; }
+.cs-stepper input { width: 48px; height: 34px; border: 0; text-align: center; font-weight: 700; color: var(--pp-ink); background: var(--pp-card); outline: none; -moz-appearance: textfield; }
+.cs-stepper input::-webkit-outer-spin-button, .cs-stepper input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+.cs-total { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; padding: 12px 14px; border-radius: 12px; font-size: 14px; color: var(--pp-muted); background: var(--pp-soft); }
+.cs-total b { font-size: 18px; color: var(--pp-ink); }
+
+/* approval flow */
+.cs-flow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 16px; padding: 14px; border-radius: 12px; background: var(--pp-soft); }
+
+.cs-step { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 10px; font-size: 13px; font-weight: 600; color: var(--pp-ink); background: var(--pp-card); border: 1px solid var(--pp-line); }
+.cs-step i { font-size: 17px; color: var(--c); }
+.cs-step.done { color: #047857; border-color: #a7f3d0; background: #ecfdf5; }
+.cs-step.done i { color: #059669; }
+.cs-flow > .mdi-chevron-right { font-size: 20px; color: var(--pp-muted); }
+.cs-flow-note { width: 100%; margin-top: 4px; font-size: 12.5px; color: var(--pp-muted); }
+
+/* save bar */
+.cs-bar {
+    position: sticky;
+    bottom: 12px;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 16px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, .94);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--pp-line);
+    box-shadow: 0 12px 30px -14px rgba(15, 23, 42, .25);
+}
+
+[data-bs-theme=dark] .cs-bar { background: var(--pp-card); }
+.cs-bar.dirty { border-color: #fde68a; }
+
+.cs-bar-note { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--pp-muted); }
+.cs-bar-note i { font-size: 18px; }
+.cs-bar-note.dirty { color: #92400e; font-weight: 600; }
+.cs-bar-note.dirty i { color: #d97706; }
+.cs-bar-note.saved { color: #047857; font-weight: 600; }
+.cs-bar-note.saved i { color: #059669; }
+.cs-bar-btns { display: flex; gap: 8px; }
+
+@media (max-width: 1199px) {
+    .cs-layout { grid-template-columns: 1fr; }
+    .cs-nav { position: static; display: flex; flex-wrap: wrap; gap: 4px; }
+    .cs-nav-label { display: none; }
+    .cs-hours { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 767px) {
+    .cs-toggles, .cs-allow, .cs-hours { grid-template-columns: 1fr; }
+    .cs-company { flex-direction: column; align-items: stretch; }
+    .cs-bar-note { display: none; }
+    .cs-bar-btns { width: 100%; }
+    .cs-bar-btns .pp-btn { flex: 1; }
+}

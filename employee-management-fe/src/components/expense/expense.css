@@ -1,0 +1,82 @@
+/* ==========================================================================
+   Expenses — builds on people.css (pp-*), attendance.css (at-*), payroll.css.
+   ========================================================================== */
+
+.ex-status { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 99px; font-size: 12px; font-weight: 600; white-space: nowrap; color: var(--c); background: color-mix(in srgb, var(--c) 11%, transparent); }
+.ex-status i { font-size: 14px; }
+
+.ex-cat-icon { flex-shrink: 0; display: grid; place-items: center; border-radius: 12px; color: var(--c); background: color-mix(in srgb, var(--c) 12%, transparent); }
+
+.ex-receipt, .ex-noreceipt { display: inline-flex; align-items: center; gap: 4px; font-size: 12.5px; font-weight: 600; white-space: nowrap; text-decoration: none; }
+.ex-receipt { color: #0284c7; }
+.ex-receipt:hover { color: #0369a1; text-decoration: underline; }
+.ex-receipt i, .ex-noreceipt i { font-size: 16px; }
+.ex-noreceipt { color: var(--pp-muted); font-weight: 500; }
+
+/* rows (my claims / history) */
+.ex-month { padding: 10px 20px 6px; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--pp-muted); background: var(--pp-soft); border-top: 1px solid var(--pp-line); border-bottom: 1px solid var(--pp-line); display: flex; justify-content: space-between; }
+.ex-month b { color: var(--pp-ink); letter-spacing: 0; }
+
+.ex-row { display: flex; align-items: center; gap: 14px; padding: 14px 20px; transition: background .12s; }
+.ex-row + .ex-row { border-top: 1px solid var(--pp-line); }
+.ex-row:hover { background: #f8fbff; }
+[data-bs-theme=dark] .ex-row:hover { background: var(--pp-soft); }
+.ex-row-main { flex: 1; min-width: 0; }
+.ex-row-title { font-size: 14.5px; font-weight: 600; color: var(--pp-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ex-row-sub { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-top: 3px; font-size: 12.5px; color: var(--pp-muted); }
+.ex-row-sub .reject { color: #be123c; font-weight: 600; }
+.ex-amt { flex-shrink: 0; min-width: 100px; text-align: right; font-size: 15.5px; font-weight: 700; color: var(--pp-ink); font-variant-numeric: tabular-nums; }
+
+.ex-del { width: 32px; height: 32px; flex-shrink: 0; display: grid; place-items: center; border: 1px solid var(--pp-line); border-radius: 9px; font-size: 16px; color: #e11d48; background: var(--pp-card); transition: all .15s; }
+.ex-del:hover { color: #fff; background: #f43f5e; border-color: #f43f5e; }
+
+.ex-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+
+@media (max-width: 767px) {
+    .ex-row { flex-wrap: wrap; padding: 12px 14px; }
+    .ex-amt { min-width: 0; }
+}
+
+/* filter chips */
+.lv-chip { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 13px; border-radius: 99px; font-size: 13px; font-weight: 600; color: var(--pp-text); background: var(--pp-card); border: 1px solid var(--pp-line); transition: all .15s; }
+.lv-chip i { font-size: 16px; color: var(--c); }
+.lv-chip b { font-weight: 600; color: var(--pp-muted); }
+.lv-chip:hover { border-color: color-mix(in srgb, var(--c) 40%, transparent); }
+.lv-chip.active { color: #fff; background: var(--c); border-color: transparent; }
+.lv-chip.active i, .lv-chip.active b { color: #fff; }
+
+/* ---------- approvals ---------- */
+.ea-section { display: flex; align-items: center; gap: 10px; margin: 6px 0 12px; font-size: 15px; font-weight: 700; color: var(--pp-ink); }
+.ea-section i { font-size: 20px; }
+.ea-count { min-width: 22px; padding: 0 7px; border-radius: 99px; font-size: 12px; line-height: 20px; text-align: center; color: #fff; background: var(--c); }
+
+.ea-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; margin-bottom: 26px; }
+.ea-card { display: flex; flex-direction: column; border-top: 3px solid var(--c); overflow: hidden; }
+.ea-head { display: flex; align-items: center; gap: 12px; padding: 16px 18px 10px; }
+.ea-who { flex: 1; min-width: 0; }
+.ea-who a { font-size: 14.5px; font-weight: 700; color: var(--pp-ink); text-decoration: none; }
+.ea-who a:hover { color: #0369a1; }
+.ea-who small { display: block; font-size: 12px; color: var(--pp-muted); }
+.ea-amount { font-size: 22px; font-weight: 800; letter-spacing: -.02em; color: var(--pp-ink); font-variant-numeric: tabular-nums; }
+
+.ea-body { display: flex; gap: 12px; padding: 0 18px; }
+.ea-body-main { flex: 1; min-width: 0; }
+.ea-desc { margin: 6px 0 0; font-size: 13.5px; line-height: 1.5; color: var(--pp-text); }
+.ea-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; font-size: 12.5px; color: var(--pp-muted); }
+
+.ea-thumb { width: 72px; height: 72px; flex-shrink: 0; border-radius: 10px; border: 1px solid var(--pp-line); object-fit: cover; background: var(--pp-soft); }
+.ea-thumb-link { display: grid; place-items: center; width: 72px; height: 72px; flex-shrink: 0; border-radius: 10px; border: 1px dashed var(--pp-line); font-size: 28px; color: #0284c7; text-decoration: none; background: var(--pp-soft); }
+.ea-nobill { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 6px; font-size: 11.5px; font-weight: 600; color: #b45309; background: #fffbeb; }
+
+.ea-reject { padding: 12px 18px 0; }
+.ea-actions { display: grid; grid-template-columns: 1fr 1.4fr; gap: 8px; padding: 14px 18px 16px; margin-top: auto; }
+.ea-btn { height: 38px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border-radius: 10px; font-size: 13.5px; font-weight: 600; transition: all .15s; }
+.ea-btn.approve { border: 0; color: #fff; background: #059669; }
+.ea-btn.approve:hover { background: #047857; }
+.ea-btn.reject { color: #be123c; background: var(--pp-card); border: 1px solid #fecdd3; }
+.ea-btn.reject:hover { background: #fff1f2; }
+.ea-btn.reject.solid { color: #fff; background: #e11d48; border-color: transparent; }
+.ea-btn.pay { border: 0; color: #fff; background: #0b0f19; padding: 0 14px; }
+.ea-btn.pay:hover { background: #1f2937; }
+
+@media (max-width: 575px) { .ea-grid { grid-template-columns: 1fr; } }

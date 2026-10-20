@@ -1,0 +1,118 @@
+/* ==========================================================================
+   Leave workspace — builds on people.css (pp-*) and attendance.css (at-*).
+   ========================================================================== */
+
+.lv-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 99px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    color: var(--c);
+    background: color-mix(in srgb, var(--c) 11%, transparent);
+}
+
+.lv-status i { font-size: 14px; }
+
+.lv-tile {
+    width: 50px;
+    flex-shrink: 0;
+    text-align: center;
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--pp-card);
+    border: 1px solid var(--pp-line);
+    box-shadow: 0 4px 10px -8px rgba(15, 23, 42, .4);
+}
+
+.lv-tile small { display: block; padding: 2px 0; font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #fff; background: var(--c); }
+.lv-tile b { display: block; padding: 3px 0 5px; font-size: 19px; line-height: 1; color: var(--pp-ink); }
+
+/* balance cards with a ring */
+.lv-balances {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 14px;
+    margin-bottom: 20px;
+}
+
+.lv-bal {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px;
+    border-top: 3px solid var(--c);
+    text-decoration: none;
+    color: inherit;
+    transition: transform .2s, box-shadow .2s;
+}
+
+a.lv-bal:hover { color: inherit; transform: translateY(-2px); box-shadow: 0 14px 28px -18px rgba(15, 23, 42, .35); }
+
+.lv-bal-text { min-width: 0; }
+.lv-bal-text span { display: flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 600; color: var(--pp-ink); }
+.lv-bal-text span i { font-size: 16px; color: var(--c); }
+.lv-bal-text small { display: block; margin-top: 3px; font-size: 12px; color: var(--pp-muted); }
+.lv-bal .pp-ring-label { font-size: 15px; }
+
+/* list rows (history / approvals / calendar list) */
+.lv-rows { list-style: none; margin: 0; padding: 0; }
+
+.lv-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 20px;
+    transition: background .12s;
+}
+
+.lv-row + .lv-row { border-top: 1px solid var(--pp-line); }
+.lv-row:hover { background: #f8fbff; }
+[data-bs-theme=dark] .lv-row:hover { background: var(--pp-soft); }
+
+.lv-row-main { flex: 1; min-width: 0; }
+.lv-row-title { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 14.5px; font-weight: 600; color: var(--pp-ink); }
+.lv-row-sub { margin-top: 3px; font-size: 13px; color: var(--pp-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lv-row-sub b { color: var(--pp-ink); font-weight: 600; }
+
+.lv-days {
+    flex-shrink: 0;
+    min-width: 64px;
+    text-align: center;
+    padding: 6px 10px;
+    border-radius: 10px;
+    background: var(--pp-soft);
+}
+
+.lv-days b { display: block; font-size: 17px; line-height: 1.1; color: var(--pp-ink); }
+.lv-days small { font-size: 11px; color: var(--pp-muted); }
+
+/* ---------- My leave ---------- */
+.lh-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 18px; margin-bottom: 20px; align-items: start; }
+.lh-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: 0; }
+
+.lh-hist-head { flex-wrap: wrap; }
+.lh-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.lh-filters .pp-seg { flex-wrap: wrap; }
+
+.lh-cancel {
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    border: 1px solid var(--pp-line);
+    border-radius: 9px;
+    font-size: 16px;
+    color: #e11d48;
+    background: var(--pp-card);
+    transition: all .15s;
+}
+
+.lh-cancel:hover { color: #fff; background: #f43f5e; border-color: #f43f5e; }
+
+@media (max-width: 1199px) { .lh-split { grid-template-columns: 1fr; } }
+@media (max-width: 767px) { .lv-row { padding: 12px 14px; gap: 10px; flex-wrap: wrap; } }

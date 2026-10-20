@@ -1,0 +1,145 @@
+/* Corporate polish layer — sits on top of the base admin theme.
+   Pure CSS: no new deps, applies globally since every page already
+   shares .card / .btn / .page-content / #sidebar-menu markup. */
+
+:root {
+  --brand: #5156be;
+  --brand-soft: rgba(81, 86, 190, 0.10);
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* Page-level entrance — every route's content lives in .page-content */
+.page-content {
+  animation: pageFadeIn 0.4s var(--ease) both;
+}
+
+@keyframes pageFadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Cards: corporate lift on hover, staggered entrance */
+.card {
+  transition: transform 0.22s var(--ease), box-shadow 0.22s var(--ease);
+  animation: cardIn 0.4s var(--ease) both;
+}
+
+.card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 0.75rem 1.75rem rgba(30, 32, 66, 0.09);
+}
+
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(14px) scale(0.99); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.row > [class*="col-"]:nth-child(1) .card { animation-delay: 0.02s; }
+.row > [class*="col-"]:nth-child(2) .card { animation-delay: 0.06s; }
+.row > [class*="col-"]:nth-child(3) .card { animation-delay: 0.10s; }
+.row > [class*="col-"]:nth-child(4) .card { animation-delay: 0.14s; }
+
+/* Buttons: tactile micro-interaction */
+.btn {
+  transition: transform 0.15s var(--ease), box-shadow 0.15s var(--ease), filter 0.15s var(--ease);
+}
+.btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.04);
+}
+.btn:active:not(:disabled) {
+  transform: translateY(0);
+  filter: brightness(0.98);
+}
+.btn-primary:hover:not(:disabled) {
+  box-shadow: 0 0.4rem 1rem var(--brand-soft);
+}
+
+/* Table rows: smooth highlight instead of an instant snap */
+.table tbody tr {
+  transition: background-color 0.15s ease;
+}
+
+/* Badges: tiny pop-in when they appear (status changes, etc.) */
+.badge {
+  transition: transform 0.15s var(--ease);
+  animation: badgePop 0.25s var(--ease) both;
+}
+@keyframes badgePop {
+  from { transform: scale(0.85); opacity: 0.6; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+/* Sidebar: smoother active/hover state with an animated accent rail */
+#sidebar-menu a {
+  transition: background-color 0.18s ease, color 0.18s ease, padding-left 0.18s var(--ease);
+}
+#sidebar-menu a:hover {
+  padding-left: calc(1.5rem + 3px);
+}
+#sidebar-menu li.mm-active > a {
+  position: relative;
+}
+#sidebar-menu li.mm-active > a::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--brand);
+  animation: railGrow 0.25s var(--ease) both;
+}
+@keyframes railGrow {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+
+/* Dropdown menus: soft fade + rise instead of an instant pop */
+.dropdown-menu {
+  transition: opacity 0.15s var(--ease), transform 0.15s var(--ease);
+  opacity: 0;
+  transform: translateY(-6px);
+}
+.dropdown-menu.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Progress bars: animate their fill in on mount */
+.progress-bar {
+  transition: width 0.6s var(--ease);
+}
+
+/* Spinners already exist via Bootstrap; just soften their color to the brand tone */
+.spinner-border.text-primary {
+  color: var(--brand) !important;
+}
+
+/* KPI counter used on the dashboard stat cards */
+.kpi-value {
+  font-variant-numeric: tabular-nums;
+}
+
+.kpi-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--brand-soft);
+  color: var(--brand);
+  transition: transform 0.2s var(--ease);
+}
+.card:hover .kpi-icon {
+  transform: scale(1.08) rotate(-4deg);
+}

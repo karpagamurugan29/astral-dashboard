@@ -1,0 +1,97 @@
+/* ---------- Leave approvals ---------- */
+.la-filters { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.la-filter {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 36px;
+    padding: 0 14px;
+    border-radius: 99px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--pp-text);
+    background: var(--pp-card);
+    border: 1px solid var(--pp-line);
+    transition: all .15s;
+}
+
+.la-filter i { font-size: 16px; color: var(--c); }
+.la-filter b { font-weight: 600; color: var(--pp-muted); }
+.la-filter.active { color: #fff; background: var(--c); border-color: transparent; }
+.la-filter.active i, .la-filter.active b { color: #fff; }
+
+.la-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 16px; }
+
+.la-card { display: flex; flex-direction: column; border-top: 3px solid var(--c); }
+
+.la-head { display: flex; align-items: center; gap: 12px; padding: 16px 18px 12px; }
+.la-who { flex: 1; min-width: 0; }
+.la-who a { font-size: 15px; font-weight: 700; color: var(--pp-ink); text-decoration: none; }
+.la-who a:hover { color: #0369a1; }
+.la-who small { display: block; font-size: 12.5px; color: var(--pp-muted); }
+
+.la-wait { flex-shrink: 0; padding: 3px 9px; border-radius: 99px; font-size: 11.5px; font-weight: 600; color: #92400e; background: #fffbeb; }
+
+.la-when { display: flex; align-items: center; gap: 10px; padding: 12px 18px; margin: 0 18px; border-radius: 12px; background: var(--pp-soft); }
+.la-arrow { color: var(--pp-muted); font-size: 18px; }
+.la-when-text { flex: 1; min-width: 0; display: grid; gap: 4px; justify-items: start; }
+.la-when-text span:last-child { font-size: 13px; font-weight: 600; color: var(--pp-ink); }
+.la-when .lv-days { background: var(--pp-card); }
+
+.la-reason {
+    position: relative;
+    margin: 12px 18px 0;
+    padding: 10px 12px 10px 34px;
+    border-radius: 10px;
+    font-size: 13.5px;
+    line-height: 1.5;
+    color: var(--pp-text);
+    border: 1px dashed var(--pp-line);
+}
+
+.la-reason i { position: absolute; left: 10px; top: 9px; font-size: 18px; color: var(--c); }
+
+.la-overlap {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin: 10px 18px 0;
+    padding: 9px 12px;
+    border-radius: 10px;
+    font-size: 13px;
+    color: #92400e;
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+}
+
+.la-overlap i { font-size: 17px; color: #d97706; line-height: 1.1; }
+
+.la-reject { padding: 14px 18px 16px; margin-top: auto; }
+.la-reject .la-actions { padding: 10px 0 0; }
+
+.la-actions { display: grid; grid-template-columns: 1fr 1.4fr; gap: 8px; padding: 14px 18px 16px; margin-top: auto; }
+
+.la-btn {
+    height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border-radius: 10px;
+    font-size: 13.5px;
+    font-weight: 600;
+    transition: all .15s;
+}
+
+.la-btn.approve { border: 0; color: #fff; background: #059669; box-shadow: 0 8px 18px -10px rgba(5, 150, 105, .8); }
+.la-btn.approve:hover { background: #047857; }
+.la-btn.reject { color: #be123c; background: var(--pp-card); border: 1px solid #fecdd3; }
+.la-btn.reject:hover { background: #fff1f2; }
+.la-btn.reject.solid { color: #fff; background: #e11d48; border-color: transparent; }
+.la-btn.reject.solid:hover { background: #be123c; }
+
+@media (max-width: 575px) {
+    .la-grid { grid-template-columns: 1fr; }
+    .la-when { flex-wrap: wrap; }
+}

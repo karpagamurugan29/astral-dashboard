@@ -1,0 +1,98 @@
+/* ==========================================================================
+   Projects & tasks — builds on people.css (pp-*) and attendance.css (at-*).
+   ========================================================================== */
+
+.pj-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 99px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    color: var(--c);
+    background: color-mix(in srgb, var(--c) 11%, transparent);
+}
+
+.pj-pill i { font-size: 14px; }
+
+.pj-due { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; color: var(--c); white-space: nowrap; }
+.pj-due i { font-size: 14px; }
+
+.pj-stack { display: inline-flex; }
+.pj-stack .pp-avatar { box-shadow: 0 0 0 2px var(--pp-card); }
+.pj-stack .pp-avatar + .pp-avatar { margin-left: -8px; }
+.pj-stack-more { margin-left: -8px; display: grid; place-items: center; border-radius: 50%; font-size: 10.5px; font-weight: 700; color: #475569; background: #f1f5f9; box-shadow: 0 0 0 2px var(--pp-card); }
+
+/* people picker */
+.pj-picker { position: relative; }
+.pj-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.pj-chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 4px 3px 4px; border-radius: 99px; font-size: 13px; font-weight: 500; color: var(--pp-ink); background: var(--pp-soft); border: 1px solid var(--pp-line); }
+.pj-chip button { width: 20px; height: 20px; display: grid; place-items: center; border: 0; border-radius: 50%; font-size: 13px; color: var(--pp-muted); background: transparent; }
+.pj-chip button:hover { color: #e11d48; background: #fff1f2; }
+
+.pj-options {
+    position: absolute;
+    z-index: 30;
+    left: 0;
+    right: 0;
+    top: calc(100% + 4px);
+    max-height: 280px;
+    overflow-y: auto;
+    list-style: none;
+    margin: 0;
+    padding: 6px;
+    border-radius: 12px;
+    background: var(--pp-card);
+    border: 1px solid var(--pp-line);
+    box-shadow: 0 18px 40px -16px rgba(15, 23, 42, .35);
+}
+
+.pj-options button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px; border: 0; border-radius: 9px; text-align: left; background: transparent; }
+.pj-options button:hover { background: #f0f9ff; }
+.pj-options button span { flex: 1; min-width: 0; }
+.pj-options b { display: block; font-size: 13.5px; color: var(--pp-ink); }
+.pj-options small { font-size: 12px; color: var(--pp-muted); }
+.pj-options button > i { color: #0284c7; font-size: 18px; }
+.pj-none { padding: 10px; text-align: center; font-size: 13px; color: var(--pp-muted); }
+
+/* chip filters shared by list and board */
+.pj-filters { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.pj-filter {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 36px;
+    padding: 0 14px;
+    border-radius: 99px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--pp-text);
+    background: var(--pp-card);
+    border: 1px solid var(--pp-line);
+    transition: all .15s;
+}
+
+.pj-filter i { font-size: 16px; color: var(--c); }
+.pj-filter b { font-weight: 600; color: var(--pp-muted); }
+.pj-filter:hover { border-color: color-mix(in srgb, var(--c) 40%, transparent); }
+.pj-filter.active { color: #fff; background: var(--c); border-color: transparent; }
+.pj-filter.active i, .pj-filter.active b { color: #fff; }
+
+/* slide-down create panel */
+.pj-panel { margin-bottom: 18px; border-top: 3px solid #0b0f19; }
+.pj-form-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0 14px; }
+.pj-form-grid .span-2 { grid-column: span 2; }
+.pj-form-grid .span-4 { grid-column: 1 / -1; }
+.pj-form-foot { display: flex; justify-content: flex-end; gap: 8px; }
+
+@media (max-width: 991px) {
+    .pj-form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .pj-form-grid .span-2 { grid-column: 1 / -1; }
+}
+
+@media (max-width: 575px) {
+    .pj-form-grid { grid-template-columns: 1fr; }
+}

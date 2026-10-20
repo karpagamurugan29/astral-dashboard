@@ -1,0 +1,58 @@
+/* ---------- Loans & advances ---------- */
+.ln-section-title { display: flex; align-items: center; gap: 10px; margin: 8px 0 12px; font-size: 15px; font-weight: 700; color: var(--pp-ink); }
+.ln-section-title i { font-size: 20px; }
+
+.ln-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 20px; align-items: start; margin-bottom: 26px; }
+
+.ln-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
+.ln-form-grid .span-2 { grid-column: span 2; }
+
+.ln-money { position: relative; }
+.ln-money span { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--pp-muted); font-size: 14px; pointer-events: none; }
+.ln-money .pp-input { padding-left: 28px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.ln-estimate { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; padding: 12px 14px; border-radius: 12px; font-size: 13.5px; color: #075985; background: #f0f9ff; border: 1px solid #bae6fd; }
+.ln-estimate i { font-size: 22px; color: #0284c7; }
+.ln-estimate b { color: #0b0f19; }
+.ln-estimate.warn { color: #92400e; background: #fffbeb; border-color: #fde68a; }
+.ln-estimate.warn i { color: #d97706; }
+
+/* loan cards */
+.ln-cards { display: grid; gap: 12px; }
+.ln-cards.grid { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+
+.ln-card { padding: 16px 18px; border-left: 4px solid var(--c); }
+.ln-card-head { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.ln-card-head b { display: block; font-size: 20px; font-weight: 800; letter-spacing: -.02em; color: var(--pp-ink); font-variant-numeric: tabular-nums; }
+.ln-card-head small { font-size: 12.5px; color: var(--pp-muted); }
+.ln-card-head .py-status { margin-left: auto; }
+
+.ln-who { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.ln-who b { display: block; font-size: 14px; color: var(--pp-ink); }
+.ln-who small { font-size: 12px; color: var(--pp-muted); }
+
+.ln-reason { margin-bottom: 12px; font-size: 13.5px; color: var(--pp-text); }
+
+.ln-progress { margin-bottom: 4px; }
+.ln-progress-head { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--pp-muted); margin-bottom: 6px; }
+.ln-progress-head b { color: var(--pp-ink); }
+.ln-track { height: 8px; border-radius: 99px; background: var(--pp-soft); overflow: hidden; }
+.ln-track span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #10b981, #059669); }
+
+.ln-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+.ln-facts div { padding: 8px 10px; border-radius: 10px; background: var(--pp-soft); }
+.ln-facts small { display: block; font-size: 11px; color: var(--pp-muted); }
+.ln-facts b { font-size: 13.5px; color: var(--pp-ink); font-variant-numeric: tabular-nums; }
+
+.ln-actions { display: grid; grid-template-columns: 1fr 1.3fr; gap: 8px; margin-top: 14px; }
+.ln-actions.single { grid-template-columns: 1fr; }
+.ln-btn { height: 38px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border-radius: 10px; font-size: 13.5px; font-weight: 600; transition: all .15s; }
+.ln-btn.approve { border: 0; color: #fff; background: #059669; }
+.ln-btn.approve:hover { background: #047857; }
+.ln-btn.reject { color: #be123c; background: var(--pp-card); border: 1px solid #fecdd3; }
+.ln-btn.reject:hover { background: #fff1f2; }
+.ln-btn.disburse { border: 0; color: #fff; background: #0b0f19; }
+.ln-btn.disburse:hover { background: #1f2937; }
+
+@media (max-width: 1199px) { .ln-layout { grid-template-columns: 1fr; } }
+@media (max-width: 575px) { .ln-form-grid { grid-template-columns: 1fr; } .ln-form-grid .span-2 { grid-column: auto; } .ln-cards.grid { grid-template-columns: 1fr; } }

@@ -1,0 +1,87 @@
+# ==============================
+# Dependencies
+# ==============================
+node_modules/
+**/node_modules/
+
+# ==============================
+# Environment variables
+# ==============================
+.env
+.env.local
+.env.development
+.env.development.local
+.env.test
+.env.test.local
+.env.production
+.env.production.local
+
+# ==============================
+# Build output
+# ==============================
+dist/
+build/
+.next/
+out/
+
+# ==============================
+# Logs
+# ==============================
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ==============================
+# Runtime files
+# ==============================
+*.log
+*.pid
+*.seed
+*.pid.lock
+
+# ==============================
+# Coverage
+# ==============================
+coverage/
+.nyc_output/
+
+# ==============================
+# Cache
+# ==============================
+.cache/
+.parcel-cache/
+.vite/
+
+# ==============================
+# Uploads / generated files
+# ==============================
+employee-management-be/uploads/*
+employee-management-be/tmp/
+
+# ==============================
+# OS files
+# ==============================
+.DS_Store
+Thumbs.db
+
+# ==============================
+# IDE / Editor
+# ==============================
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/tasks.json
+!.vscode/launch.json
+
+.idea/
+*.swp
+*.swo
+
+# ==============================
+# Temporary files
+# ==============================
+*.tmp
+*.temp
+.vercel
+.env*
