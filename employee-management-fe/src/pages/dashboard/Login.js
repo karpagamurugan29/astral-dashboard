@@ -190,9 +190,9 @@ export const Login = () => {
                         </button>
                     </form>
 
-                    {/* {SHOW_DEMO_LOGINS && DEMO_ACCOUNTS.length > 0 && ( */}
+                    {SHOW_DEMO_LOGINS && DEMO_ACCOUNTS.length > 0 && (
                         <DemoAccounts disabled={submitting} onPick={(a) => { reset({ email: a.email, password: a.password }); OnLogin({ email: a.email, password: a.password }) }} />
-                    {/* )} */}
+                    )}
 
                     <div className="lg-secure">
                         <i className="mdi mdi-shield-check-outline"></i> Secured with encrypted, HTTP-only sessions
