@@ -50,7 +50,7 @@
 /* team */
 .pd-add { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 16px; max-width: 520px; }
 .pd-add .pj-picker { flex: 1; }
-.pd-team { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.pd-team { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr)); gap: 12px; }
 .pd-member { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--pp-line); }
 .pd-member-main { flex: 1; min-width: 0; }
 .pd-member-main a { display: block; font-size: 14px; font-weight: 600; color: var(--pp-ink); text-decoration: none; }

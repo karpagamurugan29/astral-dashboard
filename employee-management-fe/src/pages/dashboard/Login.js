@@ -79,7 +79,7 @@ export const Login = () => {
 
     useEffect(() => {
         dispatch({ type: authActions.CLEAR_AUTH_MESSAGES })
-        reset({ email: '', password: '' })
+        reset({ email: '', password: '', remember: true })
     }, [dispatch, reset])
 
     const onPasswordKey = (e) => setCapsLock(e.getModifierState?.('CapsLock') || false)
@@ -180,7 +180,7 @@ export const Login = () => {
                         </div>
 
                         <label className="lg-remember">
-                            <input type="checkbox" /> Keep me signed in
+                            <input type="checkbox" {...register('remember')} /> Keep me signed in for 30 days
                         </label>
 
                         <button type="submit" className="lg-submit" disabled={submitting}>
@@ -191,7 +191,7 @@ export const Login = () => {
                     </form>
 
                     {SHOW_DEMO_LOGINS && DEMO_ACCOUNTS.length > 0 && (
-                        <DemoAccounts disabled={submitting} onPick={(a) => { reset({ email: a.email, password: a.password }); OnLogin({ email: a.email, password: a.password }) }} />
+                        <DemoAccounts disabled={submitting} onPick={(a) => { reset({ email: a.email, password: a.password, remember: true }); OnLogin({ email: a.email, password: a.password, remember: true }) }} />
                     )}
 
                     <div className="lg-secure">

@@ -48,7 +48,7 @@
 .as-dialog-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 14px 20px; border-top: 1px solid var(--pp-line); }
 
 /* assignments (by person) */
-.ag-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+.ag-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); gap: 16px; }
 .ag-card { padding: 16px 18px; }
 .ag-head { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
 .ag-head a { display: block; font-size: 15px; font-weight: 700; color: var(--pp-ink); text-decoration: none; }

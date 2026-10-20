@@ -19,7 +19,7 @@
 
 /* loan cards */
 .ln-cards { display: grid; gap: 12px; }
-.ln-cards.grid { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+.ln-cards.grid { grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); }
 
 .ln-card { padding: 16px 18px; border-left: 4px solid var(--c); }
 .ln-card-head { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }

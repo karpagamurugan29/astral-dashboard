@@ -14,6 +14,7 @@ import { TaskPipelineDonut } from '../../../components/dashboard/widgets/TaskPip
 import { LeaveMixChart } from '../../../components/dashboard/widgets/LeaveMixChart'
 import { ProjectMomentum } from '../../../components/dashboard/widgets/ProjectMomentum'
 import { AnnouncementsWidget } from '../../../components/dashboard/widgets/AnnouncementsWidget'
+import { AuditHoursTrend, HoursByClient, TeamWeek, DeadlinesWidget, WorkingNowWidget, MyAuditStrip, AttentionWidget } from '../../../components/dashboard/widgets/AuditWidgets'
 import './DashContent.css'
 import { useAccess } from '../../../hooks/useAccess'
 
@@ -42,7 +43,7 @@ const quickActions = [
 
 export const DashContent = () => {
     const dispatch = useDispatch()
-    const { summary, attendanceTrend, taskStatus, leaveBreakdown, projectProgress } = useSelector((state) => state.dashboardReducer || {})
+    const { summary, attendanceTrend, taskStatus, leaveBreakdown, projectProgress, auditInsights } = useSelector((state) => state.dashboardReducer || {})
     const { headcount } = useSelector((state) => state.reportReducer || {})
     const { list: announcements, listLoading: announcementsLoading } = useSelector((state) => state.announcementReducer || {})
     const { pending: pendingLeaves, balance } = useSelector((state) => state.leaveReducer || {})
@@ -62,6 +63,7 @@ export const DashContent = () => {
         dispatch({ type: dashboardActions.GET_TASK_STATUS })
         dispatch({ type: dashboardActions.GET_LEAVE_BREAKDOWN })
         dispatch({ type: dashboardActions.GET_PROJECT_PROGRESS })
+        dispatch({ type: dashboardActions.GET_AUDIT_INSIGHTS })
         dispatch({ type: reportActions.GET_HEADCOUNT_REPORT })
         dispatch({ type: announcementActions.GET_ANNOUNCEMENTS })
         dispatch({ type: attendanceActions.GET_TODAY_ATTENDANCE })
@@ -73,6 +75,12 @@ export const DashContent = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [dispatch, canApprove])
 
+    // Audit widgets (who's working now, hours, approvals waiting) refresh every minute.
+    useEffect(() => {
+        const t = setInterval(() => dispatch({ type: dashboardActions.GET_AUDIT_INSIGHTS }), 60000)
+        return () => clearInterval(t)
+    }, [dispatch])
+
     // Live clock for the attendance panel — minute precision is enough.
     useEffect(() => {
         const timer = setInterval(() => setNow(new Date()), 30000)
@@ -81,7 +89,7 @@ export const DashContent = () => {
 
     useEffect(() => {
         if (window.feather) window.feather.replace()
-    }, [summary, todayAttendance, pendingLeaves, announcements])
+    }, [summary, todayAttendance, pendingLeaves, announcements, auditInsights])
 
     const onCheckIn = () => dispatch({ type: attendanceActions.CHECK_IN, payload: { attendanceType: 'Office' } })
     const onCheckOut = () => dispatch({ type: attendanceActions.CHECK_OUT, payload: {} })
@@ -256,6 +264,38 @@ export const DashContent = () => {
                                     )
                                 })}
                             </div>
+
+                            {/* Seniors: approvals and slipping audits waiting on them, right after the overview. */}
+                            <AttentionWidget attention={auditInsights?.attention} />
+
+                            {canSee('screen:audits') && auditInsights && (
+                                <>
+                                    <div className="db-section">
+                                        <h2>Audit work</h2>
+                                        <p>{auditInsights.scope === 'firm' ? 'Hours, clients, deadlines and who is working right now — across the firm' : 'Your hours, your audits and their deadlines'}</p>
+                                    </div>
+                                    <MyAuditStrip me={auditInsights.me} statusCounts={auditInsights.statusCounts} />
+                                    <div className="row">
+                                        <div className="col-xl-8">
+                                            <AuditHoursTrend daily={auditInsights.daily} scope={auditInsights.scope} />
+                                        </div>
+                                        <div className="col-xl-4">
+                                            <WorkingNowWidget activeNow={auditInsights.activeNow} />
+                                        </div>
+                                    </div>
+                                    <div className="row">
+                                        <div className="col-xl-4 col-md-6">
+                                            <DeadlinesWidget deadlines={auditInsights.deadlines} />
+                                        </div>
+                                        <div className="col-xl-4 col-md-6">
+                                            <HoursByClient byClient={auditInsights.byClient} />
+                                        </div>
+                                        <div className="col-xl-4 col-md-12">
+                                            <TeamWeek byPerson={auditInsights.byPerson} weekStart={auditInsights.weekStart} />
+                                        </div>
+                                    </div>
+                                </>
+                            )}
 
                             <div className="db-section">
                                 <h2>Insights</h2>

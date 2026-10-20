@@ -6,6 +6,18 @@ const sessionHandler = function* (result) {
   return yield result;
 };
 
+// Login token for the Authorization header. Phones block the API's cross-site cookie, so the
+// header is what keeps them signed in; the cookie still works where the browser allows it.
+export const TOKEN_KEY = 'authToken';
+const authHeader = () => {
+  try {
+    const t = localStorage.getItem(TOKEN_KEY);
+    return t ? { Authorization: `Bearer ${t}` } : {};
+  } catch {
+    return {};
+  }
+};
+
 const createRequest = function* (url, data, method, headers, sessionAlert) {
   const { contentType, ...extra } = headers || {};
 
@@ -16,6 +28,7 @@ const createRequest = function* (url, data, method, headers, sessionAlert) {
     headers: {
       'Content-type': contentType || 'application/json',
       'Cookie': store?.getState()?.authReducer?.sessionId,
+      ...authHeader(),
       ...extra
     }
   });
@@ -27,6 +40,8 @@ const createRequest = function* (url, data, method, headers, sessionAlert) {
   if (contentTypeHeader?.includes('application/json')) {
     // It's JSON
     const responseJson = yield result?.json();
+    // HTTP status rides along so callers can tell "signed out" (401) from a passing server error.
+    if (responseJson && typeof responseJson === 'object') Object.defineProperty(responseJson, 'httpStatus', { value: result.status });
     return yield sessionHandler(responseJson, sessionAlert);
   } else {
     return yield sessionHandler(result?.text(), sessionAlert);

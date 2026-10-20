@@ -3,7 +3,10 @@ import employeeModel from "../models/employeeModel.js";
 
 const authMiddleWare = async (req, res, next) => {
     try {
-        const token = req.cookies.token;
+        // Cookie first; otherwise "Authorization: Bearer <token>" for browsers that block the
+        // cross-site cookie (most phones).
+        const header = req.headers.authorization || "";
+        const token = req.cookies.token || (header.startsWith("Bearer ") ? header.slice(7) : null);
 
         if (!token) {
             return res.status(401).json({

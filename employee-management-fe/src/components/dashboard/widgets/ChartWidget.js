@@ -40,7 +40,7 @@ export const ChartWidget = ({ title, icon, accent = '#0ea5e9', graph, columns, r
                 </div>
 
                 {isEmpty ? (
-                    <div className="chart-widget-empty" style={{ height }}>
+                    <div className="chart-widget-empty" style={{ height: Math.min(height, 160) }}>
                         <i data-feather="inbox"></i>
                         <span>No data yet</span>
                     </div>

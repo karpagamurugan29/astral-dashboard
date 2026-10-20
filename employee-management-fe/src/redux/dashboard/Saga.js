@@ -10,6 +10,7 @@ const rootSaga = function* () {
     yield takeEvery(actions.GET_TASK_STATUS, fetchTaskStatus),
     yield takeEvery(actions.GET_LEAVE_BREAKDOWN, fetchLeaveBreakdown),
     yield takeEvery(actions.GET_PROJECT_PROGRESS, fetchProjectProgress),
+    yield takeEvery(actions.GET_AUDIT_INSIGHTS, fetchAuditInsights),
   ]);
 };
 
@@ -44,6 +45,15 @@ const fetchLeaveBreakdown = function* () {
   try {
     const result = yield Get(`${API_URL}/dashboard/leave-breakdown`);
     if (result?.success) yield put({ type: actions.SET_LEAVE_BREAKDOWN, payload: result?.data });
+  } catch (err) {
+    yield put({ type: actions.SET_DASHBOARD_ERROR, payload: err.message });
+  }
+};
+
+const fetchAuditInsights = function* () {
+  try {
+    const result = yield Get(`${API_URL}/dashboard/audit-insights`);
+    if (result?.success) yield put({ type: actions.SET_AUDIT_INSIGHTS, payload: result?.data });
   } catch (err) {
     yield put({ type: actions.SET_DASHBOARD_ERROR, payload: err.message });
   }

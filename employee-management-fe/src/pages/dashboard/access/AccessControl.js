@@ -214,7 +214,7 @@ const EmployeesTab = ({ data, saving }) => {
                         <div className="rl-note"><i className="mdi mdi-shield-star-outline"></i><span>Admins always have full access. Change their role to restrict them.</span></div>
                     ) : (
                         <>
-                            <div className="ac-legend"><span><i className="mdi mdi-account-badge-outline"></i>Role</span><span><i className="mdi mdi-badge-account-horizontal-outline"></i>Designation</span><span><i className="mdi mdi-office-building-outline"></i>Department</span><span><b>Inherit</b> follows role + designation + department · <b>Allow</b> / <b>Block</b> override for this person</span></div>
+                            <div className="ac-legend"><span><i className="mdi mdi-shield-account-outline"></i>Role</span><span><i className="mdi mdi-badge-account-horizontal-outline"></i>Designation</span><span><i className="mdi mdi-office-building-outline"></i>Department</span><span><b>Inherit</b> follows role + designation + department · <b>Allow</b> / <b>Block</b> override for this person</span></div>
                             {sectionsOf(data).map((sec) => (
                             <React.Fragment key={sec.title}>
                             <h4 className="ac-section">{sec.title}<small>{sec.hint}</small></h4>
@@ -230,7 +230,7 @@ const EmployeesTab = ({ data, saving }) => {
                                         <div key={m} className={`ac-row ${result ? 'yes' : 'no'}`}>
                                             <div className="ac-mod"><ModuleIcon m={m} /><span><b>{label(m)}</b><small>{help(m)}</small></span></div>
                                             <span className="ac-src">
-                                                <i className={`mdi mdi-account-badge-outline ${fromRole ? 'on' : ''}`} title={fromRole ? 'Role gives access' : 'Role does not'}></i>
+                                                <i className={`mdi mdi-shield-account-outline ${fromRole ? 'on' : ''}`} title={fromRole ? 'Role gives access' : 'Role does not'}></i>
                                                 <i className={`mdi mdi-badge-account-horizontal-outline ${fromDesig ? 'on' : ''}`} title={fromDesig ? 'Designation gives access' : 'Designation does not'}></i>
                                                 <i className={`mdi mdi-office-building-outline ${fromDept ? 'on' : ''}`} title={fromDept ? 'Department gives access' : 'Department does not'}></i>
                                             </span>

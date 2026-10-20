@@ -50,7 +50,7 @@
 .ac-total b { font-size: 18px; color: var(--pp-ink); }
 
 /* department toggles */
-.ac-toggles { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; }
+.ac-toggles { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); gap: 8px; }
 .ac-toggle { display: flex; align-items: center; gap: 10px; margin: 0; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--pp-line); cursor: pointer; transition: all .12s; }
 .ac-toggle input { position: absolute; opacity: 0; pointer-events: none; }
 .ac-toggle:hover { background: var(--pp-soft); }

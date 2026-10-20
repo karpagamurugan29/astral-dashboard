@@ -50,9 +50,10 @@ export const formatTime = (value) => {
 }
 
 export const hoursLabel = (h) => {
-    const n = Number(h) || 0
-    const hrs = Math.floor(n)
-    const mins = Math.round((n - hrs) * 60)
+    // Round to whole minutes first, so 8.999h reads "9h", not "8h 60m".
+    const total = Math.round((Number(h) || 0) * 60)
+    const hrs = Math.floor(total / 60)
+    const mins = total % 60
     return mins ? `${hrs}h ${mins}m` : `${hrs}h`
 }
 

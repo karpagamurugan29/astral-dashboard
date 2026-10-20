@@ -21,7 +21,7 @@
 .la-filter.active { color: #fff; background: var(--c); border-color: transparent; }
 .la-filter.active i, .la-filter.active b { color: #fff; }
 
-.la-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 16px; }
+.la-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(380px, 100%), 1fr)); gap: 16px; }
 
 .la-card { display: flex; flex-direction: column; border-top: 3px solid var(--c); }
 

@@ -60,7 +60,7 @@
 .ed-count button:hover { text-decoration: underline; }
 
 /* table */
-.ed-table-wrap { overflow: hidden; }
+.ed-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
 .ed-table {
     width: 100%;
@@ -231,7 +231,7 @@
 /* cards */
 .ed-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(250px, 100%), 1fr));
     gap: 16px;
 }
 

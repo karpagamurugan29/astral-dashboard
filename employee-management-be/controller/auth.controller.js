@@ -51,7 +51,7 @@ export const register = async (req, res) => {
 // Login User
 export const login = async (req, res) => {
     try {
-        const { email, password } = req.body;
+        const { email, password, remember } = req.body;
 
         if (!email || !password) {
             return res.status(400).json({
@@ -96,25 +96,31 @@ export const login = async (req, res) => {
             },
             process.env.JWT_SECRET,
             {
-                expiresIn: process.env.JWT_EXPIRES_IN || "1d",
+                // "Keep me signed in" → 30 days; otherwise the configured default (one day).
+                expiresIn: remember ? "30d" : (process.env.JWT_EXPIRES_IN || "1d"),
             }
         );
+        const maxAge = (remember ? 30 : 1) * 24 * 60 * 60 * 1000;
 
         // Store JWT in Cookie
         res.cookie("token", token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production", // true on Vercel (HTTPS), false for local http dev
             sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-            maxAge: 24 * 60 * 60 * 1000,
+            maxAge,
         });
 
         const response = user.toObject();
         delete response.password;
 
+        // The token is also returned for the Authorization header: the frontend and API live on
+        // different domains, and mobile browsers (Safari above all) block that cross-site cookie,
+        // which signed people out right after logging in on a phone.
         return res.status(200).json({
             success: true,
             message: "Login Successfully",
             user: response,
+            token,
         });
     } catch (err) {
         return res.status(500).json({

@@ -50,7 +50,7 @@
 .ea-section i { font-size: 20px; }
 .ea-count { min-width: 22px; padding: 0 7px; border-radius: 99px; font-size: 12px; line-height: 20px; text-align: center; color: #fff; background: var(--c); }
 
-.ea-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; margin-bottom: 26px; }
+.ea-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr)); gap: 16px; margin-bottom: 26px; }
 .ea-card { display: flex; flex-direction: column; border-top: 3px solid var(--c); overflow: hidden; }
 .ea-head { display: flex; align-items: center; gap: 12px; padding: 16px 18px 10px; }
 .ea-who { flex: 1; min-width: 0; }

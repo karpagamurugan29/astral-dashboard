@@ -8,6 +8,7 @@ import { applyLeave, approveLeave, cancelLeave, getAllLeaves, leaveBalance, leav
 import { getOnboardingList, updateOnboardingTask, initiateOffboarding, getOffboardingList, updateOffboardingTask, completeOffboarding } from "../controller/lifecycle.controller.js";
 import { createProject, updateProject, deleteProject, getProjectById, getAllProjects, addProjectMember, removeProjectMember } from "../controller/project.controller.js";
 import { getClients, getClientById, createClient, updateClient, deleteClient } from "../controller/auditClient.controller.js";
+import { getAuditInsights } from "../controller/auditInsights.controller.js";
 import { getLocationLog } from "../controller/locationLog.controller.js";
 import { createAudit, updateAudit, deleteAudit, getAuditById, getAllAudits, addAuditMember, removeAuditMember, startAuditTimer, stopAuditTimer, getMyActiveAuditTimer } from "../controller/auditEngagement.controller.js";
 import { getDepartments, createDepartment, updateDepartment, deleteDepartment } from "../controller/department.controller.js";
@@ -257,6 +258,7 @@ router.get("/dashboard/headcount", authMiddleWare, getHeadcountByDepartment);
 router.get("/dashboard/task-status", authMiddleWare, getTaskStatusBreakdown);
 router.get("/dashboard/leave-breakdown", authMiddleWare, getLeaveBreakdown);
 router.get("/dashboard/project-progress", authMiddleWare, getProjectProgress);
+router.get("/dashboard/audit-insights", authMiddleWare, getAuditInsights);
 
 // Notifications
 router.get("/notifications", authMiddleWare, getNotifications);

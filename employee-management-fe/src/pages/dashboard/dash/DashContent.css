@@ -555,6 +555,15 @@
 }
 
 @media (max-width: 575px) {
+    /* one card, not a card inside a card: the hero loses its frame and the punch card leads */
+    .db-hero { padding: 16px; gap: 16px; border-radius: 16px; }
+    .db-hero h1 { font-size: 22px; }
+    .db-punch { padding: 16px; }
+    .db-clock { font-size: 26px; white-space: nowrap; }
+    .db-punch-times { gap: 6px; }
+    .db-punch-times div { padding: 8px; }
+    .db-punch-times span { font-size: 10.5px; white-space: nowrap; }
+    .db-punch-times b { font-size: 14px; white-space: nowrap; }
     .db-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
     .db-kpi { padding: 14px; }
     .db-kpi-value { font-size: 22px; }

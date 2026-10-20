@@ -1,5 +1,5 @@
-import { all, put, takeEvery } from "redux-saga/effects";
-import { Get, Post, Put } from "../../components/common/ApiCall";
+import { all, delay, put, takeEvery } from "redux-saga/effects";
+import { Get, Post, Put, TOKEN_KEY } from "../../components/common/ApiCall";
 import { API_URL } from "../../utils/Constants";
 import actions from "./Actions";
 
@@ -22,6 +22,7 @@ const homePageLogin = function* (data) {
   try {
     const result = yield Post(`${API_URL}/login`, payload)
     if (result?.success) {
+      if (result.token) localStorage.setItem(TOKEN_KEY, result.token)
       navigate("/dashboard")
       yield put({ type: actions.SET_AUTH, payload: result?.user })
       localStorage.setItem('session', true)
@@ -45,40 +46,48 @@ const logoutDash = function* (data) {
     // Re-throwing here would kill the root saga and break every later API call.
   } finally {
     localStorage.removeItem('session')
+    localStorage.removeItem(TOKEN_KEY)
     // Wipe every reducer so the next user never sees the previous user's data.
     yield put({ type: actions.RESET_STORE })
     navigate("/", { replace: true })
   }
 };
 
+const signedOut = function* (navigate) {
+  localStorage.removeItem("session");
+  localStorage.removeItem(TOKEN_KEY);
+  yield put({ type: actions.SET_AUTH, payload: {} });
+  navigate("/");
+};
+
+// Only a 401 (no / expired / invalid login) signs someone out. A dropped mobile connection or a
+// slow server start used to log people out too; those are retried instead, and the user stays put.
 const checkSession = function* (action) {
   const { navigate } = action;
 
-  try {
-    const result = yield Get(`${API_URL}/session`);
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    try {
+      const result = yield Get(`${API_URL}/session`);
 
-    if (result?.success) {
-      yield put({ type: actions.SET_AUTH, payload: result.user, });
-      localStorage.setItem("session", "true");
-      yield fetchMyPermissions()
-    } else {
-      localStorage.removeItem("session");
-      yield put({
-        type: actions.SET_AUTH,
-        payload: {},
-      });
-
-      navigate("/");
+      if (result?.success) {
+        yield put({ type: actions.SET_AUTH, payload: result.user, });
+        localStorage.setItem("session", "true");
+        yield fetchMyPermissions()
+        return;
+      }
+      if (result?.httpStatus === 401 || result?.httpStatus === 404) {
+        yield signedOut(navigate);
+        return;
+      }
+    } catch (err) {
+      // network error — fall through and retry
     }
-  } catch (err) {
-    localStorage.removeItem("session");
-    yield put({
-      type: actions.SET_AUTH,
-      payload: {},
-    });
-
-    navigate("/");
+    yield delay(1500 * (attempt + 1));
   }
+
+  // Still unreachable: keep the local session so a reload can try again, but don't sit on a
+  // half-loaded screen if they were never signed in.
+  if (!localStorage.getItem("session")) yield signedOut(navigate);
 };
 
 // The set of screens/actions this role is currently allowed — fetched once per

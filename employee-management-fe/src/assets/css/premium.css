@@ -180,3 +180,32 @@
   from { transform: translateX(-100%); }
   to { transform: translateX(0); }
 }
+
+/* ---------- Tablet & phone ---------- */
+@media (max-width: 991px) {
+  .dash-body-right { padding: 12px 0 0 !important; }
+  .page-content { padding-left: 16px !important; padding-right: 16px !important; }
+  .page-content > .container-fluid { padding-left: 0; padding-right: 0; }
+}
+
+@media (max-width: 576px) {
+  /* edge-to-edge feel: 10px gutters instead of 24 */
+  .page-content { padding-left: 10px !important; padding-right: 10px !important; padding-bottom: calc(24px + env(safe-area-inset-bottom)) !important; }
+
+  /* iOS zooms the page when a focused field's text is under 16px */
+  .pp-input, .pp-select, .form-control, .form-select, .lg-input input, textarea { font-size: 16px !important; }
+
+  /* filter chips: one swipeable row instead of a tall stack */
+  .pp .pj-filters { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; margin-right: -10px; padding-right: 10px; padding-bottom: 2px; }
+  .pp .pj-filters::-webkit-scrollbar { display: none; }
+  .pp .pj-filter { flex: none; }
+  .pl-toolbar { gap: 8px; }
+  .pp .pl-toolbar .pp-search, .pp .pl-toolbar > .pp-select { flex: 1 1 100%; max-width: none; width: 100%; }
+
+  .pp-card { border-radius: 14px; }
+  .at-tiles { gap: 10px; }
+
+  /* topbar: tighter, the avatar never pushed off-screen */
+  #page-topbar .navbar-header { padding-right: 6px; }
+  #page-topbar .header-item { padding-left: 8px; padding-right: 8px; }
+}

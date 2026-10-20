@@ -3,7 +3,7 @@
 .pl-toolbar .pp-search { flex: 1 1 240px; max-width: 320px; }
 .pl-toolbar .pp-select { width: auto; }
 
-.pl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+.pl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); gap: 16px; }
 
 .pl-card { position: relative; display: flex; flex-direction: column; padding: 18px 20px 16px; border-top: 4px solid var(--c); transition: transform .2s, box-shadow .2s; }
 .pl-card:hover { transform: translateY(-2px); box-shadow: 0 16px 32px -18px rgba(15, 23, 42, .35); }

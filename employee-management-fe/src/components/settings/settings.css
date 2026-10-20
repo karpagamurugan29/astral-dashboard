@@ -9,7 +9,7 @@
 .st-icon { flex-shrink: 0; display: grid; place-items: center; border-radius: 12px; color: var(--c); background: color-mix(in srgb, var(--c) 12%, transparent); }
 
 /* ---------- branches ---------- */
-.br-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+.br-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); gap: 16px; }
 .br-card { display: flex; flex-direction: column; padding: 18px 20px; border-top: 4px solid var(--c); }
 .br-card.editing { box-shadow: 0 0 0 3px rgba(14, 165, 233, .25); }
 .br-top { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 12px; }
@@ -30,7 +30,7 @@
 /* ---------- roles ---------- */
 .rl-note { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; padding: 10px 14px; border-radius: 12px; font-size: 13px; color: #075985; background: #f0f9ff; border: 1px solid #bae6fd; }
 .rl-note i { font-size: 18px; color: #0284c7; }
-.rl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(440px, 1fr)); gap: 16px; }
+.rl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(440px, 100%), 1fr)); gap: 16px; }
 .rl-card { display: flex; flex-direction: column; border-top: 4px solid var(--c); }
 .rl-card.dirty { box-shadow: 0 0 0 3px rgba(245, 158, 11, .25); }
 .rl-head { display: flex; align-items: center; gap: 12px; padding: 16px 18px; border-bottom: 1px solid var(--pp-line); }
