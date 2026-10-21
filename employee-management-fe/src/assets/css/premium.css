@@ -147,7 +147,14 @@
 /* Topbar brand — star mark + typeset wordmark, crisp at every size (the wide logo image
    turned into unreadable grey text once scaled to header height) */
 /* menu button sits first (far left), the brand after it; together they span the sidebar's 250px */
-#page-topbar .navbar-brand-box { display: flex; align-items: center; width: 196px; padding: 0 12px 0 6px; }
+
+#page-topbar .navbar-brand-box {
+    display: flex;
+    align-items: center;
+    width: 196px;
+    padding: 0 12px 0 6px;
+    border: none;
+}
 .hd-brand { display: inline-flex !important; align-items: center; gap: 10px; line-height: 1 !important; text-decoration: none; }
 .hd-brand-mark { width: 36px; height: 34px; object-fit: contain; flex: none; }
 .hd-brand-text { display: flex; flex-direction: column; gap: 3px; white-space: nowrap; }

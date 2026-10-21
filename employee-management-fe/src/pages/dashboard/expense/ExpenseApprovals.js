@@ -5,7 +5,7 @@ import expenseActions from '../../../redux/expense/Actions'
 import { PeopleShell, Avatar, EmptyState, ErrorBanner, fullName } from '../../../components/people/PeopleUI'
 import { money, moneyShort } from '../../../components/payroll/PayrollUI'
 import {
-    EXPENSE_ROOT, CATEGORIES, ExpenseStatus, categoryMeta, CategoryIcon, CategoryTag, ReceiptLink, receiptHref, isImage, ownerId,
+    EXPENSE_ROOT, CATEGORIES, ExpenseStatus, categoryMeta, CategoryIcon, CategoryTag, ReceiptLink, ReceiptThumb, receiptHref, ownerId,
 } from '../../../components/expense/ExpenseUI'
 import '../../../components/attendance/attendance.css'
 import '../../../components/payroll/payroll.css'
@@ -119,9 +119,7 @@ export const ExpenseApprovals = () => {
                                         </div>
                                         {ex.description && <p className="ea-desc">{ex.description}</p>}
                                     </div>
-                                    {href && (isImage(ex.receiptUrl)
-                                        ? <a href={href} target="_blank" rel="noreferrer" title="Open bill"><img className="ea-thumb" src={href} alt="Bill" /></a>
-                                        : <a className="ea-thumb-link" href={href} target="_blank" rel="noreferrer" title="Open bill"><i className="mdi mdi-file-pdf-box"></i></a>)}
+                                    {href && <ReceiptThumb url={ex.receiptUrl} />}
                                 </div>
 
                                 {isRejecting && (

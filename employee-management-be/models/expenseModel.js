@@ -30,6 +30,11 @@ const ExpenseSchema = new mongoose.Schema(
             type: String,
             default: "",
         },
+        // the bill, stored privately in MongoDB (GridFS "expenseReceipts")
+        receiptFileId: {
+            type: mongoose.Schema.Types.ObjectId,
+            default: null,
+        },
         status: {
             type: String,
             enum: ["Pending", "Approved", "Rejected", "Reimbursed"],

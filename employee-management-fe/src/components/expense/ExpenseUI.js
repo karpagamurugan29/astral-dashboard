@@ -1,5 +1,6 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { API_URL } from '../../utils/Constants'
+import { fileBlobUrl } from '../chat/chatApi'
 import './expense.css'
 
 /* -------------------------------------------------------------------------- */
@@ -50,11 +51,32 @@ const SERVER_ORIGIN = API_URL.replace(/\/api$/, '')
 export const receiptHref = (url) => (url ? (/^https?:\/\//.test(url) ? url : `${SERVER_ORIGIN}${url}`) : null)
 export const isImage = (url) => /\.(png|jpe?g|gif|webp)$/i.test(url || '')
 
+// New bills are private (/expenses/:id/receipt/…): fetch them with the login token.
+const isPrivate = (url) => /^\/expenses\//.test(url || '')
+export const useReceiptSrc = (url) => {
+    const [src, setSrc] = useState(isPrivate(url) ? null : receiptHref(url))
+    useEffect(() => {
+        if (!isPrivate(url)) { setSrc(receiptHref(url)); return undefined }
+        let live = true
+        fileBlobUrl(url).then((u) => live && setSrc(u)).catch(() => live && setSrc(null))
+        return () => { live = false }
+    }, [url])
+    return src
+}
+
+export const ReceiptThumb = ({ url }) => {
+    const src = useReceiptSrc(url)
+    if (!src) return <span className="ea-thumb-link" title="Loading bill"><i className="mdi mdi-loading mdi-spin"></i></span>
+    return isImage(url)
+        ? <a href={src} target="_blank" rel="noreferrer" title="Open bill"><img className="ea-thumb" src={src} alt="Bill" /></a>
+        : <a className="ea-thumb-link" href={src} target="_blank" rel="noreferrer" title="Open bill"><i className="mdi mdi-file-pdf-box"></i></a>
+}
+
 export const ReceiptLink = ({ url, compact = false }) => {
-    const href = receiptHref(url)
-    if (!href) return <span className="ex-noreceipt" title="No bill attached"><i className="mdi mdi-receipt"></i>{!compact && 'No bill'}</span>
+    const href = useReceiptSrc(url)
+    if (!url) return <span className="ex-noreceipt" title="No bill attached"><i className="mdi mdi-receipt"></i>{!compact && 'No bill'}</span>
     return (
-        <a className="ex-receipt" href={href} target="_blank" rel="noreferrer" title="Open bill in a new tab" onClick={(e) => e.stopPropagation()}>
+        <a className="ex-receipt" href={href || undefined} target="_blank" rel="noreferrer" title="Open bill in a new tab" onClick={(e) => { e.stopPropagation(); if (!href) e.preventDefault() }}>
             <i className={`mdi ${/\.pdf$/i.test(url) ? 'mdi-file-pdf-box' : 'mdi-image-outline'}`}></i>{!compact && 'View bill'}
         </a>
     )

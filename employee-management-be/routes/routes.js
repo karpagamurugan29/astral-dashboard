@@ -15,7 +15,7 @@ import { getLocationLog } from "../controller/locationLog.controller.js";
 import { createAudit, updateAudit, deleteAudit, getAuditById, getAllAudits, addAuditMember, removeAuditMember, startAuditTimer, stopAuditTimer, getMyActiveAuditTimer } from "../controller/auditEngagement.controller.js";
 import { getDepartments, createDepartment, updateDepartment, deleteDepartment } from "../controller/department.controller.js";
 import { getDesignations, createDesignation, updateDesignation, deleteDesignation } from "../controller/designation.controller.js";
-import { getExpenses, createExpense, updateExpenseStatus, deleteExpense } from "../controller/expense.controller.js";
+import { getExpenses, createExpense, updateExpenseStatus, deleteExpense, getReceipt } from "../controller/expense.controller.js";
 import { getAssets, createAsset, updateAsset, assignAsset, returnAsset, deleteAsset } from "../controller/asset.controller.js";
 import { getTickets, createTicket, updateTicketStatus, addTicketComment } from "../controller/ticket.controller.js";
 import { getAnnouncements, createAnnouncement, deleteAnnouncement } from "../controller/announcement.controller.js";
@@ -206,7 +206,9 @@ router.put("/shifts/:id", authMiddleWare, adminOnly("attendance"), updateShift);
 
 // Expenses
 router.get("/expenses", authMiddleWare, getExpenses);
-router.post("/expenses", authMiddleWare, upload.single("receipt"), createExpense);
+router.post("/expenses", authMiddleWare, docUpload.single("receipt"), createExpense);
+router.get("/expenses/:id/receipt", authMiddleWare, getReceipt);
+router.get("/expenses/:id/receipt/:name", authMiddleWare, getReceipt);
 router.put("/expenses/:id/status", authMiddleWare, adminHRManager("expenses"), updateExpenseStatus);
 router.delete("/expenses/:id", authMiddleWare, deleteExpense);
 

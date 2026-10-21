@@ -63,10 +63,14 @@ export const login = async (req, res) => {
 
         const user = await employeeModel.findOne({ email });
 
-        if (!user) {
-            return res.status(404).json({
+        // Same answer for an unknown email and a wrong password, so the login can't be used to
+        // find out which emails have accounts.
+        const matchPass = user ? await bcrypt.compare(password, user.password) : false;
+
+        if (!user || !matchPass) {
+            return res.status(400).json({
                 success: false,
-                message: "User not found",
+                message: "Email or password is incorrect.",
             });
         }
 
@@ -74,18 +78,6 @@ export const login = async (req, res) => {
             return res.status(403).json({
                 success: false,
                 message: "This account is no longer active. Contact your HR administrator.",
-            });
-        }
-
-        const matchPass = await bcrypt.compare(
-            password,
-            user.password
-        );
-
-        if (!matchPass) {
-            return res.status(400).json({
-                success: false,
-                message: "Invalid password",
             });
         }
 

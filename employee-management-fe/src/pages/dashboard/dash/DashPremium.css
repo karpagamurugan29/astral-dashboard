@@ -2,7 +2,7 @@
    Premium dashboard — compact. A 14px rhythm, small uppercase labels,
    gradient KPI cards, and one panel style that every widget adopts.
    ========================================================================== */
-.pdb { --pd-gap: 14px; --pd-radius: 14px; --pd-line: var(--bs-border-color, #e8ebf1); --pd-card: var(--bs-secondary-bg, #fff); --pd-ink: var(--bs-emphasis-color, #0f172a); --pd-muted: #64748b; background: #f5f7fb; }
+.pdb { --pd-gap: 14px; --pd-radius: 16px; --pd-line: var(--bs-border-color, #e8ebf1); --pd-card: var(--bs-secondary-bg, #fff); --pd-ink: var(--bs-emphasis-color, #0f172a); --pd-muted: #64748b; background: linear-gradient(180deg, #f3f5f9 0%, #f7f8fb 320px, #f7f8fb 100%); }
 .pdb .container-fluid > .row { --bs-gutter-x: var(--pd-gap); }
 .pdb .row > [class*="col-"] { margin-bottom: 0; }
 
@@ -25,31 +25,33 @@
 
 /* ---------- KPI cards ---------- */
 .pk-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--pd-gap); margin-bottom: var(--pd-gap); }
-.pk-card { position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 8px; min-height: 128px; padding: 12px 14px; border-radius: var(--pd-radius); color: #fff; text-decoration: none; box-shadow: 0 10px 24px -16px rgba(15, 23, 42, .55); transition: transform .15s, box-shadow .15s; }
-.pk-card::after { content: ""; position: absolute; right: -30px; top: -30px; width: 110px; height: 110px; border-radius: 50%; background: rgba(255, 255, 255, .1); pointer-events: none; }
-.pk-card.is-link:hover { transform: translateY(-2px); box-shadow: 0 16px 30px -16px rgba(15, 23, 42, .6); color: #fff; }
-.pk-card.tone-violet { background: linear-gradient(135deg, #6d5dfc, #8b5cf6 60%, #a855f7); }
-.pk-card.tone-emerald { background: linear-gradient(135deg, #059669, #10b981); }
-.pk-card.tone-sunset { background: linear-gradient(135deg, #f97316, #ef4444); }
-.pk-card.tone-ocean { background: linear-gradient(135deg, #2563eb, #0ea5e9); }
-.pk-card.tone-magenta { background: linear-gradient(135deg, #c026d3, #ec4899); }
-.pk-top { display: flex; align-items: center; gap: 7px; }
-.pk-icon { width: 24px; height: 24px; display: grid; place-items: center; border-radius: 7px; font-size: 14px; background: rgba(255, 255, 255, .22); }
-.pk-label { font-size: 10.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; opacity: .95; }
-.pk-body { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+/* KPI cards: white surface, colour used only as an accent (icon, top stripe, ring, bars) */
+.pk-card { --t: #4f46e5; position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 8px; min-height: 128px; padding: 14px 15px 13px; border-radius: var(--pd-radius); color: var(--pd-ink); text-decoration: none; background: #fff; border: 1px solid var(--pd-line); box-shadow: 0 1px 2px rgba(15, 23, 42, .04), 0 12px 28px -24px rgba(15, 23, 42, .35); transition: transform .15s, box-shadow .15s, border-color .15s; }
+.pk-card::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: linear-gradient(90deg, var(--t), color-mix(in srgb, var(--t) 35%, transparent)); }
+.pk-card::after { content: ""; position: absolute; right: -46px; top: -46px; width: 140px; height: 140px; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--t) 12%, transparent), transparent 70%); pointer-events: none; }
+.pk-card.is-link:hover { transform: translateY(-2px); color: var(--pd-ink); border-color: color-mix(in srgb, var(--t) 35%, var(--pd-line)); box-shadow: 0 18px 34px -22px color-mix(in srgb, var(--t) 55%, rgba(15, 23, 42, .5)); }
+.pk-card.tone-violet { --t: #4f46e5; }
+.pk-card.tone-emerald { --t: #059669; }
+.pk-card.tone-sunset { --t: #c2410c; }
+.pk-card.tone-ocean { --t: #0369a1; }
+.pk-card.tone-magenta { --t: #be185d; }
+.pk-top { position: relative; z-index: 1; display: flex; align-items: center; gap: 8px; }
+.pk-icon { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 8px; font-size: 15px; color: var(--t); background: color-mix(in srgb, var(--t) 11%, #fff); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--t) 16%, transparent); }
+.pk-label { font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--pd-muted); }
+.pk-body { position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .pk-main { min-width: 0; }
-.pk-value { font-size: 24px; font-weight: 800; letter-spacing: -.02em; line-height: 1.1; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.pk-value small { font-size: 12px; font-weight: 600; opacity: .85; }
-.pk-sub { margin-top: 3px; font-size: 11px; line-height: 1.35; opacity: .9; }
-.pk-legend { display: flex; gap: 8px; margin-top: 4px; font-size: 10.5px; }
-.pk-legend i { display: inline-block; width: 6px; height: 6px; margin-right: 4px; border-radius: 50%; background: #fff; }
+.pk-value { font-size: 26px; font-weight: 800; letter-spacing: -.025em; line-height: 1.1; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--pd-ink); }
+.pk-value small { font-size: 13px; font-weight: 600; color: var(--pd-muted); }
+.pk-sub { margin-top: 3px; font-size: 11.5px; line-height: 1.35; color: var(--pd-muted); }
+.pk-legend { display: flex; gap: 8px; margin-top: 4px; font-size: 10.5px; color: var(--pd-muted); }
+.pk-legend i { display: inline-block; width: 6px; height: 6px; margin-right: 4px; border-radius: 50%; background: var(--t); }
 .pk-card .pd-ring { flex: none; }
-.pk-rows { display: flex; flex-direction: column; gap: 3px; margin-top: auto; }
-.pk-row { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; align-items: center; gap: 6px; font-size: 10.5px; }
-.pk-row span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: .9; }
-.pk-row b { font-variant-numeric: tabular-nums; }
-.pk-bar { height: 4px; border-radius: 99px; background: rgba(255, 255, 255, .25); overflow: hidden; }
-.pk-bar span { display: block; height: 100%; border-radius: inherit; background: #fff; }
+.pk-rows { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 4px; margin-top: auto; }
+.pk-row { display: grid; grid-template-columns: 70px minmax(0, 1fr) auto; align-items: center; gap: 8px; font-size: 11px; color: #475569; }
+.pk-row span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pk-row b { font-variant-numeric: tabular-nums; color: var(--pd-ink); font-weight: 700; }
+.pk-bar { height: 5px; border-radius: 99px; background: #eef1f5; overflow: hidden; }
+.pk-bar span { display: block; height: 100%; border-radius: inherit; background: var(--t); }
 
 /* ---------- panel (and every legacy widget card restyled to match) ---------- */
 .pdb .pp-panel, .pdb .card { margin-bottom: var(--pd-gap); border-radius: var(--pd-radius); border: 1px solid var(--pd-line); background: var(--pd-card); box-shadow: 0 1px 2px rgba(15, 23, 42, .04); }

@@ -1,5 +1,5 @@
 import { all, put, takeEvery } from "redux-saga/effects";
-import { Get, Post, Put, Delete } from "../../components/common/ApiCall";
+import { Get, Post, Put, Delete, TOKEN_KEY } from "../../components/common/ApiCall";
 import { API_URL } from "../../utils/Constants";
 import actions from "./Actions";
 
@@ -39,7 +39,10 @@ const addExpense = function* (action) {
       const formData = new FormData();
       Object.entries(payload).forEach(([key, value]) => formData.append(key, value));
       formData.append("receipt", receiptFile);
-      const response = yield fetch(`${API_URL}/expenses`, { method: "POST", body: formData, credentials: "include" });
+      let token = null;
+      try { token = localStorage.getItem(TOKEN_KEY); } catch { /* private mode */ }
+      // the login token too: phones block the API cookie
+      const response = yield fetch(`${API_URL}/expenses`, { method: "POST", body: formData, credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : {} });
       result = yield response.json();
     } else {
       result = yield Post(`${API_URL}/expenses`, payload);

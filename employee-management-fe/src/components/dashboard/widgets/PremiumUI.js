@@ -21,7 +21,10 @@ export const Ring = ({ value = 0, size = 64, stroke = 7, color = '#fff', track =
     )
 }
 
-/* A gradient KPI card. `rows` are small labelled bars under the value; `ring` puts a ring on the right. */
+// accent per tone — keep in step with .pk-card.tone-* in DashPremium.css
+const TONE_COLOR = { violet: '#4f46e5', emerald: '#059669', sunset: '#c2410c', ocean: '#0369a1', magenta: '#be185d' }
+
+/* A KPI card. `rows` are small labelled bars under the value; `ring` puts a ring on the right. */
 export const KpiCard = ({ tone, icon, label, value, sub, ring, rows, to, legend }) => {
     const Tag = to ? Link : 'div'
     return (
@@ -36,7 +39,7 @@ export const KpiCard = ({ tone, icon, label, value, sub, ring, rows, to, legend 
                     {sub && <div className="pk-sub">{sub}</div>}
                     {legend && <div className="pk-legend">{legend.map((l) => <span key={l}><i></i>{l}</span>)}</div>}
                 </div>
-                {ring !== undefined && <Ring value={ring.value} label={ring.label} />}
+                {ring !== undefined && <Ring value={ring.value} label={ring.label} color={TONE_COLOR[tone] || '#4f46e5'} track="#eef1f5" />}
             </div>
             {rows && (
                 <div className="pk-rows">
