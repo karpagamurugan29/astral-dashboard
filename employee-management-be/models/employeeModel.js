@@ -169,17 +169,34 @@ const EmployeeSchema = new mongoose.Schema(
             default: null,
         },
 
+        // first / latest successful sign-in (onboarding: "system access" is done once they've signed in)
+        lastLoginAt: {
+            type: Date,
+            default: null,
+        },
+
+        // last time the app was open (chat presence: "online" / "last seen …")
+        lastSeenAt: {
+            type: Date,
+            default: null,
+        },
+
         onboarding: {
             status: {
                 type: String,
                 enum: ["In Progress", "Completed"],
                 default: "In Progress",
             },
+            // closed without going through the checklist (already working here before it existed)
+            skipped: { type: Boolean, default: false },
+            completedAt: { type: Date, default: null },
             tasks: [
                 {
                     title: String,
                     completed: { type: Boolean, default: false },
                     completedAt: { type: Date, default: null },
+                    // ticked by the system (document uploaded, asset assigned, first sign-in…)
+                    auto: { type: Boolean, default: false },
                 },
             ],
         },

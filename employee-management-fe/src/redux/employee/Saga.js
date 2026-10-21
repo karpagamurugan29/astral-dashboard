@@ -2,6 +2,7 @@ import { all, put, takeEvery } from "redux-saga/effects";
 import { Get, Post, Put, Delete } from "../../components/common/ApiCall";
 import { API_URL } from "../../utils/Constants";
 import actions from "./Actions";
+import { postDocument } from "../document/Saga";
 
 const rootSaga = function* () {
   yield all([
@@ -13,6 +14,8 @@ const rootSaga = function* () {
     yield takeEvery(actions.GET_EMPLOYEE_HISTORY, fetchEmployeeHistory),
     yield takeEvery(actions.GET_ONBOARDING_LIST, fetchOnboardingList),
     yield takeEvery(actions.UPDATE_ONBOARDING_TASK, updateOnboardingTask),
+    yield takeEvery(actions.SEND_ONBOARDING_WELCOME, sendOnboardingWelcome),
+    yield takeEvery(actions.CLOSE_ONBOARDING, closeOnboarding),
     yield takeEvery(actions.GET_OFFBOARDING_LIST, fetchOffboardingList),
     yield takeEvery(actions.INITIATE_OFFBOARDING, initiateOffboarding),
     yield takeEvery(actions.UPDATE_OFFBOARDING_TASK, updateOffboardingTask),
@@ -54,11 +57,23 @@ const fetchEmployeeById = function* (action) {
 };
 
 const addEmployee = function* (action) {
-  const { payload, navigate } = action;
+  const { payload, navigate, documents = [] } = action;
   yield put({ type: actions.SET_EMPLOYEE_LOADING, payload: true });
   try {
     const result = yield Post(`${API_URL}/employees`, payload);
     if (result?.success) {
+      // Documents picked on the form need the new record's id, so they go up right after it.
+      const newId = result?.data?._id;
+      if (newId && documents.length) {
+        const failed = [];
+        for (const doc of documents) {
+          const r = yield postDocument(doc, newId);
+          if (!r?.success) failed.push(`${doc.title}: ${r?.message || "upload failed"}`);
+        }
+        if (failed.length) window.alert(`Employee added, but ${failed.length} document(s) didn't upload:\n\n${failed.join("\n")}\n\nYou can add them from the profile's Documents tab.`);
+        navigate(`/employees/${newId}`);
+        return;
+      }
       navigate("/employees");
     } else {
       yield put({ type: actions.SET_EMPLOYEE_ERROR, payload: result?.message || "Unable to add employee" });
@@ -126,6 +141,27 @@ const updateOnboardingTask = function* (action) {
     if (result?.success) yield fetchOnboardingList();
   } catch (err) {
     yield put({ type: actions.SET_EMPLOYEE_ERROR, payload: err.message });
+  }
+};
+
+// onDone(ok, message) lets the page show the result inline.
+const sendOnboardingWelcome = function* ({ id, onDone }) {
+  try {
+    const result = yield Post(`${API_URL}/employees/${id}/onboarding/welcome`, {});
+    if (result?.success) yield fetchOnboardingList();
+    onDone?.(!!result?.success, result?.message || "Couldn't send the welcome");
+  } catch (err) {
+    onDone?.(false, err.message);
+  }
+};
+
+const closeOnboarding = function* ({ ids, onDone }) {
+  try {
+    const result = yield Post(`${API_URL}/onboarding/close`, { ids });
+    if (result?.success) yield fetchOnboardingList();
+    onDone?.(!!result?.success, result?.message || "Couldn't update onboarding");
+  } catch (err) {
+    onDone?.(false, err.message);
   }
 };
 

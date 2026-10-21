@@ -5,6 +5,8 @@ import authActions from '../../../redux/auth/Actions';
 import notificationActions from '../../../redux/notification/Actions';
 import roleActions from '../../../redux/role/Actions';
 import announcementActions from '../../../redux/announcement/Actions';
+import { useChatUnread } from '../../../hooks/useChatUnread';
+import '../../../pages/dashboard/chat/Chat.css';
 
 // Header colour themes, picked from the palette menu and remembered per browser.
 const HEADER_THEMES = [
@@ -99,6 +101,8 @@ export const TopHeader = () => {
 
     // The theme's app.js (which used to wire this button) isn't loaded, so toggle here:
     // phones/tablets slide the menu in via body.sidebar-enable; desktops collapse it to icons.
+    const chatUnread = useChatUnread()
+
     const toggleMenu = () => {
         if (window.innerWidth <= 992) {
             document.body.classList.toggle('sidebar-enable')
@@ -151,6 +155,11 @@ export const TopHeader = () => {
                                 </div>
                             </div>
                         </div>
+
+                        <button type="button" className="btn header-item noti-icon position-relative" aria-label={`Messages${chatUnread ? ` (${chatUnread} unread)` : ''}`} title="Messages" onClick={() => navigate('/messages')}>
+                            <i className="mdi mdi-message-text-outline" style={{ fontSize: 21 }}></i>
+                            {chatUnread > 0 && <span className="hd-chat-badge">{chatUnread > 99 ? '99+' : chatUnread}</span>}
+                        </button>
 
                         <div className="dropdown d-inline-block">
                             <button type="button" className="btn header-item noti-icon position-relative" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" aria-label="Announcements" title="Announcements" onClick={markAnnouncementsSeen}>

@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useAccess } from '../../../hooks/useAccess'
+import { useChatUnread } from '../../../hooks/useChatUnread'
 
 // Phone-only tab bar, like a native app: the four most used screens this person can open, plus
 // "More", which slides the full sidebar menu in. Hidden above 768px (CSS), where the sidebar is.
 const TABS = [
     { to: '/dashboard', label: 'Home', icon: 'mdi-home-variant-outline', on: 'mdi-home-variant' },
+    { to: '/messages', label: 'Chats', icon: 'mdi-message-text-outline', on: 'mdi-message-text', badge: true },
     { to: '/attendance/today', label: 'Attendance', icon: 'mdi-calendar-check-outline', on: 'mdi-calendar-check', screen: 'screen:attendance', match: '/attendance' },
     { to: '/audits', label: 'Audits', icon: 'mdi-briefcase-outline', on: 'mdi-briefcase', screen: 'screen:audits' },
     { to: '/leave', label: 'Leave', icon: 'mdi-beach', on: 'mdi-beach', screen: 'screen:leave' },
@@ -18,6 +20,7 @@ export const BottomNav = () => {
     const { canSee } = useAccess()
     const { pathname } = useLocation()
     const [menuOpen, setMenuOpen] = useState(false)
+    const unread = useChatUnread()
     const tabs = TABS.filter((t) => canSee(t.screen)).slice(0, 4)
 
     // mirror body.sidebar-enable (toggled here, by the header button and by the backdrop)
@@ -40,6 +43,7 @@ export const BottomNav = () => {
                 return (
                     <NavLink key={t.to} to={t.to} className={`bnav-tab ${on ? 'on' : ''}`} aria-current={on ? 'page' : undefined} onClick={() => document.body.classList.remove('sidebar-enable')}>
                         <i className={`mdi ${on ? t.on : t.icon}`}></i>
+                        {t.badge && unread > 0 && <b className="bnav-badge">{unread > 99 ? '99+' : unread}</b>}
                         <span>{t.label}</span>
                     </NavLink>
                 )

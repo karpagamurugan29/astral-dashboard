@@ -24,6 +24,14 @@ const reportReducer = (state = initialState, action) => {
       return { ...state, auditHours: action.payload };
     case actions.SET_AUDIT_PROJECTS_REPORT:
       return { ...state, auditProjects: action.payload };
+    case actions.SET_UTILISATION_REPORT:
+      return { ...state, utilisation: action.payload };
+    case actions.SET_PROFITABILITY_REPORT:
+      return { ...state, profitability: action.payload };
+    case actions.SET_PUNCTUALITY_REPORT:
+      return { ...state, punctuality: action.payload };
+    case actions.SET_COMPLIANCE_REPORT:
+      return { ...state, compliance: action.payload };
     case actions.SET_REPORT_LOADING:
       return { ...state, loading: action.payload };
     case actions.SET_REPORT_ERROR:

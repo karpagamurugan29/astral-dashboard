@@ -14,6 +14,8 @@ const dashboardReducer = (state = initialState, action) => {
       return { ...state, leaveBreakdown: action.payload || [] };
     case actions.SET_PROJECT_PROGRESS:
       return { ...state, projectProgress: action.payload || [] };
+    case actions.SET_BUSINESS_PULSE:
+      return { ...state, businessPulse: action.payload };
     case actions.SET_TODAY_CHECKINS:
       return { ...state, todayCheckins: action.payload || null };
     case actions.SET_AUDIT_INSIGHTS:

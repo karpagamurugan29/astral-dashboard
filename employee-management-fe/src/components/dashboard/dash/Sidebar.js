@@ -158,6 +158,7 @@ export const Sidebar = () => {
     const menuItems = [
         { name: "main-title", isTitle: true, label: "Main" },
         { name: "dashboard", label: "Dashboard", icon: "home", link: "/dashboard" },
+        { name: "messages", label: "Messages", icon: "message-circle", link: "/messages" },
         { name: "notifications", label: "Notifications", icon: "bell", link: "/notifications" },
         { name: "announcements", label: "Announcements", icon: "volume-2", link: "/announcements", screen: "screen:announcements" },
 
@@ -277,7 +278,6 @@ export const Sidebar = () => {
                 { name: "settings-holidays", label: "Holidays", link: "/settings/holidays", roles: ADMIN, module: "settings" },
                 { name: "settings-access", label: "Access Control", link: "/settings/access", roles: ADMIN, module: "roles" },
                 { name: "settings-roles", label: "Roles & Permissions", link: "/roles", roles: ADMIN, module: "roles" },
-                { name: "settings-license", label: "License", link: "/license", roles: ADMIN },
             ],
         },
         // Top level (not inside Admin-only Settings) so HR with the permission can reach it.

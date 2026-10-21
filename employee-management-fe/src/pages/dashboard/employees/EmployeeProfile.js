@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import employeeActions from '../../../redux/employee/Actions'
 import payrollActions from '../../../redux/payroll/Actions'
 import documentActions from '../../../redux/document/Actions'
@@ -9,6 +9,7 @@ import taskActions from '../../../redux/task/Actions'
 import { PeopleShell, Avatar, StatusPill, ErrorBanner, fullName, fmtDate, tenure } from '../../../components/people/PeopleUI'
 import './EmployeeProfile.css'
 import { useAccess } from '../../../hooks/useAccess'
+import { DocList, DocUploadForm } from '../../../components/documents/EmployeeDocs'
 
 const TASK_TONE = { 'To Do': '#64748b', 'In Progress': '#0ea5e9', 'In Review': '#f59e0b', Blocked: '#f43f5e', Done: '#10b981' }
 const LEAVE_TONE = { Approved: '#10b981', Pending: '#f59e0b', Rejected: '#f43f5e', Cancelled: '#64748b' }
@@ -31,29 +32,37 @@ export const EmployeeProfile = () => {
     const dispatch = useDispatch()
     const { current: emp, history, error, loading } = useSelector((state) => state.employeeReducer || {})
     const { structure } = useSelector((state) => state.payrollReducer || {})
-    const { list: documents } = useSelector((state) => state.documentReducer || {})
+    const { byEmployee, meta: docMeta, uploading } = useSelector((state) => state.documentReducer || {})
     const { list: projects } = useSelector((state) => state.projectReducer || {})
     const { list: tasks } = useSelector((state) => state.taskReducer || {})
-    const { can } = useAccess()
+    const { can, user } = useAccess()
+    const [docForm, setDocForm] = useState(false)
     const canSeeSalary = can(['Admin', 'HR'], 'employees')
     const canEdit = can(['Admin', 'HR'], 'employees')
-    const [tab, setTab] = useState('overview')
+    const [search] = useSearchParams()
+    const [tab, setTab] = useState(search.get('tab') || 'overview')
 
     useEffect(() => {
         dispatch({ type: employeeActions.GET_EMPLOYEE_BY_ID, id })
         dispatch({ type: employeeActions.GET_EMPLOYEE_HISTORY, id })
-        dispatch({ type: documentActions.GET_DOCUMENTS })
+        dispatch({ type: documentActions.GET_EMPLOYEE_DOCUMENTS, employeeId: id })
         dispatch({ type: projectActions.GET_PROJECTS })
         dispatch({ type: taskActions.GET_TASKS })
         if (canSeeSalary) {
             dispatch({ type: payrollActions.GET_SALARY_STRUCTURE, employeeId: id })
         }
-        setTab('overview')
+        setTab(search.get('tab') || 'overview')
         return () => dispatch({ type: employeeActions.CLEAR_EMPLOYEE })
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [id])
 
-    const employeeDocs = documents?.filter((d) => d.employeeId?._id === id || d.employeeId === id) || []
+    const employeeDocs = byEmployee?.id === id ? byEmployee.list : []
+    const docsBlocked = byEmployee?.id === id && !!byEmployee.error
+    const isMe = user?._id === id
+    const canAddDoc = isMe || !!docMeta?.canUploadForOthers
+    const canDeleteDoc = (d) => !!docMeta?.canUploadForOthers || (isMe && (d.uploadedBy?._id || d.uploadedBy) === user?._id)
+    const deleteDoc = (d) => { if (window.confirm(`Delete "${d.title}"? This can't be undone.`)) dispatch({ type: documentActions.DELETE_DOCUMENT, id: d._id }) }
+    const uploadDoc = (doc) => new Promise((resolve) => dispatch({ type: documentActions.UPLOAD_DOCUMENT, payload: { doc, employeeId: id }, onDone: (ok) => { resolve(ok); if (ok) setDocForm(false) } }))
     const employeeProjects = projects?.filter((p) => p.teamMembers?.some((m) => m._id === id) || p.projectManager?._id === id) || []
     const employeeTasks = tasks?.filter((t) => t.assignedTo?._id === id) || []
     const openTasks = employeeTasks.filter((t) => t.status !== 'Done').length
@@ -62,7 +71,7 @@ export const EmployeeProfile = () => {
         { key: 'overview', label: 'Overview' },
         { key: 'job', label: 'Job' },
         canSeeSalary && { key: 'salary', label: 'Salary' },
-        { key: 'documents', label: 'Documents', count: employeeDocs.length },
+        !docsBlocked && { key: 'documents', label: 'Documents', count: employeeDocs.length },
         { key: 'work', label: 'Projects & tasks', count: employeeProjects.length + employeeTasks.length },
         { key: 'history', label: 'History' },
     ].filter(Boolean)
@@ -215,22 +224,12 @@ export const EmployeeProfile = () => {
 
                             {tab === 'documents' && (
                                 <div className="ep-section">
-                                    {!employeeDocs.length ? (
-                                        <p className="ep-muted">No documents uploaded for this employee yet. <Link to="/documents">Go to documents</Link>.</p>
-                                    ) : (
-                                        <ul className="ep-rows">
-                                            {employeeDocs.map((d) => (
-                                                <li key={d._id} className="ep-row">
-                                                    <span className="ep-row-icon"><i className="mdi mdi-file-document-outline"></i></span>
-                                                    <div className="ep-row-main">
-                                                        <div className="ep-row-title">{d.title}</div>
-                                                        <div className="ep-row-sub">Uploaded {fmtDate(d.createdAt)}</div>
-                                                    </div>
-                                                    {d.category && <span className="pp-chip">{d.category}</span>}
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    )}
+                                    <div className="d-flex align-items-center justify-content-between gap-2 mb-2 flex-wrap">
+                                        <h3 className="ep-section-title mb-0">Documents · {employeeDocs.length}{emp?.employeeId ? <small className="ep-muted ms-2">filed under {emp.employeeId}</small> : null}</h3>
+                                        {canAddDoc && <button type="button" className="pp-btn" onClick={() => setDocForm((v) => !v)}><i className={`mdi ${docForm ? 'mdi-close' : 'mdi-plus'}`}></i>{docForm ? 'Close' : 'Add document'}</button>}
+                                    </div>
+                                    {docForm && <div className="mb-3"><DocUploadForm onSubmit={uploadDoc} busy={uploading} /></div>}
+                                    <DocList docs={employeeDocs} canDelete={canDeleteDoc} onDelete={deleteDoc} empty={byEmployee?.loading ? 'Loading…' : 'No documents on this record yet.'} />
                                 </div>
                             )}
 

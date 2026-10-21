@@ -351,3 +351,8 @@ a, button, .btn, [role="button"], [role="tab"] { touch-action: manipulation; }
   .page-content { margin-top: env(safe-area-inset-top); }
   body.sidebar-enable .vertical-menu, body.sidebar-enable .sidebar-backdrop { top: calc(70px + env(safe-area-inset-top)) !important; }
 }
+
+/* unread badge on a bottom-bar tab */
+@media (max-width: 767.98px) {
+  .bnav-badge { position: absolute; top: 5px; left: calc(50% + 6px); min-width: 18px; height: 18px; padding: 0 5px; border-radius: 99px; background: #00a884; color: #fff; font-size: 10.5px; font-weight: 700; display: grid; place-items: center; box-shadow: 0 0 0 2px #fff; }
+}

@@ -23,7 +23,6 @@ import locationLogSaga from "./locationLog/Saga";
 import accessSaga from "./access/Saga";
 import taskSaga from "./task/Saga";
 import reportSaga from "./report/Saga";
-import licenseSaga from "./license/Saga";
 import dashboardSaga from "./dashboard/Saga";
 
 export default function* rootSaga() {
@@ -53,6 +52,5 @@ export default function* rootSaga() {
     accessSaga(),
     taskSaga(),
     reportSaga(),
-    licenseSaga(),
   ]);
 }

@@ -89,6 +89,8 @@ export const login = async (req, res) => {
             });
         }
 
+        employeeModel.updateOne({ _id: user._id }, { $set: { lastLoginAt: new Date() } }).catch(() => {});
+
         const token = jwt.sign(
             {
                 id: user._id,

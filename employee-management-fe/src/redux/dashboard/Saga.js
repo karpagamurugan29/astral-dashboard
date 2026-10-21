@@ -13,6 +13,7 @@ const rootSaga = function* () {
     yield takeEvery(actions.GET_AUDIT_INSIGHTS, fetchAuditInsights),
     yield takeEvery(actions.GET_TODAY_CHECKINS, fetchTodayCheckins),
     yield takeEvery(actions.REMIND_CHECKIN, remindCheckin),
+    yield takeEvery(actions.GET_BUSINESS_PULSE, fetchBusinessPulse),
   ]);
 };
 
@@ -69,6 +70,15 @@ const remindCheckin = function* ({ payload, onDone }) {
     onDone?.(!!result?.success, result?.message || (result?.success ? "Reminder sent" : "Couldn't send the reminder"));
   } catch (err) {
     onDone?.(false, "Couldn't reach the server");
+  }
+};
+
+const fetchBusinessPulse = function* () {
+  try {
+    const result = yield Get(`${API_URL}/dashboard/business-pulse`);
+    yield put({ type: actions.SET_BUSINESS_PULSE, payload: result?.success ? result.data : { error: result?.message || "Couldn't load business pulse" } });
+  } catch (err) {
+    yield put({ type: actions.SET_BUSINESS_PULSE, payload: { error: "Couldn't reach the server" } });
   }
 };
 

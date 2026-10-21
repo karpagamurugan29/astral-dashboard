@@ -14,7 +14,7 @@ const PERSON = "employeeId firstName lastName department designation";
 const MAX_DAYS = 93;
 
 // from/to (YYYY-MM-DD, company time) → [start, end) instants; default = this month so far.
-const range = (q) => {
+export const range = (q) => {
     const today = localDayStart();
     const first = new Date(today); first.setDate(1);
     const parse = (s) => localDayStart(new Date(`${s}T12:00:00+05:30`));
@@ -26,7 +26,7 @@ const range = (q) => {
     return { start, end };
 };
 
-const teamScope = async (req) => {
+export const teamScope = async (req) => {
     const filter = { status: { $in: ["Active", "Resigned", "Terminated"] } };
     if (["Manager", "Team Lead"].includes(req.user.role)) {
         const reports = await employeeModel.find({ manager: req.user.id }).select("_id").lean();

@@ -56,3 +56,18 @@
 .wb-views { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
 .rp-of { font-weight: 500; color: #94a3b8; }
 @media (max-width: 575px) { .wb-row .pp-select { flex: 1 1 100%; } }
+
+/* business insight reports */
+.bi-note { display: flex; align-items: flex-start; gap: 6px; margin: -4px 0 14px; font-size: 12.5px; color: var(--pp-muted); }
+.bi-note i { font-size: 15px; margin-top: 1px; }
+.bi-wide { margin-bottom: 16px; }
+.bi-list { padding: 14px 18px; margin-bottom: 16px; }
+.bi-list h3 { margin: 0 0 8px; font-size: 14px; font-weight: 700; color: var(--pp-ink); }
+.bi-list ul { list-style: none; margin: 0; padding: 0; }
+.bi-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; padding: 7px 0; border-top: 1px dashed var(--pp-line); font-size: 13px; }
+.bi-list li:first-child { border-top: 0; }
+.bi-list li a { font-weight: 600; color: var(--pp-ink); text-decoration: none; }
+.bi-list li span { color: var(--pp-muted); flex: 1; }
+.bi-list li b { font-size: 12px; padding: 1px 8px; border-radius: 99px; }
+.bi-list li b.bad { background: #fff1f2; color: #be123c; }
+.bi-list li b.warn { background: #fffbeb; color: #b45309; }

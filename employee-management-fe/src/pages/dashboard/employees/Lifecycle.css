@@ -105,3 +105,84 @@
     .lc-grid { grid-template-columns: 1fr; }
     .lc-start-fields { grid-template-columns: 1fr; }
 }
+
+/* ===================== Onboarding (guided) ===================== */
+.pp-btn.sm { height: 34px; min-height: 34px; padding: 0 12px; font-size: 13px; border-radius: 9px; gap: 5px; }
+.pp-btn.sm i { font-size: 16px; }
+
+.ob-toast { position: sticky; top: 80px; z-index: 5; display: flex; align-items: center; gap: 8px; margin-bottom: 12px; padding: 10px 14px; border-radius: 12px; font-size: 13.5px; font-weight: 600; box-shadow: 0 10px 24px -16px rgba(15, 23, 42, .5); }
+.ob-toast.ok { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+.ob-toast.bad { background: #fff1f2; color: #9f1239; border: 1px solid #fecdd3; }
+.ob-toast i { font-size: 18px; }
+
+.ob-intro { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 24px; padding: 16px 18px; margin-bottom: 14px; background: linear-gradient(120deg, #f0f9ff, #fff 60%); }
+.ob-intro-text { flex: 1 1 280px; min-width: 0; }
+.ob-intro-text h3 { margin: 0 0 4px; font-size: 16px; font-weight: 700; color: var(--pp-ink); }
+.ob-intro-text p { margin: 0; font-size: 13px; color: var(--pp-muted); line-height: 1.5; }
+.ob-steps-legend { flex: 2 1 420px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 12px; margin: 0; padding: 0; list-style: none; }
+.ob-steps-legend li { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--pp-text); min-width: 0; }
+.ob-steps-legend b { font-weight: 600; }
+
+.ob-dot { width: 30px; height: 30px; flex: none; display: grid; place-items: center; border-radius: 9px; background: #e0f2fe; color: #0369a1; font-size: 16px; }
+.ob-auto { display: inline-flex; align-items: center; gap: 1px; margin-left: 6px; padding: 0 6px; border-radius: 99px; background: #fef3c7; color: #92400e; font-size: 10.5px; font-weight: 700; vertical-align: middle; }
+.ob-auto i { font-size: 12px; }
+
+.ob-banner { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-bottom: 14px; padding: 12px 14px; border-radius: 14px; background: #fffbeb; border: 1px solid #fde68a; font-size: 13.5px; color: #78350f; }
+.ob-banner > i { font-size: 24px; color: #d97706; }
+.ob-banner > div { flex: 1 1 260px; }
+
+.ob-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--pp-line); }
+.ob-count { font-size: 13px; color: var(--pp-muted); }
+.ob-count b { color: var(--pp-ink); }
+.ob-search { flex: 1; min-width: 200px; max-width: 340px; margin-left: auto; }
+
+.ob-list { list-style: none; margin: 0; padding: 0; }
+.ob-person { border-bottom: 1px solid var(--pp-line); }
+.ob-person:last-child { border-bottom: 0; }
+.ob-person.open { background: var(--pp-soft); }
+.ob-row { display: flex; align-items: center; gap: 4px; padding-left: 14px; }
+.ob-pick { width: 18px; height: 18px; flex: none; accent-color: var(--pp-brand); }
+.ob-row-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 12px 16px 12px 8px; border: 0; background: none; text-align: left; color: inherit; }
+.ob-who { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.ob-who b { font-size: 14.5px; color: var(--pp-ink); }
+.ob-who small { font-size: 12.5px; color: var(--pp-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ob-tags { display: flex; gap: 6px; margin-top: 4px; }
+.ob-day, .ob-old { padding: 1px 8px; border-radius: 99px; font-size: 11px; font-weight: 700; }
+.ob-day { background: #e0f2fe; color: #0369a1; }
+.ob-old { background: #fef3c7; color: #92400e; }
+.ob-progress { flex: 0 1 260px; display: flex; flex-direction: column; gap: 5px; min-width: 150px; }
+.ob-segs { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; }
+.ob-segs i { height: 6px; border-radius: 99px; background: #e2e8f0; }
+.ob-segs i.on { background: linear-gradient(90deg, #10b981, #34d399); }
+.ob-progress small { font-size: 12px; color: var(--pp-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ob-progress small b { color: var(--pp-ink); }
+.ob-chev { font-size: 22px; color: var(--pp-muted); }
+
+.ob-detail { padding: 0 16px 14px 48px; }
+.ob-tasks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.ob-tasks li { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--pp-line); border-radius: 12px; background: var(--pp-card); }
+.ob-tasks li.next { border-color: #7dd3fc; box-shadow: 0 0 0 3px #e0f2fe; }
+.ob-tasks li.done .ob-dot { background: #d1fae5; color: #047857; }
+.ob-tasks li.done b { color: var(--pp-muted); }
+.ob-task-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.ob-task-main b { font-size: 13.5px; color: var(--pp-ink); }
+.ob-task-main small { font-size: 12px; color: var(--pp-muted); }
+.ob-task-act { flex: none; }
+.ob-wait { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; color: #92400e; }
+.ob-undo { border: 0; background: none; padding: 4px 6px; font-size: 12px; font-weight: 600; color: var(--pp-muted); text-decoration: underline; }
+.ob-detail-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin-top: 10px; font-size: 12.5px; }
+.ob-link { display: inline-flex; align-items: center; gap: 4px; border: 0; background: none; padding: 0; font-weight: 600; color: var(--pp-brand-ink); text-decoration: none; }
+.ob-link:last-child { margin-left: auto; color: var(--pp-muted); }
+.ob-muted { color: var(--pp-muted); }
+
+@media (max-width: 767.98px) {
+    .ob-steps-legend { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .ob-row-main { flex-wrap: wrap; }
+    .ob-progress { flex: 1 1 100%; order: 3; padding-left: 52px; }
+    .ob-search { max-width: none; margin-left: 0; }
+    .ob-detail { padding: 0 12px 14px; }
+    .ob-tasks li { flex-wrap: wrap; }
+    .ob-task-act { width: 100%; padding-left: 42px; }
+    .ob-task-act .pp-btn { width: 100%; justify-content: center; }
+    .ob-link:last-child { margin-left: 0; }
+}

@@ -22,7 +22,6 @@ import locationLogReducer from "./locationLog/Reducer";
 import accessReducer from "./access/Reducer";
 import taskReducer from "./task/Reducer";
 import reportReducer from "./report/Reducer";
-import licenseReducer from "./license/Reducer";
 import dashboardReducer from "./dashboard/Reducer";
 
 const reducers = {
@@ -51,7 +50,6 @@ const reducers = {
   accessReducer,
   taskReducer,
   reportReducer,
-  licenseReducer,
 };
 
 export default reducers;

@@ -14,18 +14,18 @@ import { AUDIT_STATUS, engagementTitle, fmtDuration } from '../../../components/
 /* -------------------------------------------------------------------------- */
 
 const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-const PRESETS = {
+export const PRESETS = {
     month: { label: 'This month', range: () => { const n = new Date(); return [ymd(new Date(n.getFullYear(), n.getMonth(), 1)), ymd(n)] } },
     week: { label: 'Last 7 days', range: () => { const n = new Date(); const s = new Date(n); s.setDate(s.getDate() - 6); return [ymd(s), ymd(n)] } },
     last: { label: 'Last month', range: () => { const n = new Date(); return [ymd(new Date(n.getFullYear(), n.getMonth() - 1, 1)), ymd(new Date(n.getFullYear(), n.getMonth(), 0))] } },
     today: { label: 'Today', range: () => { const n = ymd(new Date()); return [n, n] } },
 }
 const t = (d) => (d ? new Date(d).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '')
-const dt = (d) => (d ? new Date(d).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '')
-const h1 = (min) => Math.round(((min || 0) / 60) * 10) / 10
+export const dt = (d) => (d ? new Date(d).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '')
+export const h1 = (min) => Math.round(((min || 0) / 60) * 10) / 10
 
 const csvCell = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`
-const downloadCsv = (name, headers, rows) => {
+export const downloadCsv = (name, headers, rows) => {
     const blob = new Blob([[headers, ...rows].map((r) => r.map(csvCell).join(',')).join('\n')], { type: 'text/csv;charset=utf-8' })
     const a = document.createElement('a')
     a.href = URL.createObjectURL(blob)
@@ -34,12 +34,12 @@ const downloadCsv = (name, headers, rows) => {
     URL.revokeObjectURL(a.href)
 }
 
-const Tile = ({ icon, color, value, label }) => (
+export const Tile = ({ icon, color, value, label }) => (
     <div className="at-tile" style={{ '--c': color }}><span className="at-tile-icon"><i className={`mdi ${icon}`}></i></span><div><b>{value}</b><span>{label}</span></div></div>
 )
 
 /* Date presets + custom range + extra filters + export, in one bar. */
-const FilterBar = ({ range, setRange, children, onExport, loading }) => {
+export const FilterBar = ({ range, setRange, children, onExport, loading }) => {
     const [preset, setPreset] = useState('month')
     const pick = (k) => { setPreset(k); setRange(PRESETS[k].range()) }
     return (

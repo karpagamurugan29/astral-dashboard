@@ -142,7 +142,7 @@ export const GetEmployeeById = async (req, res) => {
         const canSeeSalary = ["Admin", "HR"].includes(req.user.role) || req.user.id === id;
         const hiddenFields = canSeeSalary ? "-password" : "-password -salary -otp -otpExpiresAt";
 
-        const findEmp = await employeeModel.findById(id).select(hiddenFields)
+        const findEmp = await employeeModel.findById(id).select(hiddenFields).populate("manager", "employeeId firstName lastName designation profileImage")
         if (!findEmp) {
             return res.status(404).json({
                 success: false,

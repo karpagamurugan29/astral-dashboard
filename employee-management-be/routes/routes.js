@@ -5,7 +5,7 @@ import authMiddleWare from "../middleware/auth.middleware.js";
 import authorize from "../middleware/permission.middleware.js";
 import { attendanceHistory, checkIn, checkOut, todayAttendance, teamAttendance, requestRegularization, getMyRegularizations, getPendingRegularizations, decideRegularization } from "../controller/attentance.controller.js";
 import { applyLeave, approveLeave, cancelLeave, getAllLeaves, leaveBalance, leaveDetails, leaveHistory, pendingLeaves, rejectLeave, teamLeaveCalendar } from "../controller/leave.controller.js";
-import { getOnboardingList, updateOnboardingTask, initiateOffboarding, getOffboardingList, updateOffboardingTask, completeOffboarding } from "../controller/lifecycle.controller.js";
+import { getOnboardingList, updateOnboardingTask, sendWelcome, closeOnboarding, initiateOffboarding, getOffboardingList, updateOffboardingTask, completeOffboarding } from "../controller/lifecycle.controller.js";
 import { createProject, updateProject, deleteProject, getProjectById, getAllProjects, addProjectMember, removeProjectMember } from "../controller/project.controller.js";
 import { getClients, getClientById, createClient, updateClient, deleteClient } from "../controller/auditClient.controller.js";
 import { getAuditInsights, getTodayCheckins, remindCheckin } from "../controller/auditInsights.controller.js";
@@ -26,11 +26,15 @@ import { getAccessOverview, updateDepartmentAccess, updateDesignationAccess, upd
 import { getAuditLogs } from "../controller/auditLog.controller.js";
 import { getCompanySettings, updateCompanySettings, getLeaveSettings, updateLeaveSettings } from "../controller/settings.controller.js";
 import { getNotifications, markNotificationRead, markAllNotificationsRead } from "../controller/notification.controller.js";
-import { uploadDocument, getDocuments, deleteDocument } from "../controller/document.controller.js";
+import { uploadDocument, getDocuments, deleteDocument, downloadDocument } from "../controller/document.controller.js";
+import { utilisationReport, profitabilityReport, punctualityReport, complianceReport, businessPulse } from "../controller/businessReport.controller.js";
+import { chatContacts, listConversations, createConversation, getConversation, getMessages, sendMessage, editMessage, deleteMessage, reactToMessage, starMessage, markRead, setTyping, updateConversation, chatUpdates, chatUnread, chatFile, searchMessages, deleteGroup, adminListGroups, adminUpdateGroup } from "../controller/chat.controller.js";
+import multer from "multer";
+// documents go to MongoDB (GridFS), so keep them in memory rather than on disk
+const docUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 import upload from "../middleware/upload.middleware.js";
 import { getSalaryStructure, saveSalaryStructure, generatePayroll, getPayrollRuns, getPayrollRunDetail, approvePayrollRun, markPayrollPaid, getMyPayslips, getPayslipById } from "../controller/payroll.controller.js";
 import { requestLoan, getMyLoans, getAllLoans, decideLoan, markLoanDisbursed } from "../controller/loanAdvance.controller.js";
-import { activateLicense, getLicenseStatus, renewLicense } from "../controller/license.controller.js";
 import { getTasks, getTaskById, createTask, updateTask, updateTaskStatus, addTaskComment, deleteTask } from "../controller/task.controller.js";
 import { getDashboardSummary, getAttendanceTrend, getLeaveTrend, getHeadcountByDepartment, getTaskStatusBreakdown, getLeaveBreakdown, getProjectProgress } from "../controller/dashboard.controller.js";
 import { attendanceReport, leaveReport, payrollReport, headcountReport, expenseReport, projectReport, taskReport } from "../controller/report.controller.js";
@@ -60,13 +64,6 @@ router.post("/auth/change-password", authMiddleWare, changePassword);
 
 router.post("/logout", authMiddleWare, logout);
 
-
-// License & Activation — Admin only, this gates the whole install
-router.post("/license/activate", authMiddleWare, adminOnly(), activateLicense);
-router.get("/license/status", authMiddleWare, adminOnly(), getLicenseStatus);
-router.put("/license/renew", authMiddleWare, adminOnly(), renewLicense);
-
-
 // Employees
 router.get("/employees", authMiddleWare, GetAllEmployees);
 router.get("/employees/:id", authMiddleWare, GetEmployeeById);
@@ -81,6 +78,8 @@ router.get("/employees/:id/history", authMiddleWare, GetEmployeeHistory);
 // collide, since these are distinct sub-resources, not employee CRUD itself.
 router.get("/onboarding", authMiddleWare, adminHR("employees"), getOnboardingList);
 router.put("/employees/:id/onboarding/:taskIndex", authMiddleWare, adminHR("employees"), updateOnboardingTask);
+router.post("/employees/:id/onboarding/welcome", authMiddleWare, adminHR("employees"), sendWelcome);
+router.post("/onboarding/close", authMiddleWare, adminHR("employees"), closeOnboarding);
 router.get("/offboarding", authMiddleWare, adminHR("employees"), getOffboardingList);
 router.post("/employees/:id/offboard", authMiddleWare, adminHR("employees"), initiateOffboarding);
 router.put("/employees/:id/offboarding/:taskIndex", authMiddleWare, adminHR("employees"), updateOffboardingTask);
@@ -273,8 +272,9 @@ router.put("/notifications/:id/read", authMiddleWare, markNotificationRead);
 router.put("/notifications/read-all", authMiddleWare, markAllNotificationsRead);
 
 // Documents
-router.post("/documents/upload", authMiddleWare, upload.single("file"), uploadDocument);
+router.post("/documents/upload", authMiddleWare, docUpload.single("file"), uploadDocument);
 router.get("/documents", authMiddleWare, getDocuments);
+router.get("/documents/:id/file", authMiddleWare, downloadDocument);
 router.delete("/documents/:id", authMiddleWare, deleteDocument);
 
 // Reports — all admin/HR visibility, real numbers pulled from the same
@@ -287,6 +287,33 @@ router.get("/reports/expenses", authMiddleWare, adminHRManager("reports"), expen
 router.get("/reports/projects", authMiddleWare, adminHRManager("reports"), projectReport);
 router.get("/reports/tasks", authMiddleWare, adminHRManager("reports"), taskReport);
 router.get("/reports/checkins", authMiddleWare, adminHRManager("reports"), checkinLogReport);
+router.get("/reports/utilisation", authMiddleWare, adminHRManager("reports"), utilisationReport);
+router.get("/reports/profitability", authMiddleWare, adminHRManager("reports"), profitabilityReport);
+router.get("/reports/punctuality", authMiddleWare, adminHRManager("reports"), punctualityReport);
+router.get("/reports/compliance", authMiddleWare, adminHRManager("reports"), complianceReport);
+router.get("/dashboard/business-pulse", authMiddleWare, businessPulse);
+
+// Team chat — any active employee; participants-only access is enforced in the controller
+router.get("/chat/contacts", authMiddleWare, chatContacts);
+router.get("/chat/conversations", authMiddleWare, listConversations);
+router.post("/chat/conversations", authMiddleWare, createConversation);
+router.get("/chat/conversations/:id", authMiddleWare, getConversation);
+router.put("/chat/conversations/:id", authMiddleWare, updateConversation);
+router.delete("/chat/conversations/:id", authMiddleWare, deleteGroup);
+router.get("/chat/admin/groups", authMiddleWare, adminListGroups);
+router.put("/chat/admin/groups/:id", authMiddleWare, adminUpdateGroup);
+router.get("/chat/conversations/:id/messages", authMiddleWare, getMessages);
+router.post("/chat/conversations/:id/messages", authMiddleWare, docUpload.single("file"), sendMessage);
+router.post("/chat/conversations/:id/read", authMiddleWare, markRead);
+router.post("/chat/conversations/:id/typing", authMiddleWare, setTyping);
+router.put("/chat/messages/:id", authMiddleWare, editMessage);
+router.delete("/chat/messages/:id", authMiddleWare, deleteMessage);
+router.post("/chat/messages/:id/react", authMiddleWare, reactToMessage);
+router.post("/chat/messages/:id/star", authMiddleWare, starMessage);
+router.get("/chat/updates", authMiddleWare, chatUpdates);
+router.get("/chat/unread", authMiddleWare, chatUnread);
+router.get("/chat/search", authMiddleWare, searchMessages);
+router.get("/chat/files/:messageId", authMiddleWare, chatFile);
 router.get("/reports/audit-hours", authMiddleWare, adminHRManager("reports"), auditHoursReport);
 router.get("/reports/audit-projects", authMiddleWare, adminHRManager("reports"), auditProjectsReport);
 

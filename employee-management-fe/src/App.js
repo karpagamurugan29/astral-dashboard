@@ -34,6 +34,7 @@ import { AccessControl } from './pages/dashboard/access/AccessControl';
 import { ScreenGuard } from './components/common/ScreenGuard';
 import { AuditLogViewer } from './pages/dashboard/audit/AuditLogViewer';
 import { CompanySettings } from './pages/dashboard/settings/CompanySettings';
+import { Chat } from './pages/dashboard/chat/Chat';
 import { DocumentCenter } from './pages/dashboard/documents/DocumentCenter';
 import { SalaryStructure } from './pages/dashboard/payroll/SalaryStructure';
 import { PayrollProcess } from './pages/dashboard/payroll/PayrollProcess';
@@ -48,7 +49,6 @@ import { ClientsList } from './pages/dashboard/audits/ClientsList';
 import { ClientDetail } from './pages/dashboard/audits/ClientDetail';
 import { LocationLog } from './pages/dashboard/locationLog/LocationLog';
 import { ReportBuilder } from './pages/dashboard/reports/ReportBuilder';
-import { LicenseStatus } from './pages/dashboard/license/LicenseStatus';
 import { EmployeeProfile } from './pages/dashboard/employees/EmployeeProfile';
 import { EmployeeOnboarding } from './pages/dashboard/employees/EmployeeOnboarding';
 import { EmployeeOffboarding } from './pages/dashboard/employees/EmployeeOffboarding';
@@ -123,6 +123,7 @@ function App() {
             <Route path="/assets/assignments" element={<ScreenGuard screen="screen:assets"><AssetList /></ScreenGuard>} />
             <Route path="/helpdesk" element={<ScreenGuard screen="screen:helpdesk"><TicketList /></ScreenGuard>} />
             <Route path="/helpdesk/all" element={<HRTickets />} />
+            <Route path="/messages" element={<Chat />} />
             <Route path="/announcements" element={<ScreenGuard screen="screen:announcements"><AnnouncementFeed /></ScreenGuard>} />
 
             <Route path="/projects" element={<ScreenGuard screen="screen:projects"><ProjectsList /></ScreenGuard>} />
@@ -140,7 +141,6 @@ function App() {
 
             <Route path="/roles" element={<RolesList />} />
             <Route path="/settings/access" element={<AccessControl />} />
-            <Route path="/license" element={<LicenseStatus />} />
             <Route path="/settings/company" element={<CompanySettings />} />
             <Route path="/settings/branches" element={<BranchList />} />
             <Route path="/settings/holidays" element={<HolidayList />} />

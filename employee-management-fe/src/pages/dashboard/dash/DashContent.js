@@ -12,6 +12,7 @@ import { HeadcountByDepartment } from '../../../components/dashboard/widgets/Hea
 import { AnnouncementsWidget } from '../../../components/dashboard/widgets/AnnouncementsWidget'
 import { AuditHoursTrend, HoursByClient, TeamWeek, DeadlinesWidget, WorkingNowWidget, AttentionWidget, AuditTimelineToday } from '../../../components/dashboard/widgets/AuditWidgets'
 import { DashboardTimer } from '../../../components/dashboard/widgets/DashboardTimer'
+import { BusinessPulse } from '../../../components/dashboard/widgets/BusinessPulse'
 import { TodayCheckins } from '../../../components/dashboard/widgets/TodayCheckins'
 import { MyAuditsWidget } from '../../../components/dashboard/widgets/MyAuditsWidget'
 import { KpiCard, Panel, MonthAttendance, Ring } from '../../../components/dashboard/widgets/PremiumUI'
@@ -32,7 +33,7 @@ const share = (part, whole) => (whole ? Math.min(100, (part / whole) * 100) : 0)
 
 export const DashContent = () => {
     const dispatch = useDispatch()
-    const { summary, attendanceTrend, auditInsights, todayCheckins: todayCheckinsRaw } = useSelector((state) => state.dashboardReducer || {})
+    const { summary, attendanceTrend, auditInsights, todayCheckins: todayCheckinsRaw, businessPulse } = useSelector((state) => state.dashboardReducer || {})
     const todayCheckins = todayCheckinsRaw?.rows ? todayCheckinsRaw : null
     const { headcount } = useSelector((state) => state.reportReducer || {})
     const { list: announcements, listLoading: announcementsLoading } = useSelector((state) => state.announcementReducer || {})
@@ -55,6 +56,7 @@ export const DashContent = () => {
         const d = new Date()
         dispatch({ type: dashboardActions.GET_DASHBOARD_SUMMARY })
         dispatch({ type: dashboardActions.GET_AUDIT_INSIGHTS })
+        dispatch({ type: dashboardActions.GET_BUSINESS_PULSE })
         dispatch({ type: attendanceActions.GET_TODAY_ATTENDANCE })
         dispatch({ type: attendanceActions.GET_ATTENDANCE_HISTORY, month: d.getMonth() + 1, year: d.getFullYear() })
         dispatch({ type: announcementActions.GET_ANNOUNCEMENTS })
@@ -292,6 +294,9 @@ export const DashContent = () => {
 
                             {/* --------------------------- needs attention --------------------------- */}
                             {att && <AttentionWidget attention={att} />}
+
+                            {/* --------------------------- business pulse --------------------------- */}
+                            <BusinessPulse data={businessPulse} />
 
                             {/* Seniors keep their own attendance and leave too — the panels above are about the team. */}
                             {senior && canSeeAttendance && (

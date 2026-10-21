@@ -9,6 +9,8 @@ import branchActions from '../../../redux/branch/Actions'
 import { PeopleShell, Avatar, EmptyState, ErrorBanner, fullName } from '../../../components/people/PeopleUI'
 import './AddEditEmployee.css'
 import { useAccess } from '../../../hooks/useAccess'
+import documentActions from '../../../redux/document/Actions'
+import { PendingDocs, DocList, DocUploadForm } from '../../../components/documents/EmployeeDocs'
 
 const ROLES = ['Employee', 'Team Lead', 'Manager', 'HR', 'Admin']
 
@@ -17,6 +19,7 @@ const SECTIONS = [
     { id: 'ae-job', label: 'Job details', required: ['role', 'designation', 'department', 'joiningDate', 'employmentType', 'salary'] },
     { id: 'ae-address', label: 'Address', optional: true },
     { id: 'ae-emergency', label: 'Emergency contact', optional: true },
+    { id: 'ae-docs', label: 'Documents', optional: true },
 ]
 
 // Small helper so every field renders label, control and error the same way.
@@ -43,6 +46,8 @@ export const AddEditEmployee = () => {
     const canEdit = can(['Admin', 'HR'], 'employees')
     const { register, handleSubmit, reset, watch, formState: { errors } } = useForm()
     const [showPassword, setShowPassword] = useState(false)
+    const [pendingDocs, setPendingDocs] = useState([])
+    const { byEmployee, uploading } = useSelector((state) => state.documentReducer || {})
 
     useEffect(() => {
         dispatch({ type: departmentActions.GET_DEPARTMENTS })
@@ -51,6 +56,7 @@ export const AddEditEmployee = () => {
         dispatch({ type: employeeActions.GET_EMPLOYEES })
         if (isEdit) {
             dispatch({ type: employeeActions.GET_EMPLOYEE_BY_ID, id })
+            dispatch({ type: documentActions.GET_EMPLOYEE_DOCUMENTS, employeeId: id })
         }
         return () => {
             dispatch({ type: employeeActions.CLEAR_EMPLOYEE })
@@ -100,7 +106,7 @@ export const AddEditEmployee = () => {
         if (isEdit) {
             dispatch({ type: employeeActions.UPDATE_EMPLOYEE, id, payload: data, navigate })
         } else {
-            dispatch({ type: employeeActions.ADD_EMPLOYEE, payload: data, navigate })
+            dispatch({ type: employeeActions.ADD_EMPLOYEE, payload: data, navigate, documents: pendingDocs })
         }
     }
 
@@ -300,6 +306,33 @@ export const AddEditEmployee = () => {
                                 <Field label="Relation"><input type="text" placeholder="e.g. Spouse" className="pp-input" {...register('emergencyContact.relation')} /></Field>
                                 <Field label="Phone"><input type="tel" className="pp-input" {...register('emergencyContact.phone')} /></Field>
                             </div>
+                        </div>
+                    </section>
+
+                    {/* ---------- 5. Documents ---------- */}
+                    <section id="ae-docs" className="pp-card ae-section">
+                        <div className="pp-card-head">
+                            <span className="ae-step">5</span>
+                            <div>
+                                <h3>Documents</h3>
+                                <p>Optional — ID proof, PAN, certificates, offer letter… Filed under employee ID <b>{values?.employeeId || '—'}</b>; only this person, their reporting managers and HR can open them.</p>
+                            </div>
+                        </div>
+                        <div className="pp-card-body">
+                            {isEdit ? (
+                                <>
+                                    <DocList docs={byEmployee?.id === id ? byEmployee.list : []} empty="No documents on this record yet."
+                                        canDelete={() => true} onDelete={(d) => { if (window.confirm(`Delete "${d.title}"?`)) dispatch({ type: documentActions.DELETE_DOCUMENT, id: d._id }) }} />
+                                    <div className="mt-3">
+                                        <DocUploadForm busy={uploading} onSubmit={(doc) => new Promise((resolve) => dispatch({ type: documentActions.UPLOAD_DOCUMENT, payload: { doc, employeeId: id }, onDone: resolve }))} />
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <PendingDocs value={pendingDocs} onChange={setPendingDocs} />
+                                    {pendingDocs.length > 0 && <p className="pp-help mt-2 mb-0"><i className="mdi mdi-information-outline"></i> {pendingDocs.length} file{pendingDocs.length === 1 ? '' : 's'} will upload as soon as the employee is created.</p>}
+                                </>
+                            )}
                         </div>
                     </section>
 

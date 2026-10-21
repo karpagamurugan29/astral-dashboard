@@ -15,6 +15,10 @@ const rootSaga = function* () {
     yield takeLatest(actions.GET_CHECKIN_REPORT, fetchWorkbench("checkins", actions.SET_CHECKIN_REPORT)),
     yield takeLatest(actions.GET_AUDIT_HOURS_REPORT, fetchWorkbench("audit-hours", actions.SET_AUDIT_HOURS_REPORT)),
     yield takeLatest(actions.GET_AUDIT_PROJECTS_REPORT, fetchWorkbench("audit-projects", actions.SET_AUDIT_PROJECTS_REPORT)),
+    yield takeLatest(actions.GET_UTILISATION_REPORT, fetchWorkbench("utilisation", actions.SET_UTILISATION_REPORT)),
+    yield takeLatest(actions.GET_PROFITABILITY_REPORT, fetchWorkbench("profitability", actions.SET_PROFITABILITY_REPORT)),
+    yield takeLatest(actions.GET_PUNCTUALITY_REPORT, fetchWorkbench("punctuality", actions.SET_PUNCTUALITY_REPORT)),
+    yield takeLatest(actions.GET_COMPLIANCE_REPORT, fetchWorkbench("compliance", actions.SET_COMPLIANCE_REPORT)),
   ]);
 };
 

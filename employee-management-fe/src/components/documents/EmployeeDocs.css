@@ -1,0 +1,87 @@
+/* Employee documents — upload form, list, pending queue. Lives inside .pp (People) pages. */
+
+/* ---------- upload form ---------- */
+.dc-form { display: flex; flex-direction: column; gap: 12px; }
+.dc-f { display: flex; flex-direction: column; gap: 5px; margin: 0; min-width: 0; }
+.dc-f > span { font-size: 12px; font-weight: 600; color: var(--pp-muted, #64748b); }
+.dc-f > span b { color: #e11d48; font-weight: 700; }
+.dc-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+
+.dc-drop {
+    position: relative; display: flex; align-items: center; gap: 14px; margin: 0; padding: 16px 18px; cursor: pointer;
+    border: 1.5px dashed #cbd5e1; border-radius: 14px; background: var(--pp-soft, #f7f8fb); transition: border-color .15s, background .15s;
+}
+.dc-drop:hover, .dc-drop.drag { border-color: var(--pp-brand, #0ea5e9); background: color-mix(in srgb, var(--pp-brand, #0ea5e9) 6%, #fff); }
+.dc-drop.has { border-style: solid; border-color: #bae6fd; background: #f0f9ff; }
+.dc-drop input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.dc-drop > i { font-size: 32px; color: var(--pp-brand, #0ea5e9); flex: none; }
+.dc-drop-main { display: flex; flex-direction: column; min-width: 0; }
+.dc-drop-main b { font-size: 14px; color: var(--pp-ink, #0f172a); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dc-drop-main small { font-size: 12px; color: var(--pp-muted, #64748b); }
+
+.dc-err { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: #be123c; }
+.dc-actions { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+.dc-private { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--pp-muted, #64748b); }
+.dc-private i { font-size: 16px; color: #059669; }
+
+/* ---------- list ---------- */
+.dc-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.dc-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--pp-line, #e6e8f0); border-radius: 12px; background: var(--pp-card, #fff); transition: border-color .15s, box-shadow .15s; }
+.dc-item:hover { border-color: #cfd4e2; box-shadow: 0 6px 18px -14px rgba(15, 23, 42, .4); }
+.dc-ic { width: 40px; height: 40px; flex: none; display: grid; place-items: center; border-radius: 10px; font-size: 22px; }
+.dc-main { flex: 1; min-width: 0; }
+.dc-top { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.dc-title { font-size: 14px; color: var(--pp-ink, #0f172a); overflow-wrap: anywhere; }
+.dc-cat { padding: 1px 8px; border-radius: 99px; background: #f1f5f9; color: #475569; font-size: 11px; font-weight: 700; }
+.dc-exp { padding: 1px 8px; border-radius: 99px; font-size: 11px; font-weight: 700; }
+.dc-exp.ok { background: #ecfdf5; color: #047857; }
+.dc-exp.warn { background: #fffbeb; color: #b45309; }
+.dc-exp.bad { background: #fff1f2; color: #be123c; }
+.dc-sub { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin-top: 3px; font-size: 12px; color: var(--pp-muted, #64748b); }
+.dc-owner-tag { display: inline-flex; align-items: center; gap: 5px; font-weight: 600; color: #334155; }
+.dc-owner-tag.company i { font-size: 15px; color: #0369a1; }
+.dc-note { margin-top: 3px; font-size: 12px; color: #475569; font-style: italic; }
+.dc-btns { display: flex; align-items: center; gap: 6px; flex: none; }
+.dc-btn { display: inline-flex; align-items: center; gap: 4px; height: 32px; padding: 0 10px; border: 1px solid var(--pp-line, #e6e8f0); border-radius: 9px; background: #fff; font-size: 12.5px; font-weight: 600; color: #334155; }
+.dc-btn i { font-size: 17px; }
+.dc-btn:hover { border-color: var(--pp-brand, #0ea5e9); color: var(--pp-brand-ink, #0369a1); }
+.dc-btn.danger:hover { border-color: #fda4af; color: #be123c; background: #fff1f2; }
+.dc-list.compact .dc-item { padding: 8px 10px; }
+
+.dc-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 28px 12px; color: var(--pp-muted, #64748b); font-size: 13px; }
+.dc-empty i { font-size: 34px; opacity: .5; }
+
+.dc-pending { display: flex; flex-direction: column; gap: 12px; }
+
+/* ---------- Documents screen ---------- */
+.dc-page { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+.dc-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.dc-stat { display: flex; align-items: center; gap: 12px; padding: 14px; border: 1px solid var(--pp-line, #e6e8f0); border-radius: 14px; background: var(--pp-card, #fff); }
+.dc-stat i { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 10px; font-size: 20px; }
+.dc-stat b { display: block; font-size: 20px; line-height: 1.1; color: var(--pp-ink, #0f172a); }
+.dc-stat small { font-size: 12px; color: var(--pp-muted, #64748b); }
+.dc-toolbar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
+.dc-toolbar .pp-input { width: auto; min-width: 170px; flex: 1; }
+.dc-toolbar .dc-search { flex: 2; min-width: 220px; }
+.dc-group { margin-bottom: 16px; }
+.dc-group-head { display: flex; align-items: center; gap: 10px; margin: 0 0 8px; }
+.dc-group-head b { font-size: 14px; color: var(--pp-ink, #0f172a); }
+.dc-group-head small { font-size: 12px; color: var(--pp-muted, #64748b); }
+.dc-group-head .dc-count { margin-left: auto; font-size: 12px; font-weight: 700; color: #475569; background: #f1f5f9; padding: 2px 8px; border-radius: 99px; }
+.dc-group-head a { color: inherit; text-decoration: none; }
+.dc-group-head a:hover b { color: var(--pp-brand-ink, #0369a1); }
+.dc-scope { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 12px; background: #f0f9ff; border: 1px solid #bae6fd; font-size: 13px; color: #075985; }
+.dc-scope i { font-size: 18px; }
+
+@media (max-width: 991.98px) {
+    .dc-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .dc-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 575.98px) {
+    .dc-grid { grid-template-columns: minmax(0, 1fr); }
+    .dc-item { flex-wrap: wrap; }
+    .dc-btns { width: 100%; padding-left: 52px; }
+    .dc-btns .dc-btn:not(.danger) { flex: 1; justify-content: center; }
+    .dc-actions .pp-btn { width: 100%; justify-content: center; }
+    .dc-toolbar .pp-input, .dc-toolbar .dc-search { min-width: 0; flex-basis: 100%; }
+}
