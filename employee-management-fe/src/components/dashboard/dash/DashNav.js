@@ -1,6 +1,7 @@
 import React from 'react'
 import { Sidebar } from './Sidebar'
 import { TopHeader } from './TopHeader'
+import { BottomNav } from './BottomNav'
 
 export const DashNav = ({ children }) => {
     return (
@@ -14,6 +15,7 @@ export const DashNav = ({ children }) => {
                     {children}
                 </div>
             </div>
+            <BottomNav />
         </div>
     )
 }

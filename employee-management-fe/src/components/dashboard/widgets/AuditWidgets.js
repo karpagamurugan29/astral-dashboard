@@ -364,3 +364,89 @@ export const AttentionWidget = ({ attention }) => {
         </div>
     )
 }
+
+/* ---------------- Audit sessions today (start → end per person, a timeline) ---------------- */
+// Each bar is one timer session from its start to its end; a running session grows to "now"
+// in green. Bars sit on a real time axis (08:00 → 20:00 or later), so gaps and overlaps read
+// at a glance; the client name rides inside bars wide enough to hold it.
+const RUNNING = '#16a34a'
+
+export const AuditTimelineToday = ({ sessions = [], dayStart, scope }) => {
+    const now = useTick(sessions.some((s) => !s.end), 30000)
+    const people = useMemo(() => {
+        const seen = new Map()
+        sessions.forEach((s) => { if (!seen.has(s.employee._id)) seen.set(s.employee._id, s.employee) })
+        return [...seen.values()]
+    }, [sessions])
+    const d0 = dayStart ? new Date(dayStart).getTime() : new Date().setHours(0, 0, 0, 0)
+    const lo = d0 + 8 * 36e5
+    const hi = Math.max(d0 + 20 * 36e5, now + 15 * 6e4)
+    const minStart = sessions.length ? Math.min(...sessions.map((s) => new Date(s.start).getTime())) : lo
+    const from = Math.min(lo, Math.floor(minStart / 36e5) * 36e5)
+
+    const option = useMemo(() => ({
+        tooltip: {
+            ...tooltipBase,
+            formatter: (p) => {
+                const s = sessions[p.data.idx]
+                const t = (d) => new Date(d).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+                return `<strong>${fullName(s.employee)}</strong><br/>${s.clientName}${s.engagementName ? ` · ${s.engagementName}` : ''}<br/>${t(s.start)} – ${s.end ? t(s.end) : 'now (running)'} · ${fmtDuration(s.end ? s.minutes : (now - new Date(s.start)) / 6e4)}${s.note ? `<br/><em>${s.note.replace(/</g, '&lt;')}</em>` : ''}`
+            },
+        },
+        grid: { left: 8, right: 18, top: 8, bottom: 26, containLabel: true },
+        xAxis: {
+            type: 'time', min: from, max: hi,
+            splitNumber: 6,
+            axisLine: { lineStyle: { color: GRID } },
+            splitLine: { show: true, lineStyle: { color: GRID } },
+            axisLabel: { color: MUTED, fontSize: 11, formatter: (v) => new Date(v).toLocaleTimeString([], { hour: 'numeric' }) },
+        },
+        yAxis: {
+            type: 'category', inverse: true,
+            data: people.map(fullName),
+            axisLine: { show: false }, axisTick: { show: false },
+            axisLabel: { color: '#64748b', fontSize: 12, width: 110, overflow: 'truncate' },
+        },
+        series: [{
+            type: 'custom',
+            encode: { x: [1, 2], y: 0 },
+            data: sessions.map((s, idx) => ({
+                idx,
+                value: [people.findIndex((p) => p._id === s.employee._id), new Date(s.start).getTime(), s.end ? new Date(s.end).getTime() : now],
+                itemStyle: { color: s.end ? HUE : RUNNING },
+                label: s.clientName,
+            })),
+            renderItem: (params, api) => {
+                const y = api.value(0)
+                const a = api.coord([api.value(1), y])
+                const b = api.coord([api.value(2), y])
+                const h = Math.min(18, api.size([0, 1])[1] * 0.55)
+                const w = Math.max(3, b[0] - a[0])
+                const item = sessions[params.dataIndex]
+                const color = item.end ? HUE : RUNNING
+                const children = [{ type: 'rect', shape: { x: a[0], y: a[1] - h / 2, width: w, height: h, r: 4 }, style: { fill: color } }]
+                if (w > 70) children.push({ type: 'text', style: { x: a[0] + 6, y: a[1], text: item.clientName, fill: '#fff', fontSize: 11, fontWeight: 600, verticalAlign: 'middle', width: w - 12, overflow: 'truncate' } })
+                return { type: 'group', children }
+            },
+        }, {
+            // the "now" marker
+            type: 'line', data: [], markLine: { silent: true, symbol: 'none', lineStyle: { color: RUNNING, type: 'dashed', width: 1 }, label: { formatter: 'now', color: RUNNING, fontSize: 10, position: 'end' }, data: [{ xAxis: now }] },
+        }],
+    }), [sessions, people, from, hi, now])
+
+    const height = Math.min(440, Math.max(170, 60 + people.length * 40))
+    const t = (d) => new Date(d).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+
+    return (
+        <ChartWidget
+            title={scope === 'mine' ? 'My audit sessions today' : 'Audit sessions today'}
+            icon="clock"
+            accent={HUE}
+            height={height}
+            empty={!sessions.length}
+            columns={['Person', 'Client · project', 'Start', 'End', 'Duration']}
+            rows={sessions.map((s) => [fullName(s.employee), `${s.clientName}${s.engagementName ? ` · ${s.engagementName}` : ''}`, t(s.start), s.end ? t(s.end) : 'Running', fmtDuration(s.end ? s.minutes : (now - new Date(s.start)) / 6e4)])}
+            graph={<ReactECharts option={option} style={{ height: '100%', width: '100%' }} notMerge />}
+        />
+    )
+}

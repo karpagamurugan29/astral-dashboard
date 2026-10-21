@@ -8,8 +8,9 @@ import { applyLeave, approveLeave, cancelLeave, getAllLeaves, leaveBalance, leav
 import { getOnboardingList, updateOnboardingTask, initiateOffboarding, getOffboardingList, updateOffboardingTask, completeOffboarding } from "../controller/lifecycle.controller.js";
 import { createProject, updateProject, deleteProject, getProjectById, getAllProjects, addProjectMember, removeProjectMember } from "../controller/project.controller.js";
 import { getClients, getClientById, createClient, updateClient, deleteClient } from "../controller/auditClient.controller.js";
-import { getAuditInsights } from "../controller/auditInsights.controller.js";
+import { getAuditInsights, getTodayCheckins, remindCheckin } from "../controller/auditInsights.controller.js";
 import { cronAutoCheckout, runAutoCheckoutNow } from "../controller/cron.controller.js";
+import { checkinLogReport, auditHoursReport, auditProjectsReport } from "../controller/workbenchReport.controller.js";
 import { getLocationLog } from "../controller/locationLog.controller.js";
 import { createAudit, updateAudit, deleteAudit, getAuditById, getAllAudits, addAuditMember, removeAuditMember, startAuditTimer, stopAuditTimer, getMyActiveAuditTimer } from "../controller/auditEngagement.controller.js";
 import { getDepartments, createDepartment, updateDepartment, deleteDepartment } from "../controller/department.controller.js";
@@ -263,6 +264,8 @@ router.get("/dashboard/task-status", authMiddleWare, getTaskStatusBreakdown);
 router.get("/dashboard/leave-breakdown", authMiddleWare, getLeaveBreakdown);
 router.get("/dashboard/project-progress", authMiddleWare, getProjectProgress);
 router.get("/dashboard/audit-insights", authMiddleWare, getAuditInsights);
+router.get("/dashboard/today-checkins", authMiddleWare, adminHRManager("attendance"), getTodayCheckins);
+router.post("/dashboard/remind-checkin", authMiddleWare, adminHRManager("attendance"), remindCheckin);
 
 // Notifications
 router.get("/notifications", authMiddleWare, getNotifications);
@@ -283,6 +286,9 @@ router.get("/reports/headcount", authMiddleWare, adminHRManager("reports"), head
 router.get("/reports/expenses", authMiddleWare, adminHRManager("reports"), expenseReport);
 router.get("/reports/projects", authMiddleWare, adminHRManager("reports"), projectReport);
 router.get("/reports/tasks", authMiddleWare, adminHRManager("reports"), taskReport);
+router.get("/reports/checkins", authMiddleWare, adminHRManager("reports"), checkinLogReport);
+router.get("/reports/audit-hours", authMiddleWare, adminHRManager("reports"), auditHoursReport);
+router.get("/reports/audit-projects", authMiddleWare, adminHRManager("reports"), auditProjectsReport);
 
 // Settings
 router.get("/settings", authMiddleWare, getCompanySettings);

@@ -299,11 +299,20 @@ export const teamAttendance = async (req, res) => {
             const record = recordMap.get(String(emp._id));
 
             if (record) {
+                const sessions = sessionsOf(record);
+                const last = sessions[sessions.length - 1];
+                const where = (p) => (p && Number.isFinite(p.latitude) ? { latitude: p.latitude, longitude: p.longitude, accuracy: p.accuracy ?? null, address: p.address || "" } : null);
                 return {
                     employeeId: emp,
                     status: record.status,
+                    mode: record.attendanceType,
                     checkIn: record.checkIn?.time || null,
-                    checkOut: record.checkOut?.time || null,
+                    checkOut: openSession(record) ? null : record.checkOut?.time || null,
+                    checkInPlace: where(record.checkIn),
+                    checkOutPlace: openSession(record) ? null : where(last?.checkOut),
+                    remarks: record.checkIn?.remarks || "",
+                    sessions: sessions.length,
+                    autoCheckedOut: !!record.autoCheckedOut,
                     lateByMinutes: record.lateByMinutes || 0,
                     workingHours: record.workingHours || 0,
                 };

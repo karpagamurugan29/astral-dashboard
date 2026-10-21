@@ -1,64 +1,123 @@
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 
-// Shared shell for every premium dashboard widget: title/icon header, a Graph/Data mode
-// toggle, and a fade transition between the chart and its underlying numbers — every widget
-// that uses this gets the same interaction for free instead of reimplementing it per-chart.
-export const ChartWidget = ({ title, icon, accent = '#0ea5e9', graph, columns, rows, empty, height = 300 }) => {
+// Shared shell for every dashboard widget: icon + title header, a Graph / Data switch, and a
+// compact data table behind the chart. The table works out which columns are numbers (including
+// durations like "2h 05m" and percentages), right-aligns them, draws an in-row bar on the main
+// number column, and sorts by any column on click — every widget gets it without extra code.
+
+// "2h 05m" → 125, "45m" → 45, "12.5h" → 750, "40%" → 40, "₹1,250" → 1250; anything else → NaN.
+const toNumber = (cell) => {
+    if (cell === null || cell === undefined) return NaN
+    if (typeof cell === 'number') return cell
+    const s = String(cell).trim()
+    if (!s || s === '—' || s === '-') return NaN
+    const dur = s.match(/^(\d+(?:\.\d+)?)h(?:\s*(\d+)m)?$/i)
+    if (dur) return Number(dur[1]) * 60 + Number(dur[2] || 0)
+    const mins = s.match(/^(\d+)m$/i)
+    if (mins) return Number(mins[1])
+    const plain = s.replace(/[₹$,%\s]/g, '')
+    return /^-?\d+(\.\d+)?$/.test(plain) ? Number(plain) : NaN
+}
+
+export const DataTable = ({ columns, rows, accent, barColumn, maxHeight }) => {
+    const [sort, setSort] = useState({ col: null, dir: 'desc' })
+
+    const numeric = useMemo(() => columns.map((_, j) => {
+        const vals = rows.map((r) => r[j]).filter((v) => v !== '' && v !== null && v !== undefined && v !== '—')
+        return vals.length > 0 && vals.every((v) => Number.isFinite(toNumber(v)))
+    }), [columns, rows])
+
+    const barCol = barColumn !== undefined ? barColumn : numeric.findIndex((n, j) => n && j > 0)
+    const barMax = useMemo(() => (barCol >= 0 ? Math.max(0, ...rows.map((r) => toNumber(r[barCol])).filter(Number.isFinite)) : 0), [rows, barCol])
+
+    const sorted = useMemo(() => {
+        if (sort.col === null) return rows
+        const j = sort.col
+        const sign = sort.dir === 'asc' ? 1 : -1
+        return [...rows].sort((a, b) => {
+            if (numeric[j]) return sign * ((toNumber(a[j]) || 0) - (toNumber(b[j]) || 0))
+            return sign * String(a[j]).localeCompare(String(b[j]))
+        })
+    }, [rows, sort, numeric])
+
+    const onSort = (j) => setSort((s) => (s.col === j ? { col: j, dir: s.dir === 'desc' ? 'asc' : 'desc' } : { col: j, dir: numeric[j] ? 'desc' : 'asc' }))
+
+    return (
+        <div className="cw-table-wrap" style={{ maxHeight }}>
+            <table className="cw-table">
+                <thead>
+                    <tr>
+                        <th className="cw-idx">#</th>
+                        {columns.map((c, j) => (
+                            <th key={c} className={numeric[j] ? 'num' : ''} aria-sort={sort.col === j ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                                <button type="button" onClick={() => onSort(j)}>
+                                    {c}
+                                    <i className={`mdi ${sort.col === j ? (sort.dir === 'asc' ? 'mdi-arrow-up' : 'mdi-arrow-down') : 'mdi-swap-vertical'}`}></i>
+                                </button>
+                            </th>
+                        ))}
+                    </tr>
+                </thead>
+                <tbody>
+                    {sorted.map((row, i) => (
+                        <tr key={i}>
+                            <td className="cw-idx">{i + 1}</td>
+                            {row.map((cell, j) => (
+                                <td key={j} className={`${numeric[j] ? 'num' : ''} ${j === 0 ? 'lead' : ''}`}>
+                                    {j === barCol && barMax > 0 ? (
+                                        <span className="cw-bar-cell">
+                                            <span className="cw-bar"><span style={{ width: `${Math.max(2, (toNumber(cell) / barMax) * 100)}%`, background: accent }}></span></span>
+                                            <b>{cell}</b>
+                                        </span>
+                                    ) : cell}
+                                </td>
+                            ))}
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+            <div className="cw-foot">
+                <span>{rows.length} row{rows.length === 1 ? '' : 's'}</span>
+                <span>{sort.col === null ? 'Click a column to sort' : `Sorted by ${columns[sort.col]} · ${sort.dir === 'asc' ? 'low → high' : 'high → low'}`}</span>
+            </div>
+        </div>
+    )
+}
+
+export const ChartWidget = ({ title, subtitle, icon, accent = '#0ea5e9', graph, columns, rows, empty, height = 300, barColumn }) => {
     const [mode, setMode] = useState('graph')
     const isEmpty = empty || !rows || rows.length === 0
 
     return (
         <div className="card card-h-100 chart-widget">
             <div className="card-body">
-                <div className="d-flex align-items-center justify-content-between mb-3">
-                    <div className="d-flex align-items-center gap-2">
-                        <span className="chart-widget-icon" style={{ background: `${accent}1a`, color: accent }}>
-                            <i data-feather={icon}></i>
-                        </span>
+                <div className="cw-head">
+                    <span className="chart-widget-icon" style={{ background: `${accent}1a`, color: accent }}>
+                        <i data-feather={icon}></i>
+                    </span>
+                    <div className="cw-titles">
                         <h5 className="card-title mb-0">{title}</h5>
+                        {subtitle && <small>{subtitle}</small>}
                     </div>
-                    <div className="chart-widget-toggle" role="tablist" aria-label={`${title} view mode`}>
-                        <button
-                            type="button"
-                            role="tab"
-                            aria-selected={mode === 'graph'}
-                            className={mode === 'graph' ? 'active' : ''}
-                            onClick={() => setMode('graph')}
-                        >
-                            Graph
+                    <div className="cw-switch" role="tablist" aria-label={`${title} view`}>
+                        <button type="button" role="tab" aria-selected={mode === 'graph'} className={mode === 'graph' ? 'on' : ''} onClick={() => setMode('graph')}>
+                            <i className="mdi mdi-chart-bar"></i><span>Graph</span>
                         </button>
-                        <button
-                            type="button"
-                            role="tab"
-                            aria-selected={mode === 'data'}
-                            className={mode === 'data' ? 'active' : ''}
-                            onClick={() => setMode('data')}
-                        >
-                            Data
+                        <button type="button" role="tab" aria-selected={mode === 'data'} className={mode === 'data' ? 'on' : ''} onClick={() => setMode('data')}>
+                            <i className="mdi mdi-table"></i><span>Data</span>
                         </button>
                     </div>
                 </div>
 
                 {isEmpty ? (
                     <div className="chart-widget-empty" style={{ height: Math.min(height, 160) }}>
-                        <i data-feather="inbox"></i>
+                        <i className="mdi mdi-chart-box-outline"></i>
                         <span>No data yet</span>
                     </div>
                 ) : mode === 'graph' ? (
                     <div className="chart-widget-graph" style={{ height }}>{graph}</div>
                 ) : (
-                    <div className="chart-widget-table" style={{ maxHeight: height, overflowY: 'auto' }}>
-                        <table className="table table-sm table-nowrap mb-0">
-                            <thead className="table-light">
-                                <tr>{columns.map((c) => <th key={c}>{c}</th>)}</tr>
-                            </thead>
-                            <tbody>
-                                {rows.map((row, i) => (
-                                    <tr key={i}>{row.map((cell, j) => <td key={j}>{cell}</td>)}</tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                    <DataTable columns={columns} rows={rows} accent={accent} barColumn={barColumn} maxHeight={height + 34} />
                 )}
             </div>
         </div>

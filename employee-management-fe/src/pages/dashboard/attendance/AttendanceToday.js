@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
 import attendanceActions from '../../../redux/attendance/Actions'
 import { PeopleShell, ProgressRing, ErrorBanner } from '../../../components/people/PeopleUI'
-import { ATTENDANCE_ROOT, WORKDAY_HOURS, MODE_META, AttStatus, ModeTag, formatTime, hoursLabel } from '../../../components/attendance/AttendanceUI'
+import { ATTENDANCE_ROOT, WORKDAY_HOURS, AttStatus, ModeTag, CheckInOptions, formatTime, hoursLabel } from '../../../components/attendance/AttendanceUI'
 import './AttendanceToday.css'
 
 const greeting = (d) => (d.getHours() < 12 ? 'Good morning' : d.getHours() < 17 ? 'Good afternoon' : 'Good evening')
@@ -19,6 +19,7 @@ export const AttendanceToday = () => {
     const { isAuthenticated: user } = useSelector((state) => state.authReducer || {})
     const [now, setNow] = useState(() => new Date())
     const [mode, setMode] = useState('Office')
+    const [note, setNote] = useState('')
 
     useEffect(() => {
         dispatch({ type: attendanceActions.GET_TODAY_ATTENDANCE })
@@ -38,7 +39,10 @@ export const AttendanceToday = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [saving])
 
-    const onCheckIn = () => dispatch({ type: attendanceActions.CHECK_IN, payload: { attendanceType: mode } })
+    const onCheckIn = () => {
+        dispatch({ type: attendanceActions.CHECK_IN, payload: { attendanceType: mode, remarks: note.trim() } })
+        setNote('')
+    }
     const onCheckOut = () => dispatch({ type: attendanceActions.CHECK_OUT, payload: {} })
 
     const required = today?.requiredHours || WORKDAY_HOURS
@@ -122,14 +126,7 @@ export const AttendanceToday = () => {
                                 {!today ? (
                                     <>
                                         <div className="mt-mode-label">Where are you working today?</div>
-                                        <div className="mt-modes" role="radiogroup" aria-label="Work mode">
-                                            {Object.entries(MODE_META).map(([m, meta]) => (
-                                                <label key={m} style={{ '--c': meta.color }}>
-                                                    <input type="radio" name="mode" value={m} checked={mode === m} onChange={() => setMode(m)} />
-                                                    <span><i className={`mdi ${meta.icon}`}></i>{m}</span>
-                                                </label>
-                                            ))}
-                                        </div>
+                                        <CheckInOptions mode={mode} onMode={setMode} note={note} onNote={setNote} disabled={!!saving} />
                                         <button type="button" className="mt-big" onClick={onCheckIn} disabled={saving}>
                                             <i className="mdi mdi-fingerprint"></i>{saving === 'locating' ? 'Getting your location…' : saving ? 'Checking in…' : 'Check in'}
                                         </button>
@@ -145,14 +142,7 @@ export const AttendanceToday = () => {
                                             <div><b>{today.autoCheckedOut ? 'Checked out automatically' : 'Checked out'}</b>{today.autoCheckedOut ? <>You didn't check out, so the system did at the cut-off. If that's wrong, <Link to="/attendance/regularization">request a correction</Link>.</> : <>You've worked {hoursLabel(worked)} today across {sessions.length} session{sessions.length === 1 ? '' : 's'}.</>}</div>
                                         </div>
                                         <div className="mt-mode-label">Going back to work? Where are you now?</div>
-                                        <div className="mt-modes" role="radiogroup" aria-label="Work mode">
-                                            {Object.entries(MODE_META).map(([m, meta]) => (
-                                                <label key={m} style={{ '--c': meta.color }}>
-                                                    <input type="radio" name="mode" value={m} checked={mode === m} onChange={() => setMode(m)} />
-                                                    <span><i className={`mdi ${meta.icon}`}></i>{m}</span>
-                                                </label>
-                                            ))}
-                                        </div>
+                                        <CheckInOptions mode={mode} onMode={setMode} note={note} onNote={setNote} disabled={!!saving} />
                                         <button type="button" className="mt-big again" onClick={onCheckIn} disabled={saving}>
                                             <i className="mdi mdi-login-variant"></i>{saving === 'locating' ? 'Getting your location…' : saving ? 'Checking in…' : 'Check in again'}
                                         </button>

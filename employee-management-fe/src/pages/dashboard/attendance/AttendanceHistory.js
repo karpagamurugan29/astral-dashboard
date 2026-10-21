@@ -4,8 +4,7 @@ import { Link } from 'react-router-dom'
 import attendanceActions from '../../../redux/attendance/Actions'
 import { PeopleShell, EmptyState, ErrorBanner } from '../../../components/people/PeopleUI'
 import {
-    ATTENDANCE_ROOT, WORKDAY_HOURS, STATUS_META, statusMeta, AttStatus, ModeTag, MonthNav, formatTime, hoursLabel, ymd,
-} from '../../../components/attendance/AttendanceUI'
+    ATTENDANCE_ROOT, WORKDAY_HOURS, STATUS_META, statusMeta, AttStatus, ModeTag, MonthNav, formatTime, hoursLabel, ymd, PlaceLine } from '../../../components/attendance/AttendanceUI'
 import './AttendanceHistory.css'
 
 const DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -141,8 +140,8 @@ export const AttendanceHistory = () => {
                                     <tr key={r._id}>
                                         <td className="at-date"><b>{d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}</b><small>{d.toLocaleDateString(undefined, { weekday: 'long' })}</small></td>
                                         <td className="hide-md"><ModeTag mode={r.attendanceType} /></td>
-                                        <td>{r.checkIn?.time ? <span className="at-time in"><i className="mdi mdi-arrow-down-circle-outline"></i>{formatTime(r.checkIn.time)}</span> : <span className="at-time empty">--:--</span>}</td>
-                                        <td>{r.checkOut?.time ? <span className="at-time out"><i className="mdi mdi-arrow-up-circle-outline"></i>{formatTime(r.checkOut.time)}</span> : <span className="at-time empty">--:--</span>}</td>
+                                        <td>{r.checkIn?.time ? <span className="ci-cell"><span className="at-time in"><i className="mdi mdi-arrow-down-circle-outline"></i>{formatTime(r.checkIn.time)}</span><PlaceLine place={r.checkIn} />{r.sessions?.length > 1 && <span className="ci-sessions">{r.sessions.length} sessions</span>}</span> : <span className="at-time empty">--:--</span>}</td>
+                                        <td>{r.checkOut?.time ? <span className="ci-cell"><span className="at-time out"><i className="mdi mdi-arrow-up-circle-outline"></i>{formatTime(r.checkOut.time)}{r.autoCheckedOut ? ' (auto)' : ''}</span>{r.autoCheckedOut ? <span className="ci-place none"><i className="mdi mdi-robot-outline"></i>Auto check-out — no location</span> : <PlaceLine place={r.checkOut} />}</span> : <span className="at-time empty">--:--</span>}</td>
                                         <td className="hide-sm">
                                             <div className="at-hours" style={{ '--c': hrs >= WORKDAY_HOURS ? '#10b981' : '#0ea5e9' }}>
                                                 <span className="at-hours-num">{hoursLabel(hrs)}</span>

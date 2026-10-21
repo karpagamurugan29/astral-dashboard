@@ -42,6 +42,14 @@ const createRequest = function* (url, data, method, headers, sessionAlert) {
     const responseJson = yield result?.json();
     // HTTP status rides along so callers can tell "signed out" (401) from a passing server error.
     if (responseJson && typeof responseJson === 'object') Object.defineProperty(responseJson, 'httpStatus', { value: result.status });
+    // The login is missing or expired: send the person back to sign in instead of showing raw
+    // "Token is required" errors on every widget. The login call itself and the session check
+    // handle their own 401s.
+    if (result.status === 401 && !/\/(login|logout|session)(\?|$)/.test(url) && localStorage.getItem('session')) {
+      localStorage.removeItem('session');
+      localStorage.removeItem(TOKEN_KEY);
+      window.location.assign('/?expired=1');
+    }
     return yield sessionHandler(responseJson, sessionAlert);
   } else {
     return yield sessionHandler(result?.text(), sessionAlert);

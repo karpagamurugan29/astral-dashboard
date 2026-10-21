@@ -34,6 +34,12 @@ const zonedInstant = (y, m, d, hour, tz) => {
     return new Date(guess - (asIfUtc - guess));
 };
 
+// Midnight (company time) of the day a moment falls on.
+export const localDayStart = (moment = new Date(), tz = COMPANY_TZ()) => {
+    const p = partsIn(new Date(moment), tz);
+    return zonedInstant(p.year, p.month, p.day, 0, tz);
+};
+
 // The first cut-off after a moment: that day's, or the next day's when it started after the cut-off
 // (a late check-in at 9 PM is closed at 8 PM the following day, not left open forever).
 export const cutoffFor = (moment, tz = COMPANY_TZ(), hour = CUTOFF_HOUR()) => {

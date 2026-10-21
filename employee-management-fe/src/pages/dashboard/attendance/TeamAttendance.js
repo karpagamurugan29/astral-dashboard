@@ -5,7 +5,7 @@ import attendanceActions from '../../../redux/attendance/Actions'
 import departmentActions from '../../../redux/department/Actions'
 import branchActions from '../../../redux/branch/Actions'
 import { PeopleShell, Avatar, DeptTag, ProgressRing, EmptyState, ErrorBanner, fullName } from '../../../components/people/PeopleUI'
-import { ATTENDANCE_ROOT, STATUS_META, AttStatus, formatTime, ymd } from '../../../components/attendance/AttendanceUI'
+import { ATTENDANCE_ROOT, STATUS_META, AttStatus, formatTime, ymd, PlaceLine, ModeTag } from '../../../components/attendance/AttendanceUI'
 
 const TILE_STATUSES = ['Present', 'Late', 'Half Day', 'On Leave', 'Absent']
 
@@ -140,8 +140,8 @@ export const TeamAttendance = () => {
                                         </div>
                                     </td>
                                     <td className="hide-md"><DeptTag name={t.employeeId?.department} /></td>
-                                    <td>{t.checkIn ? <span className="at-time in"><i className="mdi mdi-arrow-down-circle-outline"></i>{formatTime(t.checkIn)}</span> : <span className="at-time empty">--:--</span>}</td>
-                                    <td className="hide-sm">{t.checkOut ? <span className="at-time out"><i className="mdi mdi-arrow-up-circle-outline"></i>{formatTime(t.checkOut)}</span> : <span className="at-time empty">--:--</span>}</td>
+                                    <td>{t.checkIn ? <span className="ci-cell"><span className="at-time in"><i className="mdi mdi-arrow-down-circle-outline"></i>{formatTime(t.checkIn)}</span>{t.mode && <ModeTag mode={t.mode} />}<PlaceLine place={t.checkInPlace} />{t.remarks && <span className="ci-sessions">“{t.remarks}”</span>}</span> : <span className="at-time empty">--:--</span>}</td>
+                                    <td className="hide-sm">{t.checkOut ? <span className="ci-cell"><span className="at-time out"><i className="mdi mdi-arrow-up-circle-outline"></i>{formatTime(t.checkOut)}{t.autoCheckedOut ? ' (auto)' : ''}</span>{!t.autoCheckedOut && <PlaceLine place={t.checkOutPlace} />}{t.sessions > 1 && <span className="ci-sessions">{t.sessions} sessions</span>}</span> : t.checkIn ? <span className="at-time in"><span className="au-pulse"></span> In now</span> : <span className="at-time empty">--:--</span>}</td>
                                     <td><AttStatus status={t.status} extra={t.lateByMinutes > 0 ? `· ${t.lateByMinutes}m late` : null} /></td>
                                 </tr>
                             ))}

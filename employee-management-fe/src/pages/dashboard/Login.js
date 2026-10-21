@@ -122,6 +122,13 @@ export const Login = () => {
                     <h2>Welcome back 👋</h2>
                     <p className="lg-sub">Sign in to continue to your Astral workspace.</p>
 
+                    {/expired=1/.test(window.location.search) && !error && (
+                        <div className="lg-alert info" role="status">
+                            <i className="mdi mdi-information-outline"></i>
+                            <span>Your session ended. Please sign in again.</span>
+                        </div>
+                    )}
+
                     {error && (
                         <div className="lg-alert" role="alert">
                             <i className="mdi mdi-alert-circle-outline"></i>

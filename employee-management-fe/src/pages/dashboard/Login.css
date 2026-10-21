@@ -487,3 +487,5 @@
 .lg-demo-user > i { flex: none; font-size: 16px; color: #d97706; }
 .lg-demo-none { margin: 8px 4px; font-size: 12.5px; color: #92400e; }
 @media (max-width: 420px) { .lg-demo-user code { display: none; } }
+
+.lg-alert.info { color: #075985; background: #f0f9ff; border-color: #bae6fd; }

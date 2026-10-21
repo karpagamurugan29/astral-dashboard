@@ -24,8 +24,10 @@
       "purpose": "maskable"
     }
   ],
-  "start_url": ".",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "orientation": "portrait",
   "display": "standalone",
-  "theme_color": "#0b0f19",
+  "theme_color": "#ffffff",
   "background_color": "#ffffff"
 }

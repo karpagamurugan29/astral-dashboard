@@ -30,7 +30,7 @@ export const reverseGeocode = async (latitude, longitude) => {
         const ctrl = new AbortController();
         const timer = setTimeout(() => ctrl.abort(), 5000);
         const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&lat=${latitude}&lon=${longitude}`,
+            `https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&accept-language=en&namedetails=0&lat=${latitude}&lon=${longitude}`,
             { headers: { "User-Agent": "Astral-Consulting-HRMS/1.0", "Accept-Language": "en" }, signal: ctrl.signal }
         );
         clearTimeout(timer);

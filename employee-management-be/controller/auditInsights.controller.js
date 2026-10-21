@@ -2,6 +2,8 @@ import AuditEngagementModel from "../models/auditEngagementModel.js";
 import AuditTimeLogModel from "../models/auditTimeLogModel.js";
 import { PERSON, MANAGERS, CLOSED, minutesOf } from "../utils/auditShared.js";
 import employeeModel from "../models/employeeModel.js";
+import { notify } from "../utils/notify.js";
+import { localDayStart } from "../utils/autoCheckout.js";
 import attendanceModel from "../models/attendanceModel.js";
 import leaveModel from "../models/leaveModel.js";
 import regularizationModel from "../models/regularizationModel.js";
@@ -112,7 +114,7 @@ export const getAuditInsights = async (req, res) => {
 
         // 5. Deadlines: open projects overdue or due in the next 21 days, with hours used vs estimate.
         const totalByAudit = new Map();
-        const allLogs = await AuditTimeLogModel.find({ auditId: { $in: ids } }).select("auditId startTime endTime durationMinutes").lean();
+        const allLogs = await AuditTimeLogModel.find({ auditId: { $in: ids } }).select("auditId employeeId startTime endTime durationMinutes").lean();
         allLogs.forEach((l) => totalByAudit.set(String(l.auditId), (totalByAudit.get(String(l.auditId)) || 0) + minutesOf(l, now)));
         const deadlines = audits
             .filter((a) => !CLOSED.includes(a.status) && a.endDate && new Date(a.endDate).getTime() <= today + 21 * DAY)
@@ -141,10 +143,152 @@ export const getAuditInsights = async (req, res) => {
 
         const attention = SENIOR.includes(req.user.role) ? await attentionFor(req, audits, totalByAudit, today) : null;
 
+        // 9. "My audits": every open project the caller manages or works on, with their own hours.
+        const myId = String(req.user.id);
+        const myAudits = audits
+            .filter((a) => !CLOSED.includes(a.status) && [a.auditManager, ...(a.teamMembers || [])].some((p) => String(p) === myId))
+            .map((a) => {
+                const mine = allLogs.filter((l) => String(l.auditId) === String(a._id) && String(l.employeeId) === myId);
+                const sum = (from) => Math.round(mine.reduce((t, l) => t + overlap(l, from, now + 1, now), 0));
+                const last = mine.reduce((acc, l) => (!acc || new Date(l.startTime) > new Date(acc.startTime) ? l : acc), null);
+                return {
+                    _id: a._id, auditCode: a.auditCode, clientName: a.clientName, engagementName: a.engagementName, auditType: a.auditType,
+                    financialYear: a.financialYear, status: a.status, endDate: a.endDate, estimatedHours: a.estimatedHours || 0,
+                    daysLeft: a.endDate ? Math.round((startOfDay(a.endDate).getTime() - today) / DAY) : null,
+                    role: String(a.auditManager) === myId ? "Manager" : "Team member",
+                    teamSize: new Set([String(a.auditManager), ...(a.teamMembers || []).map(String)]).size,
+                    teamMinutes: Math.round(totalByAudit.get(String(a._id)) || 0),
+                    myMinutes: Math.round(mine.reduce((t, l) => t + minutesOf(l, now), 0)),
+                    myWeekMinutes: sum(weekStart),
+                    myTodayMinutes: sum(today),
+                    lastSession: last ? { start: last.startTime, end: last.endTime } : null,
+                    runningByMe: mine.some((l) => !l.endTime),
+                };
+            })
+            .sort((x, y) => (x.daysLeft ?? 9999) - (y.daysLeft ?? 9999));
+
+        // 8. Today's audit sessions with start and end (end null = still running), for the timeline.
+        //    Employees see their own; Managers / Team Leads everyone on their audits; Admin/HR everyone.
+        const dayStart = localDayStart().getTime();
+        const todaySessions = logs
+            .filter((l) => l.employeeId && new Date(l.startTime).getTime() < now && (!l.endTime || new Date(l.endTime).getTime() >= dayStart))
+            .filter((l) => SENIOR.includes(req.user.role) || String(l.employeeId._id) === String(req.user.id))
+            .map((l) => {
+                const a = byId.get(String(l.auditId));
+                const start = Math.max(new Date(l.startTime).getTime(), dayStart);
+                const end = l.endTime ? new Date(l.endTime).getTime() : null;
+                return {
+                    employee: l.employeeId,
+                    auditId: l.auditId,
+                    clientName: a?.clientName || "Audit",
+                    engagementName: a?.engagementName || "",
+                    auditType: a?.auditType,
+                    financialYear: a?.financialYear,
+                    start: new Date(start),
+                    end: end ? new Date(end) : null,
+                    minutes: Math.round(((end || now) - start) / 60000),
+                    note: l.note || "",
+                };
+            })
+            .sort((x, y) => x.start - y.start);
+
         return res.status(200).json({
             success: true,
-            data: { scope: MANAGERS.includes(req.user.role) ? "firm" : "mine", daily, byClient, byPerson, statusCounts, deadlines, activeNow, me, attention, weekStart: ymd(weekStart) },
+            data: { scope: MANAGERS.includes(req.user.role) ? "firm" : "mine", daily, byClient, byPerson, statusCounts, deadlines, activeNow, me, attention, todaySessions, myAudits, dayStart: new Date(dayStart), weekStart: ymd(weekStart) },
         });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: err.message });
+    }
+};
+
+// "Who's in today" for the dashboard: everyone in scope who checked in today (company time),
+// latest activity first — when, how (office / home / client), where, and whether they're in now.
+// Admin/HR see everyone; Managers / Team Leads their direct reports.
+export const getTodayCheckins = async (req, res) => {
+    try {
+        const { localDayStart } = await import("../utils/autoCheckout.js");
+        const { sessionsOf, openSession } = await import("../utils/attendanceSessions.js");
+        const since = localDayStart();
+
+        const team = MANAGERS.includes(req.user.role)
+            ? await employeeModel.find({ status: "Active" }).select("employeeId firstName lastName designation department profileImage phoneNumber").lean()
+            : await employeeModel.find({ status: "Active", manager: req.user.id }).select("employeeId firstName lastName designation department profileImage phoneNumber").lean();
+        const ids = team.map((e) => e._id);
+
+        const records = await attendanceModel
+            .find({ employeeId: { $in: ids }, "checkIn.time": { $gte: new Date(since.getTime() - 864e5) } })
+            .populate("employeeId", "employeeId firstName lastName designation department profileImage")
+            .lean();
+
+        const place = (p) => (p && Number.isFinite(p.latitude) ? { latitude: p.latitude, longitude: p.longitude, accuracy: p.accuracy ?? null, address: p.address || "" } : null);
+        const rows = [];
+        records.forEach((r) => {
+            const sessions = sessionsOf(r).filter((s) => s.checkIn?.time && new Date(s.checkIn.time) >= since);
+            if (!sessions.length || !r.employeeId) return;
+            const first = sessions[0], last = sessions[sessions.length - 1];
+            const open = openSession(r);
+            const lastActivity = open ? open.checkIn.time : (last.checkOut?.time || last.checkIn.time);
+            rows.push({
+                employee: r.employeeId,
+                inNow: !!open,
+                mode: (open || last).mode || r.attendanceType,
+                firstIn: first.checkIn.time,
+                lastIn: last.checkIn.time,
+                lastOut: open ? null : last.checkOut?.time || null,
+                place: place((open || last).checkIn),
+                outPlace: open ? null : place(last.checkOut),
+                remarks: (open || last).checkIn?.remarks || "",
+                sessions: sessions.length,
+                status: r.status,
+                lateByMinutes: r.lateByMinutes || 0,
+                autoCheckedOut: !!r.autoCheckedOut && !open,
+                lastActivity,
+            });
+        });
+        rows.sort((a, b) => new Date(b.lastActivity) - new Date(a.lastActivity));
+
+        // Everyone in scope with no check-in today; approved leave is shown as such, not as missing.
+        const seen = new Set(rows.map((r) => String(r.employee._id)));
+        const leaves = await leaveModel
+            .find({ employeeId: { $in: ids }, status: "Approved", fromDate: { $lte: new Date(since.getTime() + 864e5 - 1) }, toDate: { $gte: since } })
+            .select("employeeId leaveType")
+            .lean();
+        const onLeave = new Map(leaves.map((l) => [String(l.employeeId), l.leaveType]));
+        const notIn = team
+            .filter((e) => !seen.has(String(e._id)))
+            .map((e) => ({ employee: e, onLeave: onLeave.has(String(e._id)), leaveType: onLeave.get(String(e._id)) || "" }))
+            .sort((a, b) => a.onLeave - b.onLeave || `${a.employee.firstName} ${a.employee.lastName}`.localeCompare(`${b.employee.firstName} ${b.employee.lastName}`));
+
+        return res.status(200).json({
+            success: true,
+            data: { rows, notIn, inNow: rows.filter((r) => r.inNow).length, checkedOut: rows.filter((r) => !r.inNow).length, missing: notIn.filter((n) => !n.onLeave).length, onLeave: notIn.filter((n) => n.onLeave).length, teamSize: ids.length },
+        });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: err.message });
+    }
+};
+
+// Nudge people who haven't checked in today (a notification each). Only people in the sender's
+// scope who still have no check-in today are reminded, whatever ids are sent.
+export const remindCheckin = async (req, res) => {
+    try {
+        const { localDayStart } = await import("../utils/autoCheckout.js");
+        const { sessionsOf } = await import("../utils/attendanceSessions.js");
+        const since = localDayStart();
+        const asked = (Array.isArray(req.body?.employeeIds) ? req.body.employeeIds : []).map(String);
+        if (!asked.length) return res.status(400).json({ success: false, message: "Pick at least one person to remind." });
+
+        const scope = MANAGERS.includes(req.user.role) ? { status: "Active" } : { status: "Active", manager: req.user.id };
+        const team = await employeeModel.find({ ...scope, _id: { $in: asked } }).select("_id").lean();
+        const ids = team.map((e) => e._id);
+        const records = await attendanceModel.find({ employeeId: { $in: ids }, "checkIn.time": { $gte: new Date(since.getTime() - 864e5) } }).lean();
+        const checkedIn = new Set(records.filter((r) => sessionsOf(r).some((s) => s.checkIn?.time && new Date(s.checkIn.time) >= since)).map((r) => String(r.employeeId)));
+        const sender = await employeeModel.findById(req.user.id).select("firstName lastName").lean();
+        const from = sender ? `${sender.firstName} ${sender.lastName}`.trim() : "Your manager";
+
+        const targets = ids.filter((id) => !checkedIn.has(String(id)));
+        targets.forEach((id) => notify(id, "Reminder: check in for today", `${from} noticed you haven't checked in yet today. Check in from the dashboard when you start work.`, "Attendance", "/dashboard"));
+        return res.status(200).json({ success: true, data: { reminded: targets.length }, message: targets.length ? `Reminder sent to ${targets.length} ${targets.length === 1 ? "person" : "people"}.` : "Everyone picked has already checked in." });
     } catch (err) {
         return res.status(500).json({ success: false, message: err.message });
     }

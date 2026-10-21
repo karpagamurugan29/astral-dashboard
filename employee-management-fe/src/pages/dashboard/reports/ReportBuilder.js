@@ -14,8 +14,12 @@ import '../../../components/attendance/attendance.css'
 import '../../../components/payroll/payroll.css'
 import './ReportBuilder.css'
 import { useAccess } from '../../../hooks/useAccess'
+import { CheckinLogReport, AuditHoursReport, AuditProjectsReport } from './WorkbenchReports'
 
 const REPORTS = [
+    { key: 'checkins', label: 'Check-in log', icon: 'mdi-map-marker-check-outline', color: '#059669', desc: 'Every check-in and check-out with time, mode and place', group: 'Workbench' },
+    { key: 'auditHours', label: 'Audit hours', icon: 'mdi-timer-outline', color: '#7c3aed', desc: 'Time logged by client, project and person', group: 'Workbench' },
+    { key: 'auditProjects', label: 'Audit projects', icon: 'mdi-briefcase-search-outline', color: '#0284c7', desc: 'Status, deadline and hours against estimate', group: 'Workbench' },
     { key: 'headcount', label: 'Headcount', icon: 'mdi-account-group-outline', color: '#0284c7', desc: 'Current employees by department' },
     { key: 'attendance', label: 'Attendance', icon: 'mdi-clock-check-outline', color: '#059669', desc: 'This month, per employee' },
     { key: 'leave', label: 'Leave', icon: 'mdi-beach', color: '#7c3aed', desc: 'Requests and days by type and status' },
@@ -24,7 +28,7 @@ const REPORTS = [
     { key: 'projects', label: 'Projects', icon: 'mdi-folder-outline', color: '#0d9488', desc: 'Delivery health across projects' },
     { key: 'tasks', label: 'Tasks', icon: 'mdi-format-list-checks', color: '#db2777', desc: 'Task status, owners and overdue work' },
 ]
-const ROUTE_TO_REPORT = { employees: 'headcount', attendance: 'attendance', leave: 'leave', payroll: 'payroll' }
+const ROUTE_TO_REPORT = { employees: 'headcount', attendance: 'attendance', leave: 'leave', payroll: 'payroll', checkins: 'checkins', audits: 'auditHours' }
 
 const csvCell = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`
 const downloadCsv = (name, headers, rows) => {
@@ -63,7 +67,7 @@ export const ReportBuilder = () => {
     const { can } = useAccess()
     const canView = can(['Admin', 'HR', 'Manager', 'Team Lead'], 'reports')
     const routeKey = location.pathname.split('/').pop()
-    const [tab, setTab] = useState(ROUTE_TO_REPORT[routeKey] || 'headcount')
+    const [tab, setTab] = useState(ROUTE_TO_REPORT[routeKey] || 'checkins')
 
     const [projectFilters, setProjectFilters] = useState({ projectId: '', projectManager: '', status: '', startDate: '', endDate: '' })
     const [taskFilters, setTaskFilters] = useState({ projectId: '', assignedTo: '', status: '', priority: '', startDate: '', endDate: '', overdue: '' })
@@ -104,13 +108,13 @@ export const ReportBuilder = () => {
     const hc = [...(headcount || [])].sort((a, b) => b.count - a.count)
     const hcTotal = hc.reduce((s, h) => s + h.count, 0)
 
+    // The server measures against the working calendar (absent = working day with no check-in and no leave).
     const att = (attendance || []).map((a) => {
         const get = (s) => a.statuses?.find((x) => x.status === s)?.count || 0
-        const present = get('Present') + get('Late')
-        const half = get('Half Day')
-        const absent = get('Absent')
-        const days = present + half + absent
-        return { ...a, present, half, absent, rate: days ? Math.round(((present + half * 0.5) / days) * 100) : 0 }
+        const present = a.present ?? get('Present') + get('Late')
+        const half = a.half ?? get('Half Day')
+        const absent = a.absent ?? get('Absent')
+        return { ...a, present, half, absent, late: a.late ?? get('Late'), leave: a.leave ?? 0, rate: a.rate ?? 0 }
     }).sort((a, b) => a.rate - b.rate)
     const attAvg = att.length ? Math.round(att.reduce((s, a) => s + a.rate, 0) / att.length) : 0
 
@@ -122,7 +126,7 @@ export const ReportBuilder = () => {
 
     const exportCurrent = () => {
         if (tab === 'headcount') downloadCsv('headcount', ['Department', 'Employees', 'Share %'], hc.map((h) => [h.department, h.count, hcTotal ? Math.round((h.count / hcTotal) * 100) : 0]))
-        if (tab === 'attendance') downloadCsv('attendance', ['Employee', 'Department', 'Present', 'Half day', 'Absent', 'Attendance %'], att.map((a) => [`${a.firstName} ${a.lastName}`, a.department, a.present, a.half, a.absent, a.rate]))
+        if (tab === 'attendance') downloadCsv('attendance', ['Employee', 'Department', 'Working days', 'Present', 'Late', 'Half day', 'Leave', 'Absent', 'Hours', 'Avg hours/day', 'Attendance %'], att.map((a) => [`${a.firstName} ${a.lastName}`, a.department, a.workingDays ?? '', a.present, a.late, a.half, a.leave, a.absent, a.hours ?? '', a.avgHours ?? '', a.rate]))
         if (tab === 'leave') downloadCsv('leave', ['Leave type', 'Requests', 'Days'], lvTypes.map((t) => [t.leaveType, t.count, t.totalDays]))
         if (tab === 'payroll') downloadCsv('payroll', ['Period', 'Status', 'Gross', 'Deductions', 'Net'], pay.map((p) => [p.period, p.status, p.totalGross, p.totalDeductions, p.totalNet]))
         if (tab === 'expenses') downloadCsv('expenses', ['Category', 'Claims', 'Total'], exCat.map((c) => [c.category, c.count, c.total]))
@@ -136,8 +140,14 @@ export const ReportBuilder = () => {
 
             <div className="rp-layout">
                 <nav className="pp-card rp-nav" aria-label="Reports">
-                    <div className="rp-nav-label">Reports</div>
-                    {REPORTS.map((r) => (
+                    <div className="rp-nav-label">Business workbench</div>
+                    {REPORTS.filter((r) => r.group).map((r) => (
+                        <button key={r.key} type="button" className={tab === r.key ? 'active' : ''} style={{ '--c': r.color }} onClick={() => setTab(r.key)} aria-current={tab === r.key ? 'page' : undefined}>
+                            <i className={`mdi ${r.icon}`}></i>{r.label}
+                        </button>
+                    ))}
+                    <div className="rp-nav-label">HR reports</div>
+                    {REPORTS.filter((r) => !r.group).map((r) => (
                         <button key={r.key} type="button" className={tab === r.key ? 'active' : ''} style={{ '--c': r.color }} onClick={() => setTab(r.key)} aria-current={tab === r.key ? 'page' : undefined}>
                             <i className={`mdi ${r.icon}`}></i>{r.label}
                         </button>
@@ -147,8 +157,12 @@ export const ReportBuilder = () => {
                 <div>
                     <div className="rp-head" style={{ '--c': report.color }}>
                         <div><h2><i className={`mdi ${report.icon}`}></i>{report.label} report</h2><p>{report.desc}</p></div>
-                        <button type="button" className="pp-btn" onClick={exportCurrent}><i className="mdi mdi-download-outline"></i> Export CSV</button>
+                        {!report.group && <button type="button" className="pp-btn" onClick={exportCurrent}><i className="mdi mdi-download-outline"></i> Export CSV</button>}
                     </div>
+
+                    {tab === 'checkins' && <CheckinLogReport />}
+                    {tab === 'auditHours' && <AuditHoursReport />}
+                    {tab === 'auditProjects' && <AuditProjectsReport />}
 
                     {/* ===================== Headcount ===================== */}
                     {tab === 'headcount' && (
@@ -183,14 +197,17 @@ export const ReportBuilder = () => {
                             </div>
                             <section className="pp-card">
                                 {!att.length ? <EmptyState icon="mdi-clock-outline" title="No attendance records this month" /> : (
-                                    <table className="at-table"><thead><tr><th>Employee</th><th className="hide-md">Department</th><th>Present</th><th className="hide-sm">Half</th><th>Absent</th><th>Attendance</th></tr></thead><tbody>
+                                    <table className="at-table"><thead><tr><th>Employee</th><th className="hide-md">Department</th><th>Present</th><th className="hide-sm">Late</th><th className="hide-sm">Half</th><th className="hide-sm">Leave</th><th>Absent</th><th className="hide-md">Hours</th><th>Attendance</th></tr></thead><tbody>
                                         {att.map((a) => (
                                             <tr key={a.employeeId}>
                                                 <td><div className="at-person"><Avatar person={a} size={32} /><b>{a.firstName} {a.lastName}</b></div></td>
                                                 <td className="hide-md"><DeptTag name={a.department} /></td>
-                                                <td className="rp-num good">{a.present}</td>
+                                                <td className="rp-num good">{a.present}{a.workingDays ? <small className="rp-of"> / {a.workingDays}</small> : null}</td>
+                                                <td className="hide-sm rp-num">{a.late}</td>
                                                 <td className="hide-sm rp-num">{a.half}</td>
+                                                <td className="hide-sm rp-num">{a.leave}</td>
                                                 <td className={`rp-num ${a.absent ? 'bad' : ''}`}>{a.absent}</td>
+                                                <td className="hide-md rp-num">{a.hours ?? '—'}{a.avgHours ? <small className="rp-of"> · {a.avgHours}/day</small> : null}</td>
                                                 <td><div className="rp-rate"><b>{a.rate}%</b><span className="rp-bar"><span style={{ width: `${a.rate}%`, background: a.rate >= 90 ? '#10b981' : a.rate >= 75 ? '#f59e0b' : '#f43f5e' }}></span></span></div></td>
                                             </tr>
                                         ))}

@@ -1,6 +1,6 @@
 import actions from "./Actions";
 
-const initialState = { summary: null, attendanceTrend: [], taskStatus: [], leaveBreakdown: [], projectProgress: [], auditInsights: null, error: "" };
+const initialState = { summary: null, attendanceTrend: [], taskStatus: [], leaveBreakdown: [], projectProgress: [], auditInsights: null, todayCheckins: null, error: "" };
 
 const dashboardReducer = (state = initialState, action) => {
   switch (action.type) {
@@ -14,6 +14,8 @@ const dashboardReducer = (state = initialState, action) => {
       return { ...state, leaveBreakdown: action.payload || [] };
     case actions.SET_PROJECT_PROGRESS:
       return { ...state, projectProgress: action.payload || [] };
+    case actions.SET_TODAY_CHECKINS:
+      return { ...state, todayCheckins: action.payload || null };
     case actions.SET_AUDIT_INSIGHTS:
       return { ...state, auditInsights: action.payload || null };
     case actions.SET_DASHBOARD_ERROR:

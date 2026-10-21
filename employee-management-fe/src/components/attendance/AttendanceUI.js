@@ -1,5 +1,6 @@
 import React from 'react'
 import './attendance.css'
+import './checkin.css'
 
 /* -------------------------------------------------------------------------- */
 /*  Shared bits for every Attendance screen: status / work-mode colours and   */
@@ -24,8 +25,43 @@ export const statusMeta = (s) => STATUS_META[s] || { color: '#64748b', icon: 'md
 export const MODE_META = {
     Office: { color: '#0284c7', icon: 'mdi-office-building-outline' },
     Home: { color: '#7c3aed', icon: 'mdi-home-outline' },
-    Field: { color: '#0d9488', icon: 'mdi-map-marker-outline' },
+    Client: { color: '#0d9488', icon: 'mdi-briefcase-outline', label: 'Client site' },
+    Field: { color: '#0d9488', icon: 'mdi-map-marker-outline' }, // older records
 }
+
+// What people pick from when checking in.
+export const WORK_MODES = ['Office', 'Home', 'Client']
+
+/* Where a check-in / check-out happened: the address (or coordinates), linking to the map. */
+export const PlaceLine = ({ place }) => {
+    if (!place || !Number.isFinite(place.latitude)) return <span className="ci-place none"><i className="mdi mdi-map-marker-off-outline"></i>No location</span>
+    const label = place.address || `${place.latitude.toFixed(5)}, ${place.longitude.toFixed(5)}`
+    return (
+        <a className="ci-place" href={`https://www.google.com/maps?q=${place.latitude},${place.longitude}`} target="_blank" rel="noreferrer" title={label}>
+            <i className="mdi mdi-map-marker-outline"></i>{label}
+        </a>
+    )
+}
+
+/* Where are you working + an optional comment, shown above a Check in button. */
+export const CheckInOptions = ({ mode, onMode, note, onNote, disabled }) => (
+    <div className="ci-options">
+        <div className="ci-modes" role="radiogroup" aria-label="Where are you working?">
+            {WORK_MODES.map((m) => {
+                const meta = MODE_META[m]
+                return (
+                    <button key={m} type="button" role="radio" aria-checked={mode === m} disabled={disabled}
+                        className={`ci-mode ${mode === m ? 'on' : ''}`} style={{ '--c': meta.color }} onClick={() => onMode(m)}>
+                        <i className={`mdi ${meta.icon}`}></i>{meta.label || m}
+                    </button>
+                )
+            })}
+        </div>
+        <input type="text" className="ci-note" value={note} maxLength={200} disabled={disabled}
+            onChange={(e) => onNote(e.target.value)}
+            placeholder={mode === 'Client' ? 'Comment — e.g. which client / site (optional)' : 'Comment (optional)'} aria-label="Comment" />
+    </div>
+)
 
 export const AttStatus = ({ status, extra }) => {
     if (!status) return <span className="pp-muted-dash">—</span>
@@ -40,7 +76,7 @@ export const AttStatus = ({ status, extra }) => {
 export const ModeTag = ({ mode }) => {
     if (!mode) return <span className="pp-muted-dash">—</span>
     const m = MODE_META[mode] || { color: '#475569', icon: 'mdi-briefcase-outline' }
-    return <span className="pp-tag" style={{ '--tag': m.color }}><i className={`mdi ${m.icon}`}></i>{mode}</span>
+    return <span className="pp-tag" style={{ '--tag': m.color }}><i className={`mdi ${m.icon}`}></i>{m.label || mode}</span>
 }
 
 export const formatTime = (value) => {

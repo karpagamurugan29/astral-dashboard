@@ -29,7 +29,7 @@ const AttendanceSchema = new mongoose.Schema(
 
         attendanceType: {
             type: String,
-            enum: ["Office", "Home", "Field"],
+            enum: ["Office", "Home", "Client", "Field"],
             required: true,
         },
 
@@ -82,7 +82,7 @@ const AttendanceSchema = new mongoose.Schema(
         // sessions existed have an empty array and count as one session.
         sessions: [
             {
-                mode: { type: String, enum: ["Office", "Home", "Field"] },
+                mode: { type: String, enum: ["Office", "Home", "Client", "Field"] },
                 checkIn: punch,
                 checkOut: punch,
             },

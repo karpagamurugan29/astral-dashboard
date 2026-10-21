@@ -1,4 +1,4 @@
-import { all, put, takeEvery } from "redux-saga/effects";
+import { all, put, takeEvery, takeLatest } from "redux-saga/effects";
 import { Get } from "../../components/common/ApiCall";
 import { API_URL } from "../../utils/Constants";
 import actions from "./Actions";
@@ -12,6 +12,9 @@ const rootSaga = function* () {
     yield takeEvery(actions.GET_EXPENSE_REPORT, fetchExpense),
     yield takeEvery(actions.GET_PROJECT_REPORT, fetchProjectReport),
     yield takeEvery(actions.GET_TASK_REPORT, fetchTaskReport),
+    yield takeLatest(actions.GET_CHECKIN_REPORT, fetchWorkbench("checkins", actions.SET_CHECKIN_REPORT)),
+    yield takeLatest(actions.GET_AUDIT_HOURS_REPORT, fetchWorkbench("audit-hours", actions.SET_AUDIT_HOURS_REPORT)),
+    yield takeLatest(actions.GET_AUDIT_PROJECTS_REPORT, fetchWorkbench("audit-projects", actions.SET_AUDIT_PROJECTS_REPORT)),
   ]);
 };
 
@@ -80,5 +83,23 @@ const fetchTaskReport = function* (action) {
     yield put({ type: actions.SET_REPORT_ERROR, payload: err.message });
   }
 };
+
+// Workbench reports take filters (from, to, employeeId, clientId, department, status).
+function fetchWorkbench(path, setType) {
+  return function* (action) {
+    yield put({ type: actions.SET_REPORT_LOADING, payload: path });
+    try {
+      const params = new URLSearchParams(Object.entries(action.filters || {}).filter(([, v]) => v));
+      const result = yield Get(`${API_URL}/reports/${path}?${params.toString()}`);
+      if (result?.success) {
+        yield put({ type: setType, payload: result?.data });
+        yield put({ type: actions.SET_REPORT_ERROR, payload: "" });
+      } else yield put({ type: actions.SET_REPORT_ERROR, payload: result?.message || "Unable to load the report" });
+    } catch (err) {
+      yield put({ type: actions.SET_REPORT_ERROR, payload: err.message });
+    }
+    yield put({ type: actions.SET_REPORT_LOADING, payload: "" });
+  };
+}
 
 export default rootSaga;

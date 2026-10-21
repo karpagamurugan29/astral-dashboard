@@ -108,3 +108,49 @@
   background: #0b0f19;
   box-shadow: 0 0 0 2px #e0f2fe;
 }
+
+/* ---------- Chart widget: header, Graph / Data switch, compact data table ---------- */
+.cw-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.cw-titles { flex: 1; min-width: 0; }
+.cw-titles small { display: block; font-size: 11.5px; color: #64748b; }
+.cw-switch { flex: none; display: inline-flex; padding: 3px; border-radius: 10px; background: #f1f5f9; border: 1px solid #e2e8f0; }
+.cw-switch button { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border: 0; border-radius: 7px; background: none; font-size: 11.5px; font-weight: 700; color: #64748b; transition: all .12s; }
+.cw-switch button i { font-size: 14px; }
+.cw-switch button.on { color: #fff; background: linear-gradient(135deg, #6d5dfc, #8b5cf6); box-shadow: 0 4px 10px -6px rgba(109, 93, 252, .9); }
+.chart-widget-empty i.mdi { font-size: 30px; color: #cbd5e1; }
+
+.cw-table-wrap { overflow: auto; border: 1px solid var(--bs-border-color, #e8ebf1); border-radius: 12px; }
+.cw-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 12.5px; }
+.cw-table thead th { position: sticky; top: 0; z-index: 1; padding: 0; background: #f8fafc; border-bottom: 1px solid var(--bs-border-color, #e8ebf1); text-align: left; white-space: nowrap; }
+.cw-table thead th button { width: 100%; display: inline-flex; align-items: center; gap: 4px; padding: 8px 10px; border: 0; background: none; font-size: 10.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #64748b; }
+.cw-table thead th.num button { justify-content: flex-end; }
+.cw-table thead th button i { font-size: 12px; color: #cbd5e1; }
+.cw-table thead th[aria-sort="ascending"] button, .cw-table thead th[aria-sort="descending"] button { color: #4c1d95; }
+.cw-table thead th[aria-sort="ascending"] button i, .cw-table thead th[aria-sort="descending"] button i { color: #7c3aed; }
+.cw-table tbody td { padding: 7px 10px; border-bottom: 1px solid #f1f5f9; color: #334155; white-space: nowrap; }
+.cw-table tbody tr:last-child td { border-bottom: 0; }
+.cw-table tbody tr:hover td { background: #faf7ff; }
+.cw-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.cw-table td.lead { font-weight: 700; color: var(--bs-emphasis-color, #0f172a); max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
+.cw-table .cw-idx { width: 30px; padding-left: 10px; padding-right: 0; font-size: 10.5px; font-weight: 700; color: #cbd5e1; text-align: left; }
+.cw-table thead th.cw-idx { padding: 8px 0 8px 10px; font-size: 10.5px; color: #cbd5e1; }
+.cw-bar-cell { display: inline-flex; align-items: center; justify-content: flex-end; gap: 8px; width: 100%; }
+.cw-bar-cell b { min-width: 52px; font-weight: 700; color: var(--bs-emphasis-color, #0f172a); }
+.cw-bar { flex: 1; min-width: 50px; max-width: 140px; height: 6px; border-radius: 99px; background: #eef2f7; overflow: hidden; }
+.cw-bar span { display: block; height: 100%; border-radius: inherit; }
+.cw-foot { position: sticky; bottom: 0; display: flex; justify-content: space-between; gap: 8px; padding: 6px 10px; font-size: 11px; color: #94a3b8; background: #fff; border-top: 1px solid #f1f5f9; }
+@media (max-width: 575px) { .cw-switch button { padding: 3px 7px; } .cw-switch button i { display: none; } .cw-table td.lead { max-width: 140px; } }
+
+/* compact fit: fixed type size, and narrow cards get an icon-only switch and slimmer bars */
+.chart-widget { container-type: inline-size; }
+.cw-table tbody td, .cw-table tbody td.lead { font-size: 12.5px; line-height: 1.35; }
+@container (max-width: 440px) {
+    .cw-switch button span { display: none; }
+    .cw-switch button { padding: 3px 8px; }
+    .cw-switch button i { display: inline; font-size: 15px; }
+    .cw-table tbody td, .cw-table thead th button { padding-left: 7px; padding-right: 7px; }
+    .cw-table td.lead { max-width: 120px; }
+    .cw-bar { min-width: 28px; max-width: 70px; }
+    .cw-bar-cell b { min-width: 40px; }
+    .cw-table .cw-idx { display: none; }
+}

@@ -1,5 +1,5 @@
 import { all, put, takeEvery } from "redux-saga/effects";
-import { Get } from "../../components/common/ApiCall";
+import { Get, Post } from "../../components/common/ApiCall";
 import { API_URL } from "../../utils/Constants";
 import actions from "./Actions";
 
@@ -11,6 +11,8 @@ const rootSaga = function* () {
     yield takeEvery(actions.GET_LEAVE_BREAKDOWN, fetchLeaveBreakdown),
     yield takeEvery(actions.GET_PROJECT_PROGRESS, fetchProjectProgress),
     yield takeEvery(actions.GET_AUDIT_INSIGHTS, fetchAuditInsights),
+    yield takeEvery(actions.GET_TODAY_CHECKINS, fetchTodayCheckins),
+    yield takeEvery(actions.REMIND_CHECKIN, remindCheckin),
   ]);
 };
 
@@ -47,6 +49,26 @@ const fetchLeaveBreakdown = function* () {
     if (result?.success) yield put({ type: actions.SET_LEAVE_BREAKDOWN, payload: result?.data });
   } catch (err) {
     yield put({ type: actions.SET_DASHBOARD_ERROR, payload: err.message });
+  }
+};
+
+const fetchTodayCheckins = function* () {
+  try {
+    const result = yield Get(`${API_URL}/dashboard/today-checkins`);
+    if (result?.success) yield put({ type: actions.SET_TODAY_CHECKINS, payload: result?.data });
+    else yield put({ type: actions.SET_TODAY_CHECKINS, payload: { error: result?.message || "Couldn't load today's check-ins" } });
+  } catch (err) {
+    yield put({ type: actions.SET_TODAY_CHECKINS, payload: { error: "Couldn't reach the server" } });
+  }
+};
+
+// payload: { employeeIds }; onDone(ok, message) lets the widget show the result inline.
+const remindCheckin = function* ({ payload, onDone }) {
+  try {
+    const result = yield Post(`${API_URL}/dashboard/remind-checkin`, payload);
+    onDone?.(!!result?.success, result?.message || (result?.success ? "Reminder sent" : "Couldn't send the reminder"));
+  } catch (err) {
+    onDone?.(false, "Couldn't reach the server");
   }
 };
 

@@ -5,53 +5,74 @@ import expenseModel from "../models/expenseModel.js";
 import ProjectModel from "../models/ProjectModel.js";
 import taskModel from "../models/taskModel.js";
 import employeeModel from "../models/employeeModel.js";
+import holidayModel from "../models/holidayModel.js";
 import { getHeadcountByDepartment } from "./dashboard.controller.js";
 
+// Attendance for a month, per active employee, measured against the working calendar:
+// working days = weekdays up to today (or month end) minus holidays; absent = working days with
+// neither a check-in nor approved leave. (Days without a check-in have no attendance record, so
+// they can't be counted from records alone.) Managers / Team Leads see their direct reports.
 export const attendanceReport = async (req, res) => {
     try {
         const currentDate = new Date();
         const month = Number(req.query.month) || currentDate.getMonth() + 1;
         const year = Number(req.query.year) || currentDate.getFullYear();
-
-        const startDate = `${year}-${String(month).padStart(2, "0")}-01`;
+        const pad = (n) => String(n).padStart(2, "0");
+        const startDate = `${year}-${pad(month)}-01`;
         const endDay = new Date(year, month, 0).getDate();
-        const endDate = `${year}-${String(month).padStart(2, "0")}-${String(endDay).padStart(2, "0")}`;
+        const endDate = `${year}-${pad(month)}-${pad(endDay)}`;
 
-        const results = await attendanceModel.aggregate([
-            { $match: { attendanceDate: { $gte: startDate, $lte: endDate } } },
-            {
-                $group: {
-                    _id: { employeeId: "$employeeId", status: "$status" },
-                    count: { $sum: 1 },
-                },
-            },
-            {
-                $group: {
-                    _id: "$_id.employeeId",
-                    statuses: { $push: { status: "$_id.status", count: "$count" } },
-                },
-            },
-            {
-                $lookup: {
-                    from: "employees",
-                    localField: "_id",
-                    foreignField: "_id",
-                    as: "employee",
-                },
-            },
-            { $unwind: "$employee" },
-            {
-                $project: {
-                    employeeId: "$employee.employeeId",
-                    firstName: "$employee.firstName",
-                    lastName: "$employee.lastName",
-                    department: "$employee.department",
-                    statuses: 1,
-                },
-            },
-        ]);
+        const empFilter = { status: "Active" };
+        if (["Manager", "Team Lead"].includes(req.user.role)) empFilter.manager = req.user.id;
+        const employees = await employeeModel.find(empFilter).select("employeeId firstName lastName department designation joiningDate").lean();
+        const ids = employees.map((e) => e._id);
 
-        return res.status(200).json({ success: true, month, year, data: results });
+        const holidays = await holidayModel.find({ date: { $gte: new Date(`${startDate}T00:00:00Z`), $lte: new Date(`${endDate}T23:59:59Z`) } }).select("date").lean().catch(() => []);
+        const holidaySet = new Set(holidays.map((h) => new Date(h.date).toISOString().slice(0, 10)));
+        const todayKey = new Date().toISOString().slice(0, 10);
+        const workdays = [];
+        for (let d = 1; d <= endDay; d++) {
+            const key = `${year}-${pad(month)}-${pad(d)}`;
+            if (key > todayKey) break;
+            const dow = new Date(`${key}T12:00:00Z`).getUTCDay();
+            if (dow === 0 || dow === 6 || holidaySet.has(key)) continue;
+            workdays.push(key);
+        }
+
+        const records = await attendanceModel.find({ employeeId: { $in: ids }, attendanceDate: { $gte: startDate, $lte: endDate } }).select("employeeId attendanceDate status workingHours lateByMinutes").lean();
+        const leaves = await leaveModel.find({ employeeId: { $in: ids }, status: "Approved", fromDate: { $lte: new Date(`${endDate}T23:59:59Z`) }, toDate: { $gte: new Date(`${startDate}T00:00:00Z`) } }).select("employeeId fromDate toDate").lean();
+
+        const data = employees.map((e) => {
+            const mine = records.filter((r) => String(r.employeeId) === String(e._id));
+            const joined = e.joiningDate ? new Date(e.joiningDate).toISOString().slice(0, 10) : null;
+            const days = workdays.filter((k) => !joined || k >= joined);
+            const leaveDays = new Set();
+            leaves.filter((l) => String(l.employeeId) === String(e._id)).forEach((l) => {
+                days.forEach((k) => { if (k >= new Date(l.fromDate).toISOString().slice(0, 10) && k <= new Date(l.toDate).toISOString().slice(0, 10)) leaveDays.add(k); });
+            });
+            const count = (st) => mine.filter((r) => r.status === st).length;
+            const present = count("Present") + count("Late");
+            const half = count("Half Day");
+            const worked = new Set(mine.map((r) => r.attendanceDate));
+            const absent = days.filter((k) => !worked.has(k) && !leaveDays.has(k)).length;
+            const base = Math.max(0, days.length - leaveDays.size);
+            // rate only counts days inside the calendar (weekend work or records before joining
+            // would otherwise push it past 100%)
+            const inCalendar = new Set(days.filter((k) => !leaveDays.has(k)));
+            const credited = mine.filter((r) => inCalendar.has(r.attendanceDate)).reduce((t, r) => t + (r.status === "Half Day" ? 0.5 : ["Present", "Late"].includes(r.status) ? 1 : 0), 0);
+            const hours = mine.reduce((t, r) => t + (Number(r.workingHours) || 0), 0);
+            const statuses = [...new Set(mine.map((r) => r.status))].map((st) => ({ status: st, count: count(st) }));
+            if (absent) statuses.push({ status: "Absent", count: absent });
+            return {
+                _id: e._id, employeeId: e.employeeId, firstName: e.firstName, lastName: e.lastName, department: e.department, designation: e.designation,
+                statuses, workingDays: days.length, present, late: count("Late"), half, leave: leaveDays.size, absent,
+                hours: +hours.toFixed(1), avgHours: present + half ? +(hours / (present + half)).toFixed(1) : 0,
+                lateMinutes: mine.reduce((t, r) => t + (r.lateByMinutes || 0), 0),
+                rate: base ? Math.min(100, Math.round((credited / base) * 100)) : 0,
+            };
+        });
+
+        return res.status(200).json({ success: true, month, year, workingDays: workdays.length, data });
     } catch (error) {
         return res.status(500).json({ success: false, message: error.message });
     }
