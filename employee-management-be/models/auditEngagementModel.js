@@ -91,9 +91,34 @@ const auditEngagementSchema = new mongoose.Schema(
 
         status: {
             type: String,
-            enum: ["Planning", "Fieldwork", "Review", "On Hold", "Completed", "Cancelled"],
+            enum: ["Planning", "Fieldwork", "Review", "Reporting", "On Hold", "Completed", "Cancelled"],
             default: "Planning",
         },
+
+        // what the client is charged for this work — several charge types can apply to one engagement
+        charges: [
+            {
+                label: { type: String, trim: true, maxlength: 200 },
+                type: { type: String, enum: ["Fixed fee", "Hourly", "Monthly retainer", "Per visit", "Milestone", "Expenses"], default: "Fixed fee" },
+                rate: { type: Number, default: 0 },       // amount, per hour, per month or per visit
+                quantity: { type: Number, default: 1 },   // estimate: hours, months, visits (1 for a fixed fee)
+                notes: { type: String, default: "", maxlength: 300 },
+                active: { type: Boolean, default: true },
+            },
+        ],
+
+        // the engagement checklist, stage by stage (Planning → Fieldwork → Review → Reporting → Billing)
+        milestones: [
+            {
+                key: { type: String, trim: true },
+                label: { type: String, trim: true },
+                stage: { type: String, trim: true },
+                done: { type: Boolean, default: false },
+                doneAt: { type: Date, default: null },
+                doneBy: { type: mongoose.Schema.Types.ObjectId, ref: "Employee", default: null },
+                note: { type: String, default: "", maxlength: 500 },
+            },
+        ],
 
         createdBy: {
             type: mongoose.Schema.Types.ObjectId,

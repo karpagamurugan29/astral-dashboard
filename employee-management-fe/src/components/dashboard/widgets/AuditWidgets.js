@@ -5,6 +5,7 @@ import { ChartWidget } from './ChartWidget'
 import { Avatar, fullName } from '../../people/PeopleUI'
 import { AUDIT_STATUS, auditStatusMeta, engagementTitle, fmtDuration, useTick, clock } from '../../audits/AuditUI'
 import './AuditWidgets.css'
+import { Live } from '../../common/Live'
 
 /* -------------------------------------------------------------------------- */
 /*  Audit widgets for the dashboard. One brand hue for magnitude (single-     */
@@ -263,7 +264,6 @@ export const DeadlinesWidget = ({ deadlines = [] }) => (
 
 /* ---------------- Working right now (live) ---------------- */
 export const WorkingNowWidget = ({ activeNow = [] }) => {
-    const now = useTick(activeNow.length > 0, 1000)
     return (
         <div className="card card-h-100 aw-card">
             <div className="card-body">
@@ -285,7 +285,7 @@ export const WorkingNowWidget = ({ activeNow = [] }) => {
                                         <small>{r.clientName} · {engagementTitle(r)}</small>
                                         {r.address && <small className="aw-place"><i className="mdi mdi-map-marker-outline"></i>{r.address}</small>}
                                     </span>
-                                    <span className="aw-clock">{clock(r.startTime, now)}</span>
+                                    <span className="aw-clock"><Live>{(n) => clock(r.startTime, n)}</Live></span>
                                 </Link>
                             </li>
                         ))}

@@ -21,6 +21,7 @@ import { useSelector } from 'react-redux';
 // firm-wide seniors; item.finance also opens it to Accounts. ('@team' / '@finance' are added to
 // `granted` from the reporting-tree scope in the Sidebar below.)
 const roleOk = (menuItem, userRole, granted) => {
+    if (menuItem.money) return userRole === 'Admin' || userRole === 'HR' || !!granted?.includes('@money');
     if (menuItem.team) return userRole === 'Admin' || !!granted?.includes('@team') || (!!menuItem.finance && !!granted?.includes('@finance'));
     return !menuItem.roles || menuItem.roles.includes(userRole) || (!!menuItem.module && !!granted?.includes(menuItem.module));
 };
@@ -41,14 +42,13 @@ const isVisibleFor = (menuItem, userRole, permissions, granted) => {
     return (menuItem.children || []).some((c) => isVisibleFor(c, userRole, permissions, granted));
 };
 
-const MenuItem = ({ item, level = 0, openMenus, handleMenuClick, userRole, permissions, granted }) => {
-    const location = useLocation();
+const MenuItem = ({ item, level = 0, openMenus, handleMenuClick, userRole, permissions, granted, activeLink }) => {
     const hasSubMenu = item.children && item.children.length > 0;
     const isOpen = !!openMenus[item.name];
     const isLink = item.link && !hasSubMenu;
     // `exclude` keeps a parent path (e.g. /audits) from lighting up on a sibling's pages (/audits/clients).
-    const isActiveLink = isLink && (location.pathname === item.link || location.pathname.startsWith(item.link + '/'))
-        && !(item.exclude || []).some((p) => location.pathname.startsWith(p));
+    // exactly one item is active: the menu link that best matches the page (worked out in Sidebar)
+    const isActiveLink = isLink && item.link === activeLink;
 
     const isAllowed = (menuItem) => {
         if (!roleOk(menuItem, userRole, granted)) return false;
@@ -85,7 +85,7 @@ const MenuItem = ({ item, level = 0, openMenus, handleMenuClick, userRole, permi
     }
 
     return (
-        <li className={isActiveLink ? 'mm-active' : ''}>
+        <li className={`${isActiveLink ? 'mm-active' : ''} ${hasSubMenu ? 'has-sub' : ''}`.trim() || undefined}>
             {isLink ? (
                 <NavLink
                     to={item.link}
@@ -123,6 +123,7 @@ const MenuItem = ({ item, level = 0, openMenus, handleMenuClick, userRole, permi
                             userRole={userRole}
                             permissions={permissions}
                             granted={granted}
+                            activeLink={activeLink}
                         />
                     ))}
                 </ul>
@@ -161,16 +162,21 @@ export const Sidebar = () => {
         ...(grantedModules || []),
         ...((team ? team.leads || team.people : ADMIN_HR_MANAGER.includes(userRole)) ? ['@team'] : []),
         ...(team?.finance ? ['@finance'] : []),
+        ...(team?.firm || team?.finance ? ['@money'] : []),
     ], [grantedModules, team, userRole]);
 
     // Grouped by purpose. Inside each module the person's own items come first,
     // team / admin items after. Section titles hide when nothing below them is visible.
+    // The original layout, grouped by module; inside each module the person's own items come
+    // first, team / admin items after. Section titles hide when nothing below them is visible.
     const menuItems = [
         { name: "main-title", isTitle: true, label: "Main" },
         { name: "dashboard", label: "Dashboard", icon: "home", link: "/dashboard" },
         { name: "messages", label: "Messages", icon: "message-circle", link: "/messages" },
+        { name: "files", label: "Files", icon: "hard-drive", link: "/files" },
         { name: "notifications", label: "Notifications", icon: "bell", link: "/notifications" },
         { name: "announcements", label: "Announcements", icon: "volume-2", link: "/announcements", screen: "screen:announcements" },
+        { name: "location-log", label: "Location Log", icon: "map-pin", link: "/location-log", team: true, module: "attendance" },
 
         { name: "people-title", isTitle: true, label: "People" },
         { name: "organisation", label: "Organisation", icon: "git-merge", link: "/organisation" },
@@ -197,9 +203,9 @@ export const Sidebar = () => {
                 { name: "attendance-holidays", label: "Holidays", link: "/attendance/holidays", screen: "screen:holidays" },
                 { name: "attendance-shifts", label: "Shifts", link: "/attendance/shifts", screen: "screen:shifts" },
                 { name: "attendance-team", label: "Team Attendance", link: "/attendance/team", team: true, module: "attendance" },
+                { name: "attendance-subordinates", label: "Subordinate Attendance", link: "/attendance/subordinates", team: true, module: "attendance" },
             ],
         },
-        { name: "location-log", label: "Location Log", icon: "map-pin", link: "/location-log", team: true, module: "attendance" },
         {
             name: "leave",
             label: "Leave",
@@ -209,7 +215,6 @@ export const Sidebar = () => {
                 { name: "leave-apply", label: "Apply Leave", link: "/leave/apply", screen: "screen:leave" },
                 { name: "leave-team-calendar", label: "Team Calendar", link: "/leave/team-calendar", screen: "screen:leave" },
                 { name: "leave-approvals", label: "Approvals", link: "/leave/approvals", team: true, module: "leave" },
-                { name: "leave-settings", label: "Leave Settings", link: "/settings/company", roles: ADMIN, module: "settings" },
             ],
         },
         {
@@ -229,7 +234,8 @@ export const Sidebar = () => {
             icon: "briefcase",
             children: [
                 { name: "audits-clients", label: "Clients", link: "/audits/clients", screen: "screen:audits" },
-                { name: "audits-projects", label: "Audit Projects", link: "/audits", exclude: ["/audits/clients"], screen: "screen:audits" },
+                { name: "audits-projects", label: "Audit Projects", link: "/audits", screen: "screen:audits" },
+                { name: "audits-billing", label: "Billing & Invoices", link: "/audits/billing", money: true },
             ],
         },
         {
@@ -268,7 +274,6 @@ export const Sidebar = () => {
             label: "Assets",
             icon: "monitor",
             children: [
-                // everyone sees what's assigned to them; the register and assigning are for top levels
                 { name: "assets-mine", label: "My Assets", link: "/assets/mine" },
                 { name: "assets-list", label: "Asset Register", link: "/assets", roles: ADMIN_HR, module: "assets" },
                 { name: "assets-assignments", label: "Who Has What", link: "/assets/assignments", roles: ADMIN_HR, module: "assets" },
@@ -276,7 +281,7 @@ export const Sidebar = () => {
         },
 
         { name: "insights-title", isTitle: true, label: "Insights" },
-        { name: "reports", label: "Reports", icon: "bar-chart-2", link: "/reports/attendance", team: true, module: "reports" },
+        { name: "reports", label: "Reports", icon: "bar-chart-2", link: "/reports/overview", match: "/reports", team: true, module: "reports" },
 
         { name: "admin-title", isTitle: true, label: "Administration" },
         {
@@ -312,6 +317,20 @@ export const Sidebar = () => {
     const location = useLocation();
     const previousGroupRef = useRef(null);
 
+    // The link that best matches the page: an exact match wins, otherwise the longest link the
+    // path sits under (/audits/123 → Audit Projects, /leave/apply → Apply Leave, not My Leave).
+    const flatLinks = (items) => items.flatMap((i) => (i.children ? flatLinks(i.children) : i.link ? [i] : []));
+    const activeLink = (() => {
+        const path = location.pathname;
+        let best = null, score = -1;
+        flatLinks(menuItems).forEach((i) => {
+            const base = i.match || i.link;
+            const sc = path === i.link ? 100000 : path === base || path.startsWith(`${base}/`) ? base.length : -1;
+            if (sc > score) { score = sc; best = i.link; }
+        });
+        return best;
+    })();
+
     const getTopLevelMenuName = (items, path) => {
         for (const item of items) {
             if (item.link === path) return item.name;
@@ -341,8 +360,8 @@ export const Sidebar = () => {
 
     // Auto-expand the branch that matches the current route (same behaviour as DashboardMenu)
     useEffect(() => {
-        const pathSegments = findMenuPath(menuItems, location.pathname);
-        const currentGroup = getTopLevelMenuName(menuItems, location.pathname);
+        const pathSegments = findMenuPath(menuItems, activeLink || location.pathname);
+        const currentGroup = getTopLevelMenuName(menuItems, activeLink || location.pathname);
 
         if (currentGroup && currentGroup !== previousGroupRef.current) {
             setOpenMenus((prev) => {
@@ -371,6 +390,24 @@ export const Sidebar = () => {
         }
     }, [openMenus, userRole]);
 
+    // Collapsed (icons only): place the hover label / submenu next to the hovered icon,
+    // nudged up if it would run off the bottom of the screen.
+    useEffect(() => {
+        const menu = document.getElementById('side-menu')
+        if (!menu) return undefined
+        const onOver = (e) => {
+            if (document.body.getAttribute('data-sidebar-size') !== 'sm') return
+            const li = e.target.closest('#side-menu > li')
+            if (!li) return
+            const top = li.getBoundingClientRect().top
+            const sub = li.querySelector(':scope > ul')
+            const flyH = 44 + (sub ? sub.children.length * 37 + 12 : 0)
+            li.style.setProperty('--fly-top', `${Math.max(76, Math.min(top, window.innerHeight - flyH - 8))}px`)
+        }
+        menu.addEventListener('mouseover', onOver)
+        return () => menu.removeEventListener('mouseover', onOver)
+    }, [])
+
     return (
         <div>
             <div className="sidebar-backdrop" onClick={() => document.body.classList.remove('sidebar-enable')} aria-hidden="true"></div>
@@ -388,6 +425,7 @@ export const Sidebar = () => {
                                     userRole={userRole}
                                     permissions={permissions}
                                     granted={granted}
+                                    activeLink={activeLink}
                                 />
                             ))}
                         </ul>

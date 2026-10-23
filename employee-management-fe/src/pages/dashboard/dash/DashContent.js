@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { DashNav } from '../../../components/dashboard/dash/DashNav'
 import Chart from "react-apexcharts";
 import dashboardActions from '../../../redux/dashboard/Actions'
@@ -32,6 +32,7 @@ const hrs = (min) => Math.round(((min || 0) / 60) * 10) / 10
 const share = (part, whole) => (whole ? Math.min(100, (part / whole) * 100) : 0)
 
 export const DashContent = () => {
+    const navigate = useNavigate()
     const dispatch = useDispatch()
     const { summary, attendanceTrend, auditInsights, todayCheckins: todayCheckinsRaw, businessPulse } = useSelector((state) => state.dashboardReducer || {})
     const todayCheckins = todayCheckinsRaw?.rows ? todayCheckinsRaw : null
@@ -144,7 +145,7 @@ export const DashContent = () => {
         { tone: 'violet', icon: 'mdi-account-check-outline', label: 'Present today', value: <>{summary?.presentToday ?? '–'}<small> / {total || '–'}</small></>, sub: `${summary?.onLeaveToday ?? 0} on leave · ${summary?.absentToday ?? 0} not in`, ring: { value: share(summary?.presentToday || 0, total) }, to: canSeeTeamAttendance ? '/attendance/team' : undefined },
         { tone: 'emerald', icon: 'mdi-account-clock-outline', label: 'In right now', value: todayCheckins ? todayCheckins.inNow : '–', sub: todayCheckins ? `${todayCheckins.checkedOut} checked out · ${Math.max(0, todayCheckins.teamSize - todayCheckins.rows.length)} not in yet` : 'Your team', ring: todayCheckins?.teamSize ? { value: share(todayCheckins.inNow, todayCheckins.teamSize) } : undefined, to: canSeeTeamAttendance ? '/location-log' : undefined },
         { tone: 'sunset', icon: 'mdi-timer-outline', label: 'Audit hours today', value: fmtDuration(auditTodayMin), sub: `${(ai.activeNow || []).length} timer${(ai.activeNow || []).length === 1 ? '' : 's'} running now`, rows: (ai.byPerson || []).slice(0, 3).map((p) => ({ label: p.employee?.firstName || '—', value: `${hrs(p.minutes)}h wk`, pct: share(p.minutes / 60, 40) })), to: canSeeAudits ? '/audits' : undefined },
-        { tone: 'ocean', icon: 'mdi-briefcase-search-outline', label: 'Open audit projects', value: openAudits, sub: att?.overdueAudits ? `${att.overdueAudits} past deadline` : 'None past deadline', rows: ['Planning', 'Fieldwork', 'Review', 'On Hold'].filter((s) => ai.statusCounts?.[s]).map((s) => ({ label: s, value: ai.statusCounts[s], pct: share(ai.statusCounts[s], openAudits) })), to: canSeeAudits ? '/audits' : undefined },
+        { tone: 'ocean', icon: 'mdi-briefcase-search-outline', label: 'Open audit projects', value: openAudits, sub: att?.overdueAudits ? `${att.overdueAudits} past deadline` : 'None past deadline', rows: ['Planning', 'Fieldwork', 'Review', 'Reporting', 'On Hold'].filter((s) => ai.statusCounts?.[s]).map((s) => ({ label: s, value: ai.statusCounts[s], pct: share(ai.statusCounts[s], openAudits) })), to: canSeeAudits ? '/audits' : undefined },
         { tone: 'magenta', icon: 'mdi-bell-alert-outline', label: 'Waiting on you', value: waiting, sub: waiting ? 'Approvals and audits to look at' : 'All clear', rows: att ? [{ label: 'Leave', value: att.pendingLeaves, pct: att.pendingLeaves ? 100 : 0 }, { label: 'Corrections', value: att.pendingCorrections, pct: att.pendingCorrections ? 100 : 0 }, { label: 'Expenses', value: att.pendingExpenses, pct: att.pendingExpenses ? 100 : 0 }] : undefined, to: canApprove ? '/leave/approvals' : undefined },
     ] : [
         { tone: 'violet', icon: 'mdi-clock-check-outline', label: 'My day', value: hoursLabel(workedH), sub: status.text, ring: { value: workedPct }, to: canSeeAttendance ? '/attendance/today' : undefined },
@@ -219,7 +220,7 @@ export const DashContent = () => {
                                         <i className="mdi mdi-refresh"></i>Updated {updatedMin ? `${updatedMin}m ago` : 'just now'}
                                     </button>
                                     {canSeeAttendance && (
-                                        <a href="#my-day" className={`pdb-btn status ${status.cls}`}><i className={`mdi ${status.icon}`}></i>{status.text}</a>
+                                        <button type="button" className={`pdb-btn status ${status.cls}`} onClick={() => { const el = document.getElementById('my-day'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); else navigate('/attendance/today') }}><i className={`mdi ${status.icon}`}></i>{status.text}</button>
                                     )}
                                 </div>
                             </header>

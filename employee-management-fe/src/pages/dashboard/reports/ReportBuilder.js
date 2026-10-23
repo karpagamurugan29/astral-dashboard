@@ -16,24 +16,26 @@ import './ReportBuilder.css'
 import { useAccess } from '../../../hooks/useAccess'
 import { CheckinLogReport, AuditHoursReport, AuditProjectsReport } from './WorkbenchReports'
 import { UtilisationReport, ProfitabilityReport, PunctualityReport, ComplianceReport } from './BusinessReports'
+import { ExecutiveOverview } from './ExecutiveOverview'
 
 const REPORTS = [
-    { key: 'checkins', label: 'Check-in log', icon: 'mdi-map-marker-check-outline', color: '#059669', desc: 'Every check-in and check-out with time, mode and place', group: 'Workbench' },
-    { key: 'auditHours', label: 'Audit hours', icon: 'mdi-timer-outline', color: '#7c3aed', desc: 'Time logged by client, project and person', group: 'Workbench' },
-    { key: 'auditProjects', label: 'Audit projects', icon: 'mdi-briefcase-search-outline', color: '#0284c7', desc: 'Status, deadline and hours against estimate', group: 'Workbench' },
-    { key: 'utilisation', label: 'Utilisation', icon: 'mdi-speedometer', color: '#7c3aed', desc: 'Audit hours against each person’s capacity — who is stretched, who is free', group: 'Insights' },
-    { key: 'profitability', label: 'Client profitability', icon: 'mdi-finance', color: '#0284c7', desc: 'Fees, budget hours, cost of time and margin per audit and client', group: 'Insights' },
-    { key: 'punctuality', label: 'Punctuality', icon: 'mdi-clock-alert-outline', color: '#d97706', desc: 'On-time arrivals, late patterns, absences and average hours', group: 'Insights' },
-    { key: 'compliance', label: 'Document compliance', icon: 'mdi-shield-check-outline', color: '#e11d48', desc: 'Who is missing ID, PAN, address or bank documents, and what expires soon', group: 'Insights' },
-    { key: 'headcount', label: 'Headcount', icon: 'mdi-account-group-outline', color: '#0284c7', desc: 'Current employees by department' },
-    { key: 'attendance', label: 'Attendance', icon: 'mdi-clock-check-outline', color: '#059669', desc: 'This month, per employee' },
-    { key: 'leave', label: 'Leave', icon: 'mdi-beach', color: '#7c3aed', desc: 'Requests and days by type and status' },
-    { key: 'payroll', label: 'Payroll', icon: 'mdi-cash-multiple', color: '#0b0f19', desc: 'Cost of the last 12 payroll runs' },
-    { key: 'expenses', label: 'Expenses', icon: 'mdi-receipt', color: '#ea580c', desc: 'Claims by category and status' },
-    { key: 'projects', label: 'Projects', icon: 'mdi-folder-outline', color: '#0d9488', desc: 'Delivery health across projects' },
-    { key: 'tasks', label: 'Tasks', icon: 'mdi-format-list-checks', color: '#db2777', desc: 'Task status, owners and overdue work' },
+    { key: 'overview', label: 'Executive overview', icon: 'mdi-view-dashboard-outline', color: '#c8102e', desc: 'The firm at a glance — money, delivery, people and what needs attention', group: 'Executive' },
+    { key: 'profitability', label: 'Client profitability', icon: 'mdi-finance', color: '#0284c7', desc: 'Fees, budget hours, cost of time and margin per audit and client', group: 'Finance' },
+    { key: 'payroll', label: 'Payroll cost', icon: 'mdi-cash-multiple', color: '#0b0f19', desc: 'Cost of the last 12 payroll runs', group: 'Finance' },
+    { key: 'expenses', label: 'Expenses', icon: 'mdi-receipt', color: '#ea580c', desc: 'Claims by category and status', group: 'Finance' },
+    { key: 'auditProjects', label: 'Audit projects', icon: 'mdi-briefcase-search-outline', color: '#0284c7', desc: 'Status, deadline and hours against estimate', group: 'Delivery' },
+    { key: 'auditHours', label: 'Audit hours', icon: 'mdi-timer-outline', color: '#7c3aed', desc: 'Time logged by client, project and person', group: 'Delivery' },
+    { key: 'utilisation', label: 'Utilisation', icon: 'mdi-speedometer', color: '#7c3aed', desc: 'Audit hours against each person’s capacity — who is stretched, who is free', group: 'Delivery' },
+    { key: 'projects', label: 'Projects', icon: 'mdi-folder-outline', color: '#0d9488', desc: 'Delivery health across projects', group: 'Delivery' },
+    { key: 'tasks', label: 'Tasks', icon: 'mdi-format-list-checks', color: '#db2777', desc: 'Task status, owners and overdue work', group: 'Delivery' },
+    { key: 'headcount', label: 'Headcount', icon: 'mdi-account-group-outline', color: '#0284c7', desc: 'Current employees by department', group: 'People' },
+    { key: 'attendance', label: 'Attendance', icon: 'mdi-clock-check-outline', color: '#059669', desc: 'This month, per employee', group: 'People' },
+    { key: 'punctuality', label: 'Punctuality', icon: 'mdi-clock-alert-outline', color: '#d97706', desc: 'On-time arrivals, late patterns, absences and average hours', group: 'People' },
+    { key: 'leave', label: 'Leave', icon: 'mdi-beach', color: '#7c3aed', desc: 'Requests and days by type and status', group: 'People' },
+    { key: 'checkins', label: 'Check-in log', icon: 'mdi-map-marker-check-outline', color: '#059669', desc: 'Every check-in and check-out with time, mode and place', group: 'People' },
+    { key: 'compliance', label: 'Document compliance', icon: 'mdi-shield-check-outline', color: '#e11d48', desc: 'Who is missing ID, PAN, address or bank documents, and what expires soon', group: 'People' },
 ]
-const ROUTE_TO_REPORT = { employees: 'headcount', attendance: 'attendance', leave: 'leave', payroll: 'payroll', checkins: 'checkins', audits: 'auditHours' }
+const ROUTE_TO_REPORT = { overview: 'overview', employees: 'headcount', attendance: 'attendance', leave: 'leave', payroll: 'payroll', checkins: 'checkins', audits: 'auditHours' }
 
 const csvCell = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`
 const downloadCsv = (name, headers, rows) => {
@@ -71,10 +73,11 @@ export const ReportBuilder = () => {
     const { list: allEmployees } = useSelector((state) => state.employeeReducer || {})
     const { can } = useAccess()
     const canView = can(['Admin', 'HR', 'Manager', 'Team Lead'], 'reports')
+    const canPayroll = can(['Admin', 'HR'], 'reports')
     const routeKey = location.pathname.split('/').pop()
     // ?r=<report key> opens a specific report (links from dashboard widgets)
     const asked = new URLSearchParams(location.search).get('r')
-    const pickTab = () => (REPORTS.some((r) => r.key === asked) ? asked : ROUTE_TO_REPORT[routeKey] || 'checkins')
+    const pickTab = () => (REPORTS.some((r) => r.key === asked) ? asked : ROUTE_TO_REPORT[routeKey] || 'overview')
     const [tab, setTab] = useState(pickTab)
 
     const [projectFilters, setProjectFilters] = useState({ projectId: '', projectManager: '', status: '', startDate: '', endDate: '' })
@@ -88,11 +91,11 @@ export const ReportBuilder = () => {
         dispatch({ type: reportActions.GET_HEADCOUNT_REPORT })
         dispatch({ type: reportActions.GET_ATTENDANCE_REPORT })
         dispatch({ type: reportActions.GET_LEAVE_REPORT })
-        dispatch({ type: reportActions.GET_PAYROLL_REPORT })
+        if (canPayroll) dispatch({ type: reportActions.GET_PAYROLL_REPORT })
         dispatch({ type: reportActions.GET_EXPENSE_REPORT })
         dispatch({ type: projectActions.GET_PROJECTS })
         dispatch({ type: employeeActions.GET_EMPLOYEES })
-    }, [dispatch, canView])
+    }, [dispatch, canView, canPayroll])
 
     useEffect(() => {
         if (canView && tab === 'projects') dispatch({ type: reportActions.GET_PROJECT_REPORT, filters: projectFilters })
@@ -144,37 +147,34 @@ export const ReportBuilder = () => {
     }
 
     return (
-        <PeopleShell title="Reports" root={{ label: 'Reports', to: '/reports/attendance' }} crumbs={[{ label: report.label }]}>
+        <PeopleShell title="Reports" root={{ label: 'Reports', to: '/reports/overview' }} crumbs={[{ label: report.label }]}>
             <ErrorBanner error={error} />
 
             <div className="rp-layout">
                 <nav className="pp-card rp-nav" aria-label="Reports">
-                    <div className="rp-nav-label">Business insights</div>
-                    {REPORTS.filter((r) => r.group === 'Insights').map((r) => (
-                        <button key={r.key} type="button" className={tab === r.key ? 'active' : ''} style={{ '--c': r.color }} onClick={() => setTab(r.key)} aria-current={tab === r.key ? 'page' : undefined}>
-                            <i className={`mdi ${r.icon}`}></i>{r.label}
-                        </button>
-                    ))}
-                    <div className="rp-nav-label">Business workbench</div>
-                    {REPORTS.filter((r) => r.group === 'Workbench').map((r) => (
-                        <button key={r.key} type="button" className={tab === r.key ? 'active' : ''} style={{ '--c': r.color }} onClick={() => setTab(r.key)} aria-current={tab === r.key ? 'page' : undefined}>
-                            <i className={`mdi ${r.icon}`}></i>{r.label}
-                        </button>
-                    ))}
-                    <div className="rp-nav-label">HR reports</div>
-                    {REPORTS.filter((r) => !r.group).map((r) => (
-                        <button key={r.key} type="button" className={tab === r.key ? 'active' : ''} style={{ '--c': r.color }} onClick={() => setTab(r.key)} aria-current={tab === r.key ? 'page' : undefined}>
-                            <i className={`mdi ${r.icon}`}></i>{r.label}
-                        </button>
+                    {['Executive', 'Finance', 'Delivery', 'People'].map((g) => (
+                        <React.Fragment key={g}>
+                            <div className="rp-nav-label">{g}</div>
+                            {REPORTS.filter((r) => r.group === g && (r.key !== 'payroll' || can(['Admin', 'HR'], 'reports'))).map((r) => (
+                                <button key={r.key} type="button" className={tab === r.key ? 'active' : ''} style={{ '--c': r.color }} onClick={() => setTab(r.key)} aria-current={tab === r.key ? 'page' : undefined}>
+                                    <i className={`mdi ${r.icon}`}></i>{r.label}
+                                </button>
+                            ))}
+                            {g === 'Finance' && <a className="rp-nav-link" href="/audits/billing"><i className="mdi mdi-receipt"></i>Billing &amp; collections<i className="mdi mdi-arrow-top-right"></i></a>}
+                        </React.Fragment>
                     ))}
                 </nav>
 
                 <div>
                     <div className="rp-head" style={{ '--c': report.color }}>
                         <div><h2><i className={`mdi ${report.icon}`}></i>{report.label} report</h2><p>{report.desc}</p></div>
-                        {!report.group && <button type="button" className="pp-btn" onClick={exportCurrent}><i className="mdi mdi-download-outline"></i> Export CSV</button>}
+                        <div className="rp-head-actions">
+                            {['headcount', 'attendance', 'leave', 'payroll', 'expenses', 'projects', 'tasks'].includes(tab) && <button type="button" className="pp-btn" onClick={exportCurrent}><i className="mdi mdi-download-outline"></i> Export CSV</button>}
+                            <button type="button" className="pp-btn" onClick={() => window.print()}><i className="mdi mdi-printer"></i> Print</button>
+                        </div>
                     </div>
 
+                    {tab === 'overview' && <ExecutiveOverview onOpen={setTab} />}
                     {tab === 'checkins' && <CheckinLogReport />}
                     {tab === 'auditHours' && <AuditHoursReport />}
                     {tab === 'auditProjects' && <AuditProjectsReport />}

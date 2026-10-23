@@ -1,0 +1,56 @@
+/* A4 tax invoice — screen preview + print. Prefix: ip- */
+.ip-msg { display: grid; place-items: center; min-height: 100vh; font-size: 15px; color: #475569; }
+.ip-page { min-height: 100vh; padding: 24px 16px 48px; background: #e9edf3; color: #0f172a; font-family: inherit; }
+.ip-bar { max-width: 210mm; margin: 0 auto 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; color: #475569; }
+.ip-bar button { display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 16px; border: 0; border-radius: 10px; font-weight: 700; color: #fff; background: #1e40af; box-shadow: 0 10px 20px -12px rgba(30, 64, 175, .8); }
+.ip-sheet { position: relative; max-width: 210mm; min-height: 297mm; margin: 0 auto; padding: 16mm 15mm 12mm; background: #fff; box-shadow: 0 20px 50px -24px rgba(15, 23, 42, .4); overflow: hidden; }
+.ip-sheet::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 6px; background: linear-gradient(90deg, #c8102e 0 35%, #1e40af 35% 85%, #cbd5e1 85%); }
+.ip-stamp { position: absolute; top: 46%; left: 50%; transform: translate(-50%, -50%) rotate(-22deg); padding: 6px 26px; border: 5px solid rgba(225, 29, 72, .25); border-radius: 12px; font-size: 64px; font-weight: 900; letter-spacing: .12em; color: rgba(225, 29, 72, .18); pointer-events: none; }
+.ip-stamp.paid { border-color: rgba(5, 150, 105, .25); color: rgba(5, 150, 105, .18); }
+.ip-head { display: flex; justify-content: space-between; gap: 20px; padding-bottom: 14px; border-bottom: 2px solid #0f1e3d; }
+.ip-firm { display: flex; gap: 12px; }
+.ip-firm img { width: 46px; height: 46px; object-fit: contain; }
+.ip-firm h1 { margin: 0 0 4px; font-size: 19px; font-weight: 800; color: #c8102e; letter-spacing: -.01em; }
+.ip-firm p { margin: 0; font-size: 11.5px; line-height: 1.5; color: #475569; }
+.ip-title { text-align: right; }
+.ip-title h2 { margin: 0 0 8px; font-size: 22px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #0f1e3d; }
+.ip-title dl { display: grid; grid-template-columns: auto auto; gap: 2px 12px; margin: 0; font-size: 12px; }
+.ip-title dt { color: #64748b; text-align: right; }
+.ip-title dd { margin: 0; font-weight: 700; text-align: right; }
+.ip-parties { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 14px 0; border-bottom: 1px solid #e2e8f0; }
+.ip-parties h3, .ip-words h3 { margin: 0 0 4px; font-size: 10.5px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #64748b; }
+.ip-parties b { font-size: 14px; }
+.ip-parties p { margin: 1px 0 0; font-size: 12px; color: #334155; }
+.ip-lines { width: 100%; margin: 14px 0; border-collapse: collapse; font-size: 12.5px; }
+.ip-lines th { padding: 8px; background: #0f1e3d; color: #fff; font-size: 11px; letter-spacing: .05em; text-transform: uppercase; text-align: left; }
+.ip-lines td { padding: 9px 8px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+.ip-lines .n { text-align: right; white-space: nowrap; }
+.ip-foot { display: grid; grid-template-columns: 1fr 280px; gap: 24px; }
+.ip-words p { margin: 0 0 10px; font-size: 12px; line-height: 1.5; color: #334155; }
+.ip-totals { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.ip-totals td { padding: 5px 8px; }
+.ip-totals td:last-child { text-align: right; white-space: nowrap; }
+.ip-totals .tot td { padding: 9px 8px; border-top: 2px solid #0f1e3d; border-bottom: 2px solid #0f1e3d; font-size: 15px; font-weight: 800; }
+.ip-totals .bal td { font-weight: 800; color: #c8102e; }
+.ip-sign { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; margin-top: 30px; }
+.ip-terms { max-width: 60%; margin: 0; font-size: 10.5px; line-height: 1.5; color: #64748b; }
+.ip-sign div { display: flex; flex-direction: column; align-items: center; min-width: 200px; font-size: 12px; }
+.ip-sign i { width: 100%; height: 44px; border-bottom: 1px solid #94a3b8; }
+.ip-sign b { margin-top: 4px; font-size: 11.5px; color: #475569; }
+.ip-gen { margin: 18px 0 0; text-align: center; font-size: 10px; color: #94a3b8; }
+@media print {
+    @page { size: A4; margin: 0; }
+    .ip-page { padding: 0; background: #fff; }
+    .ip-bar { display: none; }
+    .ip-sheet { box-shadow: none; max-width: none; min-height: auto; }
+    .ip-lines th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .ip-sheet::before { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+@media (max-width: 767.98px) {
+    .ip-sheet { padding: 20px 14px; min-height: auto; }
+    .ip-head, .ip-foot { display: block; }
+    .ip-title { text-align: left; margin-top: 12px; }
+    .ip-title dt, .ip-title dd { text-align: left; }
+    .ip-parties { grid-template-columns: 1fr; }
+    .ip-lines { font-size: 11.5px; }
+}

@@ -5,9 +5,10 @@ import { PROJECTS_ROOT, TASK_COLUMNS, TASK_STATUS, DueTag, startOfDay } from '..
 import { useAccess } from '../../../hooks/useAccess'
 import { getCurrentLocation } from '../../../utils/geo'
 import { toast } from '../../../components/common/Toaster'
-import { api, useTick, TaskModal, Modal, taskTag, TASK_TYPES, CloseTaskModal } from './ProjectParts'
+import { api, TaskModal, Modal, taskTag, TASK_TYPES, CloseTaskModal } from './ProjectParts'
 import { IssueView, TypeTag, TYPE_META } from './IssueView'
 import './MyTasks.css'
+import { Live } from '../../../components/common/Live'
 
 /* My tasks — a tracker in the spirit of MantisBT, on the same tasks and flow as the project
    boards (To Do → In Progress → In Review → Done).
@@ -40,22 +41,22 @@ const SORTERS = {
     due: (t) => (t.dueDate ? new Date(t.dueDate).getTime() : Infinity), updated: (t) => new Date(t.updatedAt).getTime(),
 }
 
-const StatusChip = ({ s }) => { const m = TASK_STATUS[s] || TASK_STATUS['To Do']; return <span className="mt-st" style={{ '--c': m.color }}><i className={`mdi ${m.icon}`}></i>{s}</span> }
-const Prio = ({ p }) => { const m = PRIO[p] || PRIO.Medium; return <i className={`mdi ${m[0]} mt-prio`} style={{ color: m[1] }} title={`${p || 'Medium'} priority`}></i> }
+const StatusChip = ({ s }) => { const m = TASK_STATUS[s] || TASK_STATUS['To Do']; return <span className="tk-st" style={{ '--c': m.color }}><i className={`mdi ${m.icon}`}></i>{s}</span> }
+const Prio = ({ p }) => { const m = PRIO[p] || PRIO.Medium; return <i className={`mdi ${m[0]} tk-prio`} style={{ color: m[1] }} title={`${p || 'Medium'} priority`}></i> }
 
 // a box on "My view"
 const Box = ({ title, icon, color, items, empty, onOpen, onAll, extra }) => (
-    <section className="mt-box" style={{ '--c': color }}>
+    <section className="tk-box" style={{ '--c': color }}>
         <header><i className={`mdi ${icon}`}></i><b>{title}</b><span>{items.length}</span>{onAll && items.length > 0 && <button type="button" onClick={onAll}>View all<i className="mdi mdi-chevron-right"></i></button>}</header>
         {items.length ? (
             <ul>{items.slice(0, 6).map((t) => (
                 <li key={t._id} onClick={() => onOpen(t)} style={{ '--s': TASK_STATUS[t.status]?.color }}>
-                    <span className="mt-box-no">{taskTag(t)}</span>
-                    <span className="mt-box-main"><b>{t.title}</b><small>{t.projectId?.projectCode}{t.assignedTo ? ` · ${fullName(t.assignedTo)}` : ' · Unassigned'}</small></span>
-                    {extra ? extra(t) : t.dueDate && t.status !== 'Done' ? <DueTag date={t.dueDate} /> : <small className="mt-ago">{ago(t.updatedAt)}</small>}
+                    <span className="tk-box-no">{taskTag(t)}</span>
+                    <span className="tk-box-main"><b>{t.title}</b><small>{t.projectId?.projectCode}{t.assignedTo ? ` · ${fullName(t.assignedTo)}` : ' · Unassigned'}</small></span>
+                    {extra ? extra(t) : t.dueDate && t.status !== 'Done' ? <DueTag date={t.dueDate} /> : <small className="tk-ago">{ago(t.updatedAt)}</small>}
                 </li>
             ))}</ul>
-        ) : <p className="mt-box-empty">{empty}</p>}
+        ) : <p className="tk-box-empty">{empty}</p>}
     </section>
 )
 
@@ -70,7 +71,7 @@ export const TasksBoard = () => {
     const [timer, setTimer] = useState(null)
     const [canSeeTeam, setCanSeeTeam] = useState(false)
     const [error, setError] = useState('')
-    const [view, setView] = useState(() => recall('mt-view2', 'myview'))
+    const [view, setView] = useState(() => recall('tk-view2', 'myview'))
     const [f, setF] = useState({ scope: 'involved', status: 'open', priority: '', type: '', project: '', q: '' })
     const [sort, setSort] = useState({ key: 'updated', dir: -1 })
     const [sel, setSel] = useState(() => new Set())
@@ -80,7 +81,6 @@ export const TasksBoard = () => {
     const [busy, setBusy] = useState('')
     const [dragId, setDragId] = useState(null)
     const [overCol, setOverCol] = useState(null)
-    const now = useTick(!!timer)
 
     const load = useCallback((withTeam) => api('GET', `/tasks/mine${withTeam ? '?scope=team' : ''}`).then((j) => {
         setMine(j.data); setReview(j.review || []); setClosed(j.closed || []); setTimer(j.myTimer || null); setCanSeeTeam(!!j.canSeeTeam)
@@ -89,7 +89,7 @@ export const TasksBoard = () => {
     }).catch((e) => setError(e.message)), [])
     useEffect(() => { load(false) }, [load])
     useEffect(() => { if (f.scope === 'team' && !team) load(true) }, [f.scope, team, load])
-    useEffect(() => remember('mt-view2', view), [view])
+    useEffect(() => remember('tk-view2', view), [view])
     const refresh = () => load(f.scope === 'team' || !!team)
     const setFilter = (k, v) => { setF((x) => ({ ...x, [k]: v })); setSel(new Set()) }
 
@@ -184,84 +184,84 @@ export const TasksBoard = () => {
             <ErrorBanner error={error} />
 
             {timer && (
-                <div className="mt-timer">
-                    <span className="mt-timer-ic"><i className="mdi mdi-timer-outline"></i></span>
+                <div className="tk-timer">
+                    <span className="tk-timer-ic"><i className="mdi mdi-timer-outline"></i></span>
                     <div><small>Working on</small><b>{timer.taskId ? `${taskTag(timer.taskId)} ${timer.taskId.title}` : 'General project work'}</b><Link to={`/projects/${pid(timer)}`}>{timer.projectId?.projectCode} · {timer.projectId?.projectName}</Link></div>
-                    <span className="mt-clock"><i className="pw-dot"></i>{clock(now - new Date(timer.startTime))}</span>
-                    <button type="button" className="mt-stop" disabled={busy === 'timer'} onClick={stopTimer}><i className="mdi mdi-stop"></i>{busy === 'timer' ? 'Stopping…' : 'Stop'}</button>
+                    <span className="tk-clock"><i className="pw-dot"></i><Live>{(n) => clock(n - new Date(timer.startTime))}</Live></span>
+                    <button type="button" className="tk-stop" disabled={busy === 'timer'} onClick={stopTimer}><i className="mdi mdi-stop"></i>{busy === 'timer' ? 'Stopping…' : 'Stop'}</button>
                 </div>
             )}
 
-            <div className="mt-stats">
+            <div className="tk-stats">
                 {[[counts.open, 'Assigned to me', '#1e40af', 'mdi-account-check-outline', () => viewAll('assigned')], [counts.today, 'Due today', '#d97706', 'mdi-calendar-today', () => viewAll('assigned')], [counts.overdue, 'Overdue', '#e11d48', 'mdi-alert-circle-outline', () => viewAll('assigned')], [counts.review, 'Waiting for my review', '#7c3aed', 'mdi-clipboard-check-outline', () => setView('myview')]].map(([n, label, c, ic, go]) => (
-                    <button key={label} type="button" className="mt-stat" style={{ '--c': c }} onClick={go}><span><i className={`mdi ${ic}`}></i></span><b>{n}</b><small>{label}</small></button>
+                    <button key={label} type="button" className="tk-stat" style={{ '--c': c }} onClick={go}><span><i className={`mdi ${ic}`}></i></span><b>{n}</b><small>{label}</small></button>
                 ))}
             </div>
 
-            <div className="mt-tabs">
-                {[['myview', 'My view', 'mdi-view-dashboard-outline'], ['issues', 'Issues', 'mdi-format-list-bulleted-square'], ['board', 'Board', 'mdi-view-column-outline'], ['closed', 'Closed', 'mdi-archive-outline']].map(([k, label, ic]) => <button key={k} type="button" className={view === k ? 'on' : ''} onClick={() => setView(k)}><i className={`mdi ${ic}`}></i>{label}{k === 'closed' && closed.length > 0 && <b className="mt-tabn">{closed.length}</b>}</button>)}
+            <div className="tk-tabs">
+                {[['myview', 'My view', 'mdi-view-dashboard-outline'], ['issues', 'Issues', 'mdi-format-list-bulleted-square'], ['board', 'Board', 'mdi-view-column-outline'], ['closed', 'Closed', 'mdi-archive-outline']].map(([k, label, ic]) => <button key={k} type="button" className={view === k ? 'on' : ''} onClick={() => setView(k)}><i className={`mdi ${ic}`}></i>{label}{k === 'closed' && closed.length > 0 && <b className="tk-tabn">{closed.length}</b>}</button>)}
             </div>
 
             {!mine ? <div className="pp-card"><div className="pw-loading"><i className="mdi mdi-loading mdi-spin"></i></div></div> : view === 'myview' ? (
-                <div className="mt-boxes">
+                <div className="tk-boxes">
                     <Box title="Assigned to me" icon="mdi-account-check-outline" color="#1e40af" items={openMine.sort((a, b) => (a.dueDate ? new Date(a.dueDate) : Infinity) - (b.dueDate ? new Date(b.dueDate) : Infinity))} empty="Nothing open is assigned to you." onOpen={(t) => setOpenId(t._id)} onAll={() => viewAll('assigned')} />
                     {review.length > 0 && <Box title="Waiting for my review" icon="mdi-clipboard-check-outline" color="#7c3aed" items={review} empty="" onOpen={(t) => setOpenId(t._id)}
                         extra={(t) => t.status === 'In Review'
-                            ? <span className="mt-rev" onClick={(e) => e.stopPropagation()}><button type="button" className="back" onClick={() => move(t, 'In Progress')} title="Send back"><i className="mdi mdi-restore"></i></button><button type="button" className="ok" onClick={() => move(t, 'Done')} title="Approve"><i className="mdi mdi-check-bold"></i></button></span>
+                            ? <span className="tk-rev" onClick={(e) => e.stopPropagation()}><button type="button" className="back" onClick={() => move(t, 'In Progress')} title="Send back"><i className="mdi mdi-restore"></i></button><button type="button" className="ok" onClick={() => move(t, 'Done')} title="Approve"><i className="mdi mdi-check-bold"></i></button></span>
                             : <StatusChip s={t.status === 'Done' ? 'Done' : t.status} />} />}
                     <Box title="Reported by me" icon="mdi-bullhorn-outline" color="#0891b2" items={all.filter((t) => idOf(t.createdBy) === me && t.status !== 'Done')} empty="Nothing open that you reported." onOpen={(t) => setOpenId(t._id)} onAll={() => viewAll('reported')} />
                     <Box title="Monitored by me" icon="mdi-eye-outline" color="#475569" items={all.filter((t) => t.watching && t.status !== 'Done')} empty="Use “Monitor” on a task to follow it here." onOpen={(t) => setOpenId(t._id)} onAll={() => viewAll('monitored')} />
-                    <Box title="Recently modified" icon="mdi-update" color="#d97706" items={[...all].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))} empty="No recent changes." onOpen={(t) => setOpenId(t._id)} onAll={() => { viewAll('involved', 'all'); setSort({ key: 'updated', dir: -1 }) }} extra={(t) => <span className="mt-box-end"><StatusChip s={t.status} /><small className="mt-ago">{ago(t.updatedAt)}</small></span>} />
+                    <Box title="Recently modified" icon="mdi-update" color="#d97706" items={[...all].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))} empty="No recent changes." onOpen={(t) => setOpenId(t._id)} onAll={() => { viewAll('involved', 'all'); setSort({ key: 'updated', dir: -1 }) }} extra={(t) => <span className="tk-box-end"><StatusChip s={t.status} /><small className="tk-ago">{ago(t.updatedAt)}</small></span>} />
                     <Box title="Done — ready to close" icon="mdi-check-decagram-outline" color="#059669" items={all.filter((t) => t.status === 'Done').sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))} empty="Nothing waiting to be closed." onOpen={(t) => setOpenId(t._id)} onAll={() => viewAll('involved', 'Done')}
-                        extra={(t) => <span onClick={(e) => e.stopPropagation()}><button type="button" className="pw-closebtn" onClick={() => setClosing({ tasks: [t], mode: 'close' })}><i className="mdi mdi-archive-check-outline"></i>Close</button></span>} />
+                        extra={(t) => <span onClick={(e) => e.stopPropagation()}><button type="button" className="pw-closebtn" onClick={() => setClosing({ tasks: [t], mode: 'close' })}><i className="mdi mdi-archive-arrow-down-outline"></i>Close</button></span>} />
                 </div>
             ) : view === 'closed' ? (
-                <section className="pp-card mt-board">
-                    <div className="mt-filterbar">
+                <section className="pp-card tk-board">
+                    <div className="tk-filterbar">
                         <select className="pp-select" value={f.project} onChange={(e) => setFilter('project', e.target.value)} aria-label="Project"><option value="">All projects</option>{closedProjects.map((p) => <option key={p._id} value={p._id}>{p.projectCode} · {p.projectName}</option>)}</select>
-                        <div className="pp-search mt-search"><i className="mdi mdi-magnify"></i><input type="search" className="pp-input" value={f.q} onChange={(e) => setFilter('q', e.target.value)} placeholder="Search closed tasks, notes…" /></div>
+                        <div className="pp-search tk-search"><i className="mdi mdi-magnify"></i><input type="search" className="pp-input" value={f.q} onChange={(e) => setFilter('q', e.target.value)} placeholder="Search closed tasks, notes…" /></div>
                     </div>
                     {!closedRows.length ? <EmptyState icon="mdi-archive-outline" title={closed.length ? 'No closed task matches' : 'Nothing closed yet'} text="Done tasks you close — with a closing note — are kept here, off the boards." /> : (
-                        <ul className="mt-closed">{closedRows.map((t) => (
+                        <ul className="tk-closed">{closedRows.map((t) => (
                             <li key={t._id} onClick={() => setOpenId(t._id)}>
-                                <span className="mt-closed-ic"><i className="mdi mdi-archive-check-outline"></i></span>
-                                <div className="mt-closed-main">
-                                    <b><span className="mt-box-no">{taskTag(t)}</span> {t.title}</b>
+                                <span className="tk-closed-ic"><i className="mdi mdi-archive-arrow-down-outline"></i></span>
+                                <div className="tk-closed-main">
+                                    <b><span className="tk-box-no">{taskTag(t)}</span> {t.title}</b>
                                     <small>{t.projectId && <Link to={`/projects/${pid(t)}`} onClick={(e) => e.stopPropagation()}>{t.projectId.projectCode}</Link>} · {t.assignedTo ? fullName(t.assignedTo) : 'Unassigned'} · closed {new Date(t.closedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}{t.closedBy ? ` by ${fullName(t.closedBy)}` : ''}</small>
                                     {t.closeNote && <q>{t.closeNote}</q>}
                                 </div>
-                                <button type="button" className="mt-reopen" onClick={(e) => { e.stopPropagation(); setClosing({ tasks: [t], mode: 'reopen' }) }}><i className="mdi mdi-restore"></i>Reopen</button>
+                                <button type="button" className="tk-reopen" onClick={(e) => { e.stopPropagation(); setClosing({ tasks: [t], mode: 'reopen' }) }}><i className="mdi mdi-restore"></i>Reopen</button>
                             </li>
                         ))}</ul>
                     )}
-                    <p className="mt-foot">{closedRows.length} closed task{closedRows.length === 1 ? '' : 's'} · last 12 months</p>
+                    <p className="tk-foot">{closedRows.length} closed task{closedRows.length === 1 ? '' : 's'} · last 12 months</p>
                 </section>
             ) : (
-                <section className="pp-card mt-board">
-                    <div className="mt-filterbar">
+                <section className="pp-card tk-board">
+                    <div className="tk-filterbar">
                         <select className="pp-select" value={f.scope} onChange={(e) => setFilter('scope', e.target.value)} aria-label="Whose tasks">{SCOPES.filter(([k]) => k !== 'team' || canSeeTeam).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>
                         {view === 'issues' && <select className="pp-select" value={f.status} onChange={(e) => setFilter('status', e.target.value)} aria-label="Status">{STATUS_FILTERS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>}
                         <select className="pp-select" value={f.priority} onChange={(e) => setFilter('priority', e.target.value)} aria-label="Priority"><option value="">Any priority</option>{Object.keys(PRIO).map((p) => <option key={p}>{p}</option>)}</select>
                         <select className="pp-select" value={f.type} onChange={(e) => setFilter('type', e.target.value)} aria-label="Type"><option value="">Any type</option>{TASK_TYPES.map((x) => <option key={x}>{x}</option>)}</select>
                         <select className="pp-select" value={f.project} onChange={(e) => setFilter('project', e.target.value)} aria-label="Project"><option value="">All projects</option>{projects.map((p) => <option key={p._id} value={p._id}>{p.projectCode} · {p.projectName}</option>)}</select>
-                        <div className="pp-search mt-search"><i className="mdi mdi-magnify"></i><input type="search" className="pp-input" value={f.q} onChange={(e) => setFilter('q', e.target.value)} placeholder="Search #ID, summary, project, person…" /></div>
+                        <div className="pp-search tk-search"><i className="mdi mdi-magnify"></i><input type="search" className="pp-input" value={f.q} onChange={(e) => setFilter('q', e.target.value)} placeholder="Search #ID, summary, project, person…" /></div>
                     </div>
 
                     {f.scope === 'team' && !team ? <div className="pw-loading"><i className="mdi mdi-loading mdi-spin"></i></div> : view === 'issues' ? (
                         <>
                             {sel.size > 0 && (
-                                <div className="mt-bulk">
+                                <div className="tk-bulk">
                                     <b>{sel.size} selected</b>
                                     <span>Move to</span>
                                     <select className="pp-select" value={bulkTo} onChange={(e) => setBulkTo(e.target.value)}>{TASK_COLUMNS.map((s) => <option key={s}>{s}</option>)}</select>
                                     <button type="button" className="pp-btn primary sm" disabled={busy === 'bulk'} onClick={bulk}><i className="mdi mdi-check"></i>Apply</button>
-                                    {selectedDone.length > 0 && <button type="button" className="pp-btn sm mt-bulk-close" onClick={() => setClosing({ tasks: selectedDone, mode: 'close' })}><i className="mdi mdi-archive-check-outline"></i>Close {selectedDone.length} done</button>}
+                                    {selectedDone.length > 0 && <button type="button" className="pp-btn sm tk-bulk-close" onClick={() => setClosing({ tasks: selectedDone, mode: 'close' })}><i className="mdi mdi-archive-arrow-down-outline"></i>Close {selectedDone.length} done</button>}
                                     <button type="button" className="pp-btn sm" onClick={() => setSel(new Set())}>Clear</button>
                                 </div>
                             )}
                             {!rows.length ? <EmptyState icon="mdi-check-all" title="No tasks match" text="Change the filters, or report a new issue." /> : (
-                                <div className="mt-table-wrap">
-                                    <table className="mt-table">
+                                <div className="tk-table-wrap">
+                                    <table className="tk-table">
                                         <thead><tr>
                                             <th className="c-sel"><input type="checkbox" checked={allSel} onChange={() => setSel(allSel ? new Set() : new Set(rows.map((t) => t._id)))} aria-label="Select all" /></th>
                                             {COLS.map(([k, l]) => <th key={k} className={`c-${k}`}><button type="button" onClick={() => sortBy(k)} className={sort.key === k ? 'on' : ''}>{l}{sort.key === k && <i className={`mdi ${sort.dir > 0 ? 'mdi-arrow-up' : 'mdi-arrow-down'}`}></i>}</button></th>)}
@@ -283,17 +283,17 @@ export const TasksBoard = () => {
                                     </table>
                                 </div>
                             )}
-                            <p className="mt-foot">{rows.length} of {source.length} tasks · rows are coloured by status · click a row to open it</p>
+                            <p className="tk-foot">{rows.length} of {source.length} tasks · rows are coloured by status · click a row to open it</p>
                         </>
                     ) : (
-                        <div className="pw-kanban mt-kanban">
+                        <div className="pw-kanban tk-kanban">
                             {TASK_COLUMNS.map((col) => {
                                 const list = filtered.filter((t) => t.status === col)
                                 return (
                                     <div key={col} className={`pw-col ${overCol === col ? 'over' : ''}`} style={{ '--c': TASK_STATUS[col].color }}
                                         onDragOver={(e) => { e.preventDefault(); setOverCol(col) }} onDragLeave={() => setOverCol(null)}
                                         onDrop={() => { const t = source.find((x) => x._id === dragId); setOverCol(null); setDragId(null); if (t) move(t, col) }}>
-                                        <header><i className={`mdi ${TASK_STATUS[col].icon}`}></i>{col}<span>{list.length}</span>{col === 'Done' && list.length > 1 && <button type="button" className="pw-closebtn" style={{ marginLeft: 6 }} onClick={() => setClosing({ tasks: list, mode: 'close' })}><i className="mdi mdi-archive-check-outline"></i>Close all</button>}</header>
+                                        <header><i className={`mdi ${TASK_STATUS[col].icon}`}></i>{col}<span>{list.length}</span>{col === 'Done' && list.length > 1 && <button type="button" className="pw-closebtn" style={{ marginLeft: 6 }} onClick={() => setClosing({ tasks: list, mode: 'close' })}><i className="mdi mdi-archive-arrow-down-outline"></i>Close all</button>}</header>
                                         <div className="pw-col-body">
                                             {list.map((t) => (
                                                 <div key={t._id} className={`pw-tcard ${dragId === t._id ? 'dragging' : ''}`} style={{ '--c': TASK_STATUS[col].color }} draggable onDragStart={() => setDragId(t._id)} onDragEnd={() => setDragId(null)} onClick={() => setOpenId(t._id)}>
@@ -306,7 +306,7 @@ export const TasksBoard = () => {
                                                     </div>
                                                     <div className="pw-tcard-foot" onClick={(e) => e.stopPropagation()}>
                                                         <span className={`pw-who ${t.assignedTo ? '' : 'none'}`}>{t.assignedTo ? <><Avatar person={t.assignedTo} size={20} />{t.assignedTo.firstName}</> : 'Unassigned'}</span>
-                                                        {t.status === 'Done' ? <button type="button" className="pw-closebtn" onClick={() => setClosing({ tasks: [t], mode: 'close' })}><i className="mdi mdi-archive-check-outline"></i>Close</button>
+                                                        {t.status === 'Done' ? <button type="button" className="pw-closebtn" onClick={() => setClosing({ tasks: [t], mode: 'close' })}><i className="mdi mdi-archive-arrow-down-outline"></i>Close</button>
                                                             : <select className="pw-move" value={t.status} onChange={(e) => move(t, e.target.value)} aria-label="Move to">{TASK_COLUMNS.map((s) => <option key={s}>{s}</option>)}</select>}
                                                     </div>
                                                 </div>
@@ -326,7 +326,7 @@ export const TasksBoard = () => {
 
             {report?.projects && (
                 <Modal title="Report an issue" sub="Pick the project it belongs to" icon={<span className="pw-dicon"><i className="mdi mdi-plus"></i></span>} onClose={() => setReport(null)}>
-                    {report.projects.length ? <ul className="mt-pick">{report.projects.map((p) => <li key={p._id}><button type="button" onClick={() => pickProject(p)}><span className="pw-code">{p.projectCode}</span><b>{p.projectName}</b><small>{p.clientName || 'Internal'}</small><i className="mdi mdi-chevron-right"></i></button></li>)}</ul>
+                    {report.projects.length ? <ul className="tk-pick">{report.projects.map((p) => <li key={p._id}><button type="button" onClick={() => pickProject(p)}><span className="pw-code">{p.projectCode}</span><b>{p.projectName}</b><small>{p.clientName || 'Internal'}</small><i className="mdi mdi-chevron-right"></i></button></li>)}</ul>
                         : <p className="it-muted">You’re not on any open project yet.</p>}
                 </Modal>
             )}

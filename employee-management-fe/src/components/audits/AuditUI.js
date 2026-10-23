@@ -21,6 +21,7 @@ export const AUDIT_STATUS = {
     Planning: { color: '#64748b', icon: 'mdi-pencil-ruler' },
     Fieldwork: { color: '#0284c7', icon: 'mdi-briefcase-search-outline' },
     Review: { color: '#7c3aed', icon: 'mdi-file-eye-outline' },
+    Reporting: { color: '#0891b2', icon: 'mdi-file-document-edit-outline' },
     'On Hold': { color: '#d97706', icon: 'mdi-pause-circle-outline' },
     Completed: { color: '#059669', icon: 'mdi-check-decagram' },
     Cancelled: { color: '#e11d48', icon: 'mdi-close-octagon-outline' },
@@ -78,6 +79,8 @@ export const useTick = (active, ms = 1000) => {
     return now
 }
 
+export const LiveClockText = ({ start }) => clock(start, useTick(true))
+
 export const LiveClock = ({ start }) => {
     const now = useTick(true)
     return <span className="au-clock">{clock(start, now)}</span>
@@ -112,7 +115,8 @@ export const TimerPanel = ({ audit, isMember, todayMinutes = 0, myMinutes = 0 })
     const runningHere = activeTimer && activeTimer.auditId?._id === audit._id
     const runningElsewhere = activeTimer && !runningHere
     const closed = CLOSED.includes(audit.status)
-    const now = useTick(!!runningHere)
+    // totals move once a minute; the seconds clock below ticks by itself
+    const now = useTick(!!runningHere, 60000)
     const liveMinutes = runningHere ? (now - new Date(activeTimer.startTime)) / 60000 : 0
 
     const start = () => dispatch({ type: auditActions.START_AUDIT_TIMER, id: audit._id })
@@ -133,7 +137,7 @@ export const TimerPanel = ({ audit, isMember, todayMinutes = 0, myMinutes = 0 })
             <div className="au-timer-label">
                 {runningHere ? <><span className="au-pulse"></span>You're working on this audit</> : <><i className="mdi mdi-timer-outline"></i>My timer</>}
             </div>
-            <div className="au-timer-face">{runningHere ? clock(activeTimer.startTime, now) : '00:00:00'}</div>
+            <div className="au-timer-face">{runningHere ? <LiveClockText start={activeTimer.startTime} /> : '00:00:00'}</div>
             {runningHere && <div className="au-timer-since">Started at {fmtClockTime(activeTimer.startTime)}</div>}
 
             {runningHere ? (
@@ -152,7 +156,8 @@ export const TimerPanel = ({ audit, isMember, todayMinutes = 0, myMinutes = 0 })
                 <button type="button" className="au-start" onClick={start} disabled={timerBusy}><i className="mdi mdi-play-circle-outline"></i> {timerBusy === 'locating' ? 'Getting location…' : timerBusy ? 'Starting…' : 'Start timer'}</button>
             )}
 
-            {!closed && !runningElsewhere && <div className="au-geo-hint"><i className="mdi mdi-map-marker-outline"></i>Your location is recorded when you start and stop.</div>}
+            {runningHere && liveMinutes > 8 * 60 && <div className="au-timer-note warn"><i className="mdi mdi-alert-outline"></i><span>Running for {fmtDuration(liveMinutes)}. Still working? Stop it when you finish — after 10 hours it stops by itself and goes to your manager for review.</span></div>}
+            {!closed && !runningElsewhere && <div className="au-geo-hint"><i className="mdi mdi-map-marker-outline"></i>Your location is recorded when you start and stop. Timers stop automatically when you check out, at 8 PM, or after 10 hours.</div>}
 
             <div className="au-timer-stats">
                 <span><small>Today</small><b>{fmtDuration(todayMinutes + liveMinutes)}</b></span>

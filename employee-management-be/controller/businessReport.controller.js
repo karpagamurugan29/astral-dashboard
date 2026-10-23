@@ -401,3 +401,99 @@ export const businessPulse = async (req, res) => {
         return res.status(200).json({ success: true, data });
     } catch (err) { return fail(res, err); }
 };
+
+/* =========================== Executive overview =========================== */
+// One page for the firm's management: money (top level only), delivery, people, and a
+// "needs your attention" list built from every other report. Scoped like the rest:
+// firm-wide seniors see the firm, team leads their team.
+export const executiveOverview = async (req, res) => {
+    try {
+        const today = localDayStart();
+        const end = new Date(today.getTime() + 864e5);
+        const monthStart = localDayStart(new Date(today.getFullYear(), today.getMonth(), 1, 12));
+        const fyStartYear = today.getMonth() >= 3 ? today.getFullYear() : today.getFullYear() - 1;
+        const fyStart = new Date(`${fyStartYear}-04-01T00:00:00`);
+        const fy = `${fyStartYear}-${String((fyStartYear + 1) % 100).padStart(2, "0")}`;
+        const money = await canSeeMoney(req);
+        const people = await peopleInScope(req);
+        const ids = people.map((p) => p._id);
+
+        const auditFilter = { isDeleted: false, ...(["Admin", "HR"].includes(req.user.role) || money ? {} : await workFilter(req, "auditManager", "teamMembers")) };
+        const [util, punct, compliance, profit, audits, pendingLeave, pendingExpense] = await Promise.all([
+            computeUtilisation(req, { start: monthStart, end, people }),
+            computePunctuality(req, { start: monthStart, end, people }),
+            computeCompliance(req),
+            computeProfitability(req, { status: "open" }),
+            AuditEngagementModel.find(auditFilter).select("auditCode clientName engagementName status endDate estimatedHours fee").lean(),
+            leaveModel.countDocuments({ status: "Pending", employeeId: { $in: ids, $ne: req.user.id } }),
+            expenseModel.countDocuments({ status: "Pending", employeeId: { $in: ids, $ne: req.user.id } }),
+        ]);
+        const open = audits.filter((a) => !["Completed", "Cancelled"].includes(a.status));
+        const late = open.filter((a) => a.endDate && new Date(a.endDate) < today);
+        const statusCounts = open.reduce((m, a) => ({ ...m, [a.status]: (m[a.status] || 0) + 1 }), {});
+
+        // hours per week, last 8 weeks (people in scope)
+        const weeks = Array.from({ length: 8 }, (_, i) => { const s = new Date(today); s.setDate(s.getDate() - ((s.getDay() + 6) % 7) - 7 * (7 - i)); return s; });
+        const logs = await AuditTimeLogModel.find({ employeeId: { $in: ids }, startTime: { $gte: weeks[0] } }).select("startTime endTime durationMinutes").lean();
+        const hoursTrend = weeks.map((s, i) => {
+            const e = weeks[i + 1] || end;
+            const mins = logs.filter((l) => new Date(l.startTime) >= s && new Date(l.startTime) < e).reduce((t, l) => t + (l.endTime ? l.durationMinutes || 0 : Math.max(0, (Date.now() - new Date(l.startTime)) / 60000)), 0);
+            return { week: s.toISOString().slice(0, 10), hours: r1(mins / 60) };
+        });
+
+        let finance = null;
+        if (money) {
+            const { default: InvoiceModel } = await import("../models/invoiceModel.js");
+            const inv = await InvoiceModel.find({ status: { $in: ["Issued", "Partly paid", "Paid"] }, invoiceDate: { $gte: fyStart } }).select("invoiceDate dueDate total payments status taxableValue auditId").lean();
+            const paidOf = (i) => (i.payments || []).reduce((t, p) => t + (p.amount || 0) + (p.tds || 0), 0);
+            const months = Array.from({ length: 12 }, (_, k) => new Date(fyStartYear, 3 + k, 1));
+            const allPays = inv.flatMap((i) => (i.payments || []).map((p) => p));
+            finance = {
+                fy,
+                billed: Math.round(inv.reduce((t, i) => t + i.total, 0)),
+                collected: Math.round(inv.reduce((t, i) => t + paidOf(i), 0)),
+                outstanding: Math.round(inv.reduce((t, i) => t + Math.max(0, i.total - paidOf(i)), 0)),
+                overdue: Math.round(inv.filter((i) => i.dueDate && new Date(i.dueDate) < today).reduce((t, i) => t + Math.max(0, i.total - paidOf(i)), 0)),
+                overdueCount: inv.filter((i) => i.dueDate && new Date(i.dueDate) < today && i.total - paidOf(i) > 1).length,
+                unbilled: Math.round(open.reduce((t, a) => t + (a.fee || 0), 0) - inv.reduce((t, i) => t + (open.some((a) => String(a._id) === String(i.auditId)) ? i.taxableValue || 0 : 0), 0)),
+                trend: months.filter((m) => m <= today).map((m) => {
+                    const n = new Date(m.getFullYear(), m.getMonth() + 1, 1);
+                    return {
+                        month: m.toLocaleString("en-IN", { month: "short" }),
+                        billed: Math.round(inv.filter((i) => new Date(i.invoiceDate) >= m && new Date(i.invoiceDate) < n).reduce((t, i) => t + i.total, 0)),
+                        collected: Math.round(allPays.filter((p) => new Date(p.date) >= m && new Date(p.date) < n).reduce((t, p) => t + (p.amount || 0) + (p.tds || 0), 0)),
+                    };
+                }),
+                margin: profit.summary.margin ?? null, marginPct: profit.summary.marginPct ?? null, lossMaking: profit.summary.lossMaking || 0,
+            };
+        }
+
+        const attention = [];
+        const add = (sev, icon, title, detail, link) => attention.push({ sev, icon, title, detail, link });
+        if (finance?.overdueCount) add("high", "mdi-clock-alert-outline", `${finance.overdueCount} invoice${finance.overdueCount === 1 ? "" : "s"} overdue`, `₹${finance.overdue.toLocaleString("en-IN")} past the due date — follow up with the clients.`, "/audits/billing");
+        if (late.length) add("high", "mdi-flag-checkered", `${late.length} audit${late.length === 1 ? "" : "s"} past deadline`, late.slice(0, 3).map((a) => `${a.auditCode} ${a.clientName}`).join(" · "), "/audits");
+        if (finance?.lossMaking) add("high", "mdi-trending-down", `${finance.lossMaking} engagement${finance.lossMaking === 1 ? "" : "s"} losing money`, "Cost of time is above the agreed fee.", "/reports/attendance?r=profitability");
+        if (profit.summary.overBudget) add("medium", "mdi-timer-sand", `${profit.summary.overBudget} engagement${profit.summary.overBudget === 1 ? "" : "s"} over the hour budget`, `${profit.summary.nearBudget || 0} more above 80%.`, "/reports/attendance?r=profitability");
+        if (util.summary.overloaded) add("medium", "mdi-account-alert-outline", `${util.summary.overloaded} ${util.summary.overloaded === 1 ? "person is" : "people are"} over capacity`, "Logging more audit hours than their working time this month.", "/reports/attendance?r=utilisation");
+        if (util.summary.bench) add("low", "mdi-sofa-outline", `${util.summary.bench} ${util.summary.bench === 1 ? "person has" : "people have"} spare capacity`, "Under 30% utilised this month — available for new work.", "/reports/attendance?r=utilisation");
+        if (punct.summary.habitualLate) add("low", "mdi-clock-alert-outline", `${punct.summary.habitualLate} habitually late`, "Late 3 or more times this month.", "/reports/attendance?r=punctuality");
+        if (compliance.summary.expired || compliance.summary.missingDocs) add(compliance.summary.expired ? "medium" : "low", "mdi-shield-alert-outline", compliance.summary.expired ? `${compliance.summary.expired} document${compliance.summary.expired === 1 ? "" : "s"} expired` : `${compliance.summary.missingDocs} employee documents missing`, `${compliance.summary.completePct}% of files are complete.`, "/reports/attendance?r=compliance");
+        if (pendingLeave) add("low", "mdi-beach", `${pendingLeave} leave request${pendingLeave === 1 ? "" : "s"} waiting`, "Waiting for a decision from the reporting line.", "/leave/approvals");
+        if (pendingExpense) add("low", "mdi-receipt", `${pendingExpense} expense claim${pendingExpense === 1 ? "" : "s"} waiting`, "Waiting for approval.", "/expenses/approvals");
+        const rank = { high: 0, medium: 1, low: 2 };
+        attention.sort((a, b) => rank[a.sev] - rank[b.sev]);
+
+        return res.status(200).json({
+            success: true,
+            data: {
+                money, finance,
+                people: { headcount: people.length, onTime: punct.summary.onTime, absent: punct.summary.absent, avgHours: punct.summary.avgHours, compliancePct: compliance.summary.completePct },
+                delivery: { open: open.length, late: late.length, statusCounts, overBudget: profit.summary.overBudget || 0, loggedHours: profit.summary.loggedHours, estimatedHours: profit.summary.estimatedHours },
+                utilisation: { ...util.summary, byDepartment: util.byDepartment.slice(0, 6), top: util.rows.filter((r) => r.capacityHours > 0).slice(0, 5) },
+                hoursTrend, attention,
+                topClients: profit.clients.slice(0, 5),
+                period: { monthStart, fy },
+            },
+        });
+    } catch (err) { return fail(res, err); }
+};

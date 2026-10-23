@@ -123,7 +123,7 @@ export const ProjectDetail = () => {
                                 onDragLeave={(e) => { if (e.currentTarget === e.target) setDrag((d) => (d ? { ...d, over: null } : d)) }}
                                 onDrop={(e) => { e.preventDefault(); if (drag) move(drag.task, col); setDrag(null) }}>
                                 <header><i className={`mdi ${m.icon}`}></i><b>{col}</b><span>{items.length}</span>
-                                    {col === 'Done' && items.filter(canEditTask).length > 1 && <button type="button" className="pw-closebtn" style={{ marginLeft: 6 }} onClick={() => setClosing({ tasks: items.filter(canEditTask), mode: 'close' })} title="Close every finished task with one note"><i className="mdi mdi-archive-check-outline"></i>Close all</button>}
+                                    {col === 'Done' && items.filter(canEditTask).length > 1 && <button type="button" className="pw-closebtn" style={{ marginLeft: 6 }} onClick={() => setClosing({ tasks: items.filter(canEditTask), mode: 'close' })} title="Close every finished task with one note"><i className="mdi mdi-archive-arrow-down-outline"></i>Close all</button>}
                                 </header>
                                 <div className="pw-col-body">
                                     {items.map((t) => {
@@ -145,7 +145,7 @@ export const ProjectDetail = () => {
                                                 </div>
                                                 <div className="pw-tcard-foot">
                                                     {t.assignedTo ? <span className="pw-who"><Avatar person={t.assignedTo} size={22} />{t.assignedTo.firstName}</span> : <span className="pw-who none">Unassigned</span>}
-                                                    {draggable && t.status === 'Done' && <button type="button" className="pw-closebtn" onClick={(e) => { e.stopPropagation(); setClosing({ tasks: [t], mode: 'close' }) }} title="Close with a note — moves it to the Closed history"><i className="mdi mdi-archive-check-outline"></i>Close</button>}
+                                                    {draggable && t.status === 'Done' && <button type="button" className="pw-closebtn" onClick={(e) => { e.stopPropagation(); setClosing({ tasks: [t], mode: 'close' }) }} title="Close with a note — moves it to the Closed history"><i className="mdi mdi-archive-arrow-down-outline"></i>Close</button>}
                                                     {draggable && <select className="pw-move" value={t.status} onClick={(e) => e.stopPropagation()} onChange={(e) => move(t, e.target.value)} aria-label="Move task">{TASK_COLUMNS.map((s) => <option key={s}>{s}</option>)}</select>}
                                                 </div>
                                             </article>
@@ -231,7 +231,7 @@ export const ProjectDetail = () => {
                         {!list.length ? <EmptyState icon="mdi-archive-outline" title={(w.closedTasks || []).length ? 'No closed task matches' : 'Nothing closed yet'} text="When a Done task is closed it moves here with its closing note." /> : (
                             <ul>{list.map((t) => (
                                 <li key={t._id}>
-                                    <span className="pw-closed-ic"><i className="mdi mdi-archive-check-outline"></i></span>
+                                    <span className="pw-closed-ic"><i className="mdi mdi-archive-arrow-down-outline"></i></span>
                                     <div className="pw-closed-main">
                                         <b><span className="pw-tno">{taskTag(t)}</span>{t.title}</b>
                                         <small>{t.assignedTo ? fullName(t.assignedTo) : 'Unassigned'}{t.loggedMinutes ? ` · ${hm(t.loggedMinutes)} logged` : ''} · closed {fmtDay(t.closedAt)}{t.closedBy ? ` by ${fullName(t.closedBy)}` : ''}</small>

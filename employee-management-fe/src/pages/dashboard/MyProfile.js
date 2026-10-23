@@ -3,8 +3,9 @@ import { useDispatch, useSelector } from 'react-redux'
 import { useForm } from 'react-hook-form'
 import { Link } from 'react-router-dom'
 import authActions from '../../redux/auth/Actions'
-import { PeopleShell, Avatar, StatusPill, DeptTag, ErrorBanner, fullName, fmtDate, tenure } from '../../components/people/PeopleUI'
+import { PeopleShell, StatusPill, DeptTag, ErrorBanner, fullName, fmtDate, tenure } from '../../components/people/PeopleUI'
 import { MyTeamCard } from '../../components/org/OrgUI'
+import { PhotoPicker } from '../../components/people/PhotoPicker'
 import './MyProfile.css'
 
 const ACCOUNT_ROOT = { label: 'Account', to: '/profile' }
@@ -71,7 +72,7 @@ export const MyProfile = () => {
                 {/* ---------- identity ---------- */}
                 <aside className="pp-card mp-id">
                     <div className="mp-id-top">
-                        <Avatar person={user} size={88} ring />
+                        <PhotoPicker person={user} endpoint="/auth/profile/photo" onChange={(profileImage) => dispatch({ type: authActions.SET_AUTH, payload: { ...user, profileImage } })} />
                         <h2>{fullName(user)}</h2>
                         <p className="mp-id-title">{user?.designation || '—'}</p>
                         <div className="mp-pills">

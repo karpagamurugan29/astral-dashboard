@@ -175,3 +175,24 @@ button.at-tile:hover { transform: translateY(-2px); box-shadow: 0 12px 24px -16p
     .at-nav-label { min-width: 120px; font-size: 14px; }
     .at-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+.au-timer-note.warn { background: #fffbeb; border-color: #fde68a; color: #92400e; }
+/* export attendance dialog */
+.xa { display: flex; flex-direction: column; gap: 12px; }
+.xa-tabs { display: inline-flex; padding: 3px; border-radius: 12px; background: #eef2f7; align-self: flex-start; }
+.xa-tabs button { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border: 0; border-radius: 9px; background: none; font-size: 13px; font-weight: 700; color: #475569; }
+.xa-tabs button.on { background: #fff; color: #15803d; box-shadow: 0 1px 3px rgba(15, 23, 42, .12); }
+.xa-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; }
+.xa-row label { display: flex; flex-direction: column; gap: 4px; margin: 0; min-width: 160px; }
+.xa-row label.grow { flex: 1; }
+.xa-row label span { font-size: 11px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: #64748b; }
+.xa-quick { display: flex; gap: 6px; }
+.xa-quick button { height: 38px; padding: 0 12px; border: 1px solid var(--pp-line); border-radius: 10px; background: #fff; font-size: 12.5px; font-weight: 600; color: #334155; }
+.xa-formats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.xa-formats button { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 10px; align-items: center; padding: 10px 12px; border: 1.5px solid var(--pp-line); border-radius: 12px; background: #fff; text-align: left; }
+.xa-formats button i { grid-row: span 2; font-size: 24px; color: #64748b; }
+.xa-formats button b { font-size: 13.5px; color: var(--pp-ink); }
+.xa-formats button small { font-size: 11.5px; color: var(--pp-muted); }
+.xa-formats button.on { border-color: #15803d; background: #f0fdf4; }
+.xa-formats button.on i { color: #15803d; }
+.xa-note { display: flex; gap: 6px; margin: 0; font-size: 12px; color: var(--pp-muted); }
+@media (max-width: 575.98px) { .xa-formats { grid-template-columns: 1fr; } }

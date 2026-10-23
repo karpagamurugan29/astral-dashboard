@@ -94,6 +94,7 @@ export const runAutoCheckout = async (now = new Date()) => {
         log.endTime = cutoff;
         log.durationMinutes = Math.max(0, Math.round((cutoff - log.startTime) / 60000));
         log.note = [log.note, `(timer auto-stopped at ${label})`].filter(Boolean).join(" ");
+        log.autoStopped = true; log.needsReview = true; log.originalMinutes = log.durationMinutes; log.reviewReason = "was still running at the day's cut-off";
         await log.save();
         const audit = await AuditEngagementModel.findById(log.auditId).select("clientName engagementName auditType auditCode").lean();
         entry(log.employeeId).timers.push({ start: log.startTime, end: cutoff, minutes: log.durationMinutes, audit });

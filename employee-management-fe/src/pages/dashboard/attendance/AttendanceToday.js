@@ -5,6 +5,7 @@ import attendanceActions from '../../../redux/attendance/Actions'
 import { PeopleShell, ProgressRing, ErrorBanner } from '../../../components/people/PeopleUI'
 import { ATTENDANCE_ROOT, WORKDAY_HOURS, AttStatus, ModeTag, CheckInOptions, formatTime, hoursLabel } from '../../../components/attendance/AttendanceUI'
 import './AttendanceToday.css'
+import { Live } from '../../../components/common/Live'
 
 const greeting = (d) => (d.getHours() < 12 ? 'Good morning' : d.getHours() < 17 ? 'Good afternoon' : 'Good evening')
 
@@ -27,7 +28,8 @@ export const AttendanceToday = () => {
     }, [dispatch])
 
     useEffect(() => {
-        const t = setInterval(() => setNow(new Date()), 1000)
+        // the page only needs the minute (worked hours, greeting); the seconds clock ticks on its own
+        const t = setInterval(() => setNow(new Date()), 60000)
         return () => clearInterval(t)
     }, [])
 
@@ -71,8 +73,6 @@ export const AttendanceToday = () => {
         [history]
     )
 
-    const time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    const secs = String(now.getSeconds()).padStart(2, '0')
 
     return (
         <PeopleShell
@@ -90,7 +90,7 @@ export const AttendanceToday = () => {
                     <div className="mt-clock-top">
                         <div>
                             <div className="mt-date">{now.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}</div>
-                            <div className="mt-time">{time}<small>:{secs}</small></div>
+                            <Live>{(n) => { const d = new Date(n); return <div className="mt-time">{d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}<small>:{String(d.getSeconds()).padStart(2, '0')}</small></div> }}</Live>
                             <div className="mt-greet">{greeting(now)}, {user?.firstName || 'there'}</div>
                         </div>
                         {today && (

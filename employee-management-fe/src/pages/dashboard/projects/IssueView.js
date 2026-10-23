@@ -83,7 +83,7 @@ export const IssueView = ({ id, me, onClose, onChanged, onTimer, timerOn }) => {
                     <div className="it-head-top">
                         <span className="it-no">{taskTag(t)}</span>
                         <TypeTag type={t.type} />
-                        <span className="it-status"><i className={`mdi ${t.closedAt ? 'mdi-archive-check-outline' : st.icon}`}></i>{t.closedAt ? 'Closed' : t.status}</span>
+                        <span className="it-status"><i className={`mdi ${t.closedAt ? 'mdi-archive-arrow-down-outline' : st.icon}`}></i>{t.closedAt ? 'Closed' : t.status}</span>
                         <button type="button" className="it-x" onClick={onClose} aria-label="Close"><i className="mdi mdi-close"></i></button>
                     </div>
                     <h2>{t.title}</h2>
@@ -92,7 +92,7 @@ export const IssueView = ({ id, me, onClose, onChanged, onTimer, timerOn }) => {
                         <button type="button" className={`it-tool ${t.watching ? 'on' : ''}`} onClick={watch}><i className={`mdi ${t.watching ? 'mdi-eye' : 'mdi-eye-outline'}`}></i>{t.watching ? 'Monitoring' : 'Monitor'}</button>
                         {t.status !== 'Done' && !timerOn && p && <button type="button" className="it-tool" onClick={() => onTimer({ ...t, projectId: p })}><i className="mdi mdi-timer-outline"></i>Start timer</button>}
                         {d.canEdit && !t.closedAt && <button type="button" className="it-tool" onClick={() => setEdit(true)}><i className="mdi mdi-pencil-outline"></i>Edit</button>}
-                        {d.canEdit && !t.closedAt && t.status === 'Done' && <button type="button" className="it-tool close" onClick={() => setClosing('close')}><i className="mdi mdi-archive-check-outline"></i>Close task</button>}
+                        {d.canEdit && !t.closedAt && t.status === 'Done' && <button type="button" className="it-tool close" onClick={() => setClosing('close')}><i className="mdi mdi-archive-arrow-down-outline"></i>Close task</button>}
                         {d.canEdit && t.closedAt && <button type="button" className="it-tool" onClick={() => setClosing('reopen')}><i className="mdi mdi-restore"></i>Reopen</button>}
                     </div>
                 </header>
@@ -100,7 +100,7 @@ export const IssueView = ({ id, me, onClose, onChanged, onTimer, timerOn }) => {
                 <div className="it-body">
                     {t.closedAt && (
                         <div className="it-closed">
-                            <i className="mdi mdi-archive-check-outline"></i>
+                            <i className="mdi mdi-archive-arrow-down-outline"></i>
                             <div><b>Closed {fmtDay(t.closedAt)}{t.closedBy ? ` by ${fullName(t.closedBy)}` : ''}</b>{t.closeNote && <p>{t.closeNote}</p>}</div>
                         </div>
                     )}
@@ -108,7 +108,7 @@ export const IssueView = ({ id, me, onClose, onChanged, onTimer, timerOn }) => {
                         <div className="it-ready">
                             <i className="mdi mdi-check-decagram-outline"></i>
                             <div><b>This task is done</b><p>Close it with a note to move it off the board and into the closed history.</p></div>
-                            <button type="button" className="pp-btn primary sm" onClick={() => setClosing('close')}><i className="mdi mdi-archive-check-outline"></i>Close</button>
+                            <button type="button" className="pp-btn primary sm" onClick={() => setClosing('close')}><i className="mdi mdi-archive-arrow-down-outline"></i>Close</button>
                         </div>
                     )}
                     <dl className="it-grid">

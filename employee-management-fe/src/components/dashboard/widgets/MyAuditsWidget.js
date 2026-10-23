@@ -3,7 +3,8 @@ import { useDispatch, useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
 import auditActions from '../../../redux/audit/Actions'
 import dashboardActions from '../../../redux/dashboard/Actions'
-import { auditStatusMeta, engagementTitle, fmtDuration, clock, useTick } from '../../audits/AuditUI'
+import { auditStatusMeta, engagementTitle, fmtDuration, clock } from '../../audits/AuditUI'
+import { Live } from '../../common/Live'
 
 const SORTS = {
     deadline: { label: 'Deadline', fn: (a, b) => (a.daysLeft ?? 9999) - (b.daysLeft ?? 9999) },
@@ -33,7 +34,6 @@ export const MyAuditsWidget = ({ audits = [] }) => {
     const [filter, setFilter] = useState('all')
     const [sort, setSort] = useState('deadline')
     const wasBusy = useRef(false)
-    const now = useTick(!!activeTimer, 1000)
 
     useEffect(() => { dispatch({ type: auditActions.GET_ACTIVE_AUDIT_TIMER }) }, [dispatch])
     useEffect(() => {
@@ -108,7 +108,7 @@ export const MyAuditsWidget = ({ audits = [] }) => {
                                     <div className="mau-action">
                                         {isRunning ? (
                                             <>
-                                                <span className="mau-clock">{clock(activeTimer.startTime, now)}</span>
+                                                <span className="mau-clock"><Live>{(n) => clock(activeTimer.startTime, n)}</Live></span>
                                                 <button type="button" className="dt-btn stop" disabled={!!timerBusy} onClick={() => dispatch({ type: auditActions.STOP_AUDIT_TIMER, id: a._id })}><i className="mdi mdi-stop"></i>{timerBusy === 'locating' ? 'Locating…' : 'Stop'}</button>
                                             </>
                                         ) : (

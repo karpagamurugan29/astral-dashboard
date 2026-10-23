@@ -3,7 +3,7 @@ import { register, login, logout, forgotPassword, resetPassword, session, change
 import { AddEmployee, ModifyEmployee, GetEmployeeById, GetAllEmployees, DeleteEmployee, UpdateEmployeeRole, GetEmployeeHistory, } from "../controller/employee.controller.js";
 import authMiddleWare from "../middleware/auth.middleware.js";
 import authorize from "../middleware/permission.middleware.js";
-import { attendanceHistory, checkIn, checkOut, todayAttendance, teamAttendance, requestRegularization, getMyRegularizations, getPendingRegularizations, decideRegularization } from "../controller/attentance.controller.js";
+import { attendanceHistory, checkIn, checkOut, todayAttendance, teamAttendance, requestRegularization, getMyRegularizations, getPendingRegularizations, decideRegularization, subordinateAttendance, exportAttendance, teamAttendanceRange } from "../controller/attentance.controller.js";
 import { applyLeave, approveLeave, cancelLeave, getAllLeaves, leaveBalance, leaveDetails, leaveHistory, pendingLeaves, rejectLeave, teamLeaveCalendar } from "../controller/leave.controller.js";
 import { getOnboardingList, updateOnboardingTask, sendWelcome, closeOnboarding, initiateOffboarding, getOffboardingList, updateOffboardingTask, completeOffboarding } from "../controller/lifecycle.controller.js";
 import { createProject, updateProject, deleteProject, getProjectById, getAllProjects, addProjectMember, removeProjectMember } from "../controller/project.controller.js";
@@ -27,10 +27,13 @@ import { getAuditLogs } from "../controller/auditLog.controller.js";
 import { getCompanySettings, updateCompanySettings, getLeaveSettings, updateLeaveSettings } from "../controller/settings.controller.js";
 import { getNotifications, markNotificationRead, markAllNotificationsRead } from "../controller/notification.controller.js";
 import { uploadDocument, getDocuments, deleteDocument, downloadDocument } from "../controller/document.controller.js";
-import { utilisationReport, profitabilityReport, punctualityReport, complianceReport, businessPulse } from "../controller/businessReport.controller.js";
+import { utilisationReport, profitabilityReport, punctualityReport, complianceReport, businessPulse, executiveOverview } from "../controller/businessReport.controller.js";
 import { chatContacts, listConversations, createConversation, getConversation, getMessages, sendMessage, editMessage, deleteMessage, reactToMessage, starMessage, markRead, setTyping, updateConversation, chatUpdates, chatUnread, chatFile, searchMessages, deleteGroup, adminListGroups, adminUpdateGroup } from "../controller/chat.controller.js";
 import { listProjects, projectWorkspace, createProjectV2, updateProjectV2, startProjectTimer, stopProjectTimer, createProjectTask, updateProjectTask, moveTask, commentOnTask, deleteProjectTask, myTasks, getTask, watchTask, bulkMoveTasks, closeTask, bulkCloseTasks, reopenTask } from "../controller/projectWorkspace.controller.js";
 import { orgTree, setManager } from "../controller/org.controller.js";
+import { uploadMyPhoto, removeMyPhoto, uploadEmployeePhoto, servePhoto } from "../controller/photo.controller.js";
+import { listFiles, getFile, downloadFile, uploadFiles, uploadVersion, shareFile, unshareFile, updateFile, starFile, deleteFile, restoreFile, createFolder, updateFolder, deleteFolder, restoreFolder, shareFolder, shareTargets } from "../controller/files.controller.js";
+import { getBillingSettings, updateBillingSettings, auditEconomics, listInvoices, getInvoice, createInvoice, updateInvoice, issueInvoice, recordPayment, cancelInvoice, setMilestone, setCharges, prepareInvoice, reviewTimeLog } from "../controller/billing.controller.js";
 import multer from "multer";
 // documents go to MongoDB (GridFS), so keep them in memory rather than on disk
 const docUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
@@ -62,12 +65,16 @@ router.post("/reset-password", resetPassword);
 router.get("/session", authMiddleWare, session);
 router.get("/auth/profile", authMiddleWare, session);
 router.put("/auth/profile", authMiddleWare, updateProfile);
+router.post("/auth/profile/photo", authMiddleWare, docUpload.single("photo"), uploadMyPhoto);
+router.delete("/auth/profile/photo", authMiddleWare, removeMyPhoto);
+router.get("/photos/:id", servePhoto); // public: <img> tags can't send the token
 router.post("/auth/change-password", authMiddleWare, changePassword);
 
 router.post("/logout", authMiddleWare, logout);
 
 // Employees
 router.get("/employees", authMiddleWare, GetAllEmployees);
+router.post("/employees/:id/photo", authMiddleWare, adminHR("employees"), docUpload.single("photo"), uploadEmployeePhoto);
 router.get("/employees/:id", authMiddleWare, GetEmployeeById);
 router.post("/employees", authMiddleWare, adminHR("employees"), AddEmployee);
 router.put("/employees/:id", authMiddleWare, adminHR("employees"), ModifyEmployee);
@@ -107,6 +114,8 @@ router.post("/attendance/check-out", authMiddleWare, checkOut);
 router.get("/attendance/today", authMiddleWare, todayAttendance);
 router.get("/attendance/history", authMiddleWare, attendanceHistory);
 router.get("/attendance/team", authMiddleWare, adminHRManager("attendance"), teamAttendance);
+router.get("/attendance/subordinates", authMiddleWare, adminHRManager("attendance"), subordinateAttendance);
+router.get("/attendance/team-range", authMiddleWare, adminHRManager("attendance"), teamAttendanceRange);
 router.get("/location-log", authMiddleWare, adminHRManager("attendance"), getLocationLog);
 // 8 PM auto check-out: Vercel Cron → /cron/auto-checkout (secret); Admin can also run it now.
 router.get("/cron/auto-checkout", cronAutoCheckout);
@@ -161,6 +170,42 @@ router.delete("/audit-clients/:id", authMiddleWare, adminHRManager("projects"), 
 // Audit engagements — managed under the "projects" permission; any assigned member can run the timer
 router.get("/audits", authMiddleWare, getAllAudits);
 router.get("/audits/timer/active", authMiddleWare, getMyActiveAuditTimer);
+router.get("/audits/:id/economics", authMiddleWare, auditEconomics);
+router.put("/audits/:id/milestones/:key", authMiddleWare, setMilestone);
+router.put("/audits/:id/charges", authMiddleWare, setCharges);
+router.put("/audits/timelogs/:id/review", authMiddleWare, reviewTimeLog);
+
+// Files: keep, organise and share (one to one, or to a chat group)
+const fileUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024, files: 10 } });
+router.get("/files", authMiddleWare, listFiles);
+router.get("/files/share-targets", authMiddleWare, shareTargets);
+router.post("/files", authMiddleWare, fileUpload.array("files", 10), uploadFiles);
+router.post("/files/folders", authMiddleWare, createFolder);
+router.put("/files/folders/:id", authMiddleWare, updateFolder);
+router.delete("/files/folders/:id", authMiddleWare, deleteFolder);
+router.post("/files/folders/:id/restore", authMiddleWare, restoreFolder);
+router.post("/files/folders/:id/share", authMiddleWare, shareFolder);
+router.get("/files/:id", authMiddleWare, getFile);
+router.get("/files/:id/download", authMiddleWare, downloadFile);
+router.post("/files/:id/version", authMiddleWare, fileUpload.single("file"), uploadVersion);
+router.post("/files/:id/share", authMiddleWare, shareFile);
+router.post("/files/:id/unshare", authMiddleWare, unshareFile);
+router.post("/files/:id/star", authMiddleWare, starFile);
+router.post("/files/:id/restore", authMiddleWare, restoreFile);
+router.put("/files/:id", authMiddleWare, updateFile);
+router.delete("/files/:id", authMiddleWare, deleteFile);
+
+// Billing (fees and invoices: firm leadership and Accounts — checked in the controller)
+router.get("/billing/settings", authMiddleWare, getBillingSettings);
+router.put("/billing/settings", authMiddleWare, updateBillingSettings);
+router.get("/invoices", authMiddleWare, listInvoices);
+router.post("/invoices", authMiddleWare, createInvoice);
+router.post("/invoices/prepare", authMiddleWare, prepareInvoice);
+router.get("/invoices/:id", authMiddleWare, getInvoice);
+router.put("/invoices/:id", authMiddleWare, updateInvoice);
+router.post("/invoices/:id/issue", authMiddleWare, issueInvoice);
+router.post("/invoices/:id/payments", authMiddleWare, recordPayment);
+router.post("/invoices/:id/cancel", authMiddleWare, cancelInvoice);
 router.get("/audits/:id", authMiddleWare, getAuditById);
 router.post("/audits", authMiddleWare, adminHRManager("projects"), createAudit);
 router.put("/audits/:id", authMiddleWare, adminHRManager("projects"), updateAudit);
@@ -299,6 +344,7 @@ router.delete("/documents/:id", authMiddleWare, deleteDocument);
 
 // Reports — all admin/HR visibility, real numbers pulled from the same
 // collections the rest of the app writes to (no hardcoded stats anywhere here)
+router.get("/reports/attendance/export", authMiddleWare, adminHRManager("attendance"), exportAttendance);
 router.get("/reports/attendance", authMiddleWare, adminHRManager("reports"), attendanceReport);
 router.get("/reports/leave", authMiddleWare, adminHRManager("reports"), leaveReport);
 router.get("/reports/payroll", authMiddleWare, adminHR("reports"), payrollReport);
@@ -312,6 +358,7 @@ router.get("/reports/profitability", authMiddleWare, adminHRManager("reports"), 
 router.get("/reports/punctuality", authMiddleWare, adminHRManager("reports"), punctualityReport);
 router.get("/reports/compliance", authMiddleWare, adminHRManager("reports"), complianceReport);
 router.get("/dashboard/business-pulse", authMiddleWare, businessPulse);
+router.get("/reports/overview", authMiddleWare, adminHRManager("reports"), executiveOverview);
 
 // Team chat — any active employee; participants-only access is enforced in the controller
 router.get("/chat/contacts", authMiddleWare, chatContacts);

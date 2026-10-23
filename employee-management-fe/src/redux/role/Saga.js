@@ -20,6 +20,7 @@ const fetchMyPermissions = function* () {
       // Keep the sidebar's copy in step, so access changes show up on the next header refresh.
       yield put({ type: authActions.SET_PERMISSIONS, payload: result?.data });
       yield put({ type: authActions.SET_GRANTED_PERMISSIONS, payload: result?.granted });
+      yield put({ type: authActions.SET_TEAM_SCOPE, payload: result?.team });
     }
   } catch (err) {
     yield put({ type: actions.SET_ROLE_ERROR, payload: err.message });

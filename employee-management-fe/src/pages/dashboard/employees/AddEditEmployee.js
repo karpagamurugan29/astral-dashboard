@@ -12,6 +12,7 @@ import { useAccess } from '../../../hooks/useAccess'
 import documentActions from '../../../redux/document/Actions'
 import { PendingDocs, DocList, DocUploadForm } from '../../../components/documents/EmployeeDocs'
 import { ROLE_FOR_DESIGNATION, levelRank } from '../../../components/org/OrgUI'
+import { PhotoPicker } from '../../../components/people/PhotoPicker'
 
 const ROLES = ['Employee', 'Team Lead', 'Manager', 'HR', 'Admin']
 
@@ -45,6 +46,7 @@ export const AddEditEmployee = () => {
     const { list: branches } = useSelector((state) => state.branchReducer || {})
     const { can } = useAccess()
     const canEdit = can(['Admin', 'HR'], 'employees')
+    const [photo, setPhoto] = useState(null)
     const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm()
     const [showPassword, setShowPassword] = useState(false)
     const [pendingDocs, setPendingDocs] = useState([])
@@ -139,7 +141,7 @@ export const AddEditEmployee = () => {
         )
     }
 
-    const previewPerson = { firstName: values?.firstName, lastName: values?.lastName, profileImage: current?.profileImage }
+    const previewPerson = { firstName: values?.firstName, lastName: values?.lastName, profileImage: photo ?? current?.profileImage }
 
     return (
         <PeopleShell backTo="/employees"
@@ -358,7 +360,7 @@ export const AddEditEmployee = () => {
                 <aside className="ae-rail">
                     <div className="pp-card ae-preview">
                         <div className="ae-preview-label">Preview</div>
-                        <Avatar person={previewPerson} size={72} ring />
+                        {isEdit && current?._id ? <PhotoPicker person={previewPerson} size={72} endpoint={`/employees/${current._id}/photo`} onChange={setPhoto} /> : <Avatar person={previewPerson} size={72} ring />}
                         <h4>{fullName(previewPerson) === 'Unnamed' ? 'New employee' : fullName(previewPerson)}</h4>
                         <p>{values?.designation || 'Designation'}</p>
                         {values?.department && <span className="pp-chip">{values.department}</span>}

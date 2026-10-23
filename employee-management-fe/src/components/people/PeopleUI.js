@@ -1,6 +1,7 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { DashNav } from '../dashboard/dash/DashNav'
+import { hasRealPhoto, photoSrc } from '../../utils/photo'
 import { BackButton } from '../common/BackButton'
 import './people.css'
 
@@ -18,17 +19,18 @@ const AVATAR_TONES = [
 ]
 export const toneFor = (seed = '') => AVATAR_TONES[[...String(seed)].reduce((s, c) => s + c.charCodeAt(0), 0) % AVATAR_TONES.length]
 
-// The seed data points every employee at the same stock photo — treat that as "no photo".
-const hasRealPhoto = (src) => src && !/avatar-\d+\.jpg$/.test(src)
-
+// Initials when there's no photo, or when the photo can't be loaded.
 export const Avatar = ({ person, size = 40, ring = false }) => {
     const name = fullName(person)
     const [bg, fg] = toneFor(name)
+    const [broken, setBroken] = useState(false)
+    const src = person?.profileImage
+    useEffect(() => setBroken(false), [src])
     const style = { width: size, height: size, fontSize: Math.round(size * 0.38), background: bg, color: fg }
     return (
         <span className={`pp-avatar ${ring ? 'ring' : ''}`} style={style} aria-hidden="true">
-            {hasRealPhoto(person?.profileImage)
-                ? <img src={person.profileImage} alt="" />
+            {hasRealPhoto(src) && !broken
+                ? <img src={photoSrc(src)} alt="" onError={() => setBroken(true)} />
                 : `${person?.firstName?.[0] || ''}${person?.lastName?.[0] || ''}`.toUpperCase() || '?'}
         </span>
     )

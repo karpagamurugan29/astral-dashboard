@@ -417,3 +417,14 @@ textarea.pp-input { height: auto; min-height: 84px; padding: 10px 12px; resize: 
     .pp-header-actions { width: 100%; }
     .pp-header-actions .pp-btn { flex: 1; }
 }
+
+/* ---------- photo picker ---------- */
+.pp-photo { position: relative; display: inline-flex; flex-direction: column; align-items: center; gap: 6px; }
+.pp-photo.busy .pp-avatar { opacity: .6; }
+.pp-photo-cam { position: absolute; top: calc(var(--s) - 34px); left: calc(50% + var(--s) / 2 - 30px); width: 34px; height: 34px; display: grid; place-items: center; border: 3px solid #fff; border-radius: 50%; font-size: 16px; color: #fff; background: linear-gradient(135deg, #2563eb, #1e40af); box-shadow: 0 8px 18px -8px rgba(30, 64, 175, .8); transition: transform .15s; }
+.pp-photo-cam:hover:not(:disabled) { transform: scale(1.08); }
+.pp-photo-rm { border: 0; background: none; font-size: 12px; font-weight: 600; color: #e11d48; }
+.pp-photo-rm:hover { text-decoration: underline; }
+
+/* avatars keep their size whatever layout they sit in */
+.pp-avatar { flex: 0 0 auto !important; display: inline-grid !important; flex-direction: row !important; min-width: 0; }

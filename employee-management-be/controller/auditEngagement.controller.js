@@ -7,6 +7,9 @@ import { logAudit } from "../utils/audit.js";
 import { notify } from "../utils/notify.js";
 import { parseLocation, fillAddressLater, LOCATION_REQUIRED } from "../utils/location.js";
 import { scopeOf, workFilter } from "../utils/hierarchy.js";
+import { canSeeMoney } from "../utils/money.js";
+import { defaultMilestones } from "./billing.controller.js";
+import { closeStaleTimers, flagIfLong } from "../utils/timerGuard.js";
 
 const isOnTeam = (audit, userId) =>
     String(audit.auditManager?._id || audit.auditManager) === String(userId) ||
@@ -16,7 +19,7 @@ const isOnTeam = (audit, userId) =>
 const canSee = async (req, audit) => {
     if (MANAGERS.includes(req.user.role) || isOnTeam(audit, req.user.id)) return true;
     const scope = await scopeOf(req);
-    return scope.firm || [audit.auditManager, ...(audit.teamMembers || [])].some((m) => scope.team.has(String(m?._id || m)));
+    return scope.firm || scope.finance || [audit.auditManager, ...(audit.teamMembers || [])].some((m) => scope.team.has(String(m?._id || m)));
 };
 
 const CLIENT = "name clientCode city contactPerson phone email";
@@ -47,7 +50,7 @@ export const createAudit = async (req, res) => {
             return res.status(400).json({ success: false, message: "Choose the client this audit is for" });
         }
 
-        const audit = await AuditEngagementModel.create({ ...reqData, clientId: client._id, clientName: client.name, createdBy: req.user.id });
+        const audit = await AuditEngagementModel.create({ ...reqData, clientId: client._id, clientName: client.name, createdBy: req.user.id, milestones: defaultMilestones() });
 
         logAudit(req, "audit.create", `Created audit ${audit.auditCode} for ${audit.clientName}`, { type: "AuditEngagement", id: audit._id });
         [...new Set([String(audit.auditManager), ...(audit.teamMembers || []).map(String)])].forEach((id) =>
@@ -66,6 +69,8 @@ export const updateAudit = async (req, res) => {
 
         const update = { ...req.body };
         delete update.clientName;
+        delete update.milestones;
+        if (!(await canSeeMoney(req))) delete update.fee;
         if (update.clientId) {
             const client = await resolveClient({ clientId: update.clientId }, req.user.id);
             update.clientName = client.name;
@@ -118,7 +123,8 @@ export const getAllAudits = async (req, res) => {
     try {
         await linkLegacyAudits();
 
-        const filter = MANAGERS.includes(req.user.role)
+        const viewer = await scopeOf(req);
+        const filter = MANAGERS.includes(req.user.role) || viewer.finance
             ? { isDeleted: false }
             : { isDeleted: false, ...(await workFilter(req, "auditManager", "teamMembers")) };
         if (req.query.clientId) filter.clientId = req.query.clientId;
@@ -149,6 +155,8 @@ export const getAllAudits = async (req, res) => {
             };
         });
 
+        // fees are for the top level only
+        if (!(await canSeeMoney(req))) data.forEach((d) => { delete d.fee; });
         return res.status(200).json({ success: true, data });
     } catch (err) {
         return res.status(500).json({ success: false, message: err.message });
@@ -172,6 +180,7 @@ export const getAuditById = async (req, res) => {
             return res.status(403).json({ success: false, message: "You are not assigned to this audit" });
         }
 
+        await closeStaleTimers({ auditId: audit._id });
         const logs = await AuditTimeLogModel.find({ auditId: id })
             .populate("employeeId", PERSON)
             .sort({ startTime: -1 })
@@ -187,10 +196,16 @@ export const getAuditById = async (req, res) => {
         });
 
         const byEmployee = [...people.values()].map(({ employee, logs: mine }) => ({ employee, ...summarise(mine) }));
+        if (!audit.milestones?.length) {
+            audit.milestones = defaultMilestones();
+            await AuditEngagementModel.updateOne({ _id: audit._id }, { $set: { milestones: audit.milestones } });
+        }
+        const money = await canSeeMoney(req);
+        if (!money) delete audit.fee;
 
         return res.status(200).json({
             success: true,
-            data: { ...audit, timeSummary: summarise(logs), byEmployee, logs },
+            data: { ...audit, timeSummary: summarise(logs), byEmployee, logs, canSeeMoney: money },
         });
     } catch (error) {
         return res.status(500).json({ success: false, message: error.message });
@@ -252,6 +267,7 @@ export const removeAuditMember = async (req, res) => {
 
 export const startAuditTimer = async (req, res) => {
     try {
+        await closeStaleTimers({ employeeId: req.user.id });
         const { id } = req.params;
 
         if (!mongoose.isValidObjectId(id)) {
@@ -315,6 +331,7 @@ export const stopAuditTimer = async (req, res) => {
         log.durationMinutes = minutesOf(log, log.endTime.getTime());
         log.note = note;
         log.stopLocation = location;
+        flagIfLong(log);
         await log.save();
         fillAddressLater(location, (addr) => AuditTimeLogModel.updateOne({ _id: log._id }, { "stopLocation.address": addr }).catch(() => {}));
 
@@ -327,6 +344,7 @@ export const stopAuditTimer = async (req, res) => {
 // The caller's running timer (if any), so any page can show "you are clocked in on X".
 export const getMyActiveAuditTimer = async (req, res) => {
     try {
+        await closeStaleTimers({ employeeId: req.user.id });
         const log = await AuditTimeLogModel.findOne({ employeeId: req.user.id, endTime: null })
             .populate("auditId", "auditCode clientName engagementName auditType financialYear")
             .lean();

@@ -3,8 +3,9 @@ import { useDispatch, useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
 import auditActions from '../../../redux/audit/Actions'
 import dashboardActions from '../../../redux/dashboard/Actions'
-import { CLOSED, engagementTitle, clock, fmtClockTime, useTick } from '../../audits/AuditUI'
+import { CLOSED, engagementTitle, clock, fmtClockTime } from '../../audits/AuditUI'
 import { isOnAudit } from '../../audits/AuditCard'
+import { Live } from '../../common/Live'
 
 /* Start / stop the audit timer from the dashboard — same actions (and location capture) as the
    project page, so a session started here shows up there and in the Location Log. */
@@ -35,7 +36,6 @@ export const DashboardTimer = () => {
     useEffect(() => { if (!pick && mine.length) setPick(mine[0]._id) }, [mine, pick])
 
     const running = activeTimer?.auditId
-    const now = useTick(!!running)
     const busyLabel = timerBusy === 'locating' ? 'Getting location…' : null
 
     const start = () => pick && dispatch({ type: auditActions.START_AUDIT_TIMER, id: pick })
@@ -61,7 +61,7 @@ export const DashboardTimer = () => {
             </div>
 
             <div className="dt-right">
-                {running && <span className="dt-clock">{clock(activeTimer.startTime, now)}</span>}
+                {running && <span className="dt-clock"><Live>{(n) => clock(activeTimer.startTime, n)}</Live></span>}
                 {running && <input type="text" className="pp-input dt-note" placeholder="What did you work on? (optional)" maxLength={200} value={note} onChange={(e) => setNote(e.target.value)} />}
                 {running ? (
                     <button type="button" className="dt-btn stop" onClick={stop} disabled={!!timerBusy}><i className="mdi mdi-stop"></i>{busyLabel || (timerBusy ? 'Stopping…' : 'Stop')}</button>

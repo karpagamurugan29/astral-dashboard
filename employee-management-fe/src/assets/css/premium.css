@@ -363,3 +363,31 @@ a, button, .btn, [role="button"], [role="tab"] { touch-action: manipulation; }
 @media (max-width: 767.98px) {
   .bnav-badge { position: absolute; top: 5px; left: calc(50% + 6px); min-width: 18px; height: 18px; padding: 0 5px; border-radius: 99px; background: #00a884; color: #fff; font-size: 10.5px; font-weight: 700; display: grid; place-items: center; box-shadow: 0 0 0 2px #fff; }
 }
+
+/* ---------- collapsed menu (icons only) ----------
+   The menu has its own scroll area so it never pushes the page, and hover labels / submenus
+   fly out beside the hovered icon (position: fixed, placed by Sidebar.js via --fly-top). */
+@media (min-width: 992px) {
+  body[data-sidebar-size=sm] .vertical-menu { position: fixed !important; top: 70px !important; bottom: 0; height: auto !important; overflow-y: auto; overflow-x: hidden; scrollbar-width: none; padding-bottom: 12px; }
+  body[data-sidebar-size=sm] .vertical-menu::-webkit-scrollbar { display: none; }
+  body[data-sidebar-size=sm] .vertical-menu #sidebar-menu { padding-top: 6px; }
+  body[data-sidebar-size=sm] .vertical-menu #sidebar-menu > ul > li > a { padding: 11px 20px !important; }
+  body[data-sidebar-size=sm] .vertical-menu #sidebar-menu > ul > li:hover > a { width: 70px !important; background: #eff6ff !important; border-radius: 0; }
+  /* submenus stay closed in the bar, even if they were open before collapsing */
+  body[data-sidebar-size=sm] .vertical-menu #sidebar-menu > ul ul { display: none !important; }
+  /* the label */
+  body[data-sidebar-size=sm] .vertical-menu #sidebar-menu > ul > li:hover > a span:not(.badge) {
+    display: flex !important; align-items: center; position: fixed; left: 70px; top: var(--fly-top, 0); z-index: 1003;
+    height: 44px; width: 210px; padding: 0 16px !important; border-radius: 0 12px 12px 0; white-space: nowrap;
+    font-size: 13.5px; font-weight: 700; color: #0f172a; background: #fff; box-shadow: 8px 10px 30px -14px rgba(15, 30, 61, .45), 0 0 0 1px rgba(15, 23, 42, .06);
+  }
+  body[data-sidebar-size=sm] .vertical-menu #sidebar-menu > ul > li.has-sub:hover > a span:not(.badge) { border-radius: 0 12px 0 0; color: #1e40af; }
+  /* the submenu under it */
+  body[data-sidebar-size=sm] .vertical-menu #sidebar-menu > ul > li:hover > ul {
+    display: block !important; position: fixed !important; left: 70px !important; top: calc(var(--fly-top, 0px) + 44px) !important; z-index: 1003;
+    width: 210px !important; padding: 4px 0 8px !important; border-radius: 0 0 12px 12px; background: #fff !important;
+    box-shadow: 8px 18px 30px -14px rgba(15, 30, 61, .45), 0 0 0 1px rgba(15, 23, 42, .06) !important;
+  }
+  body[data-sidebar-size=sm] .vertical-menu #sidebar-menu > ul > li:hover > ul a { width: 210px !important; padding: 8px 18px !important; font-size: 13px; color: #334155 !important; }
+  body[data-sidebar-size=sm] .vertical-menu #sidebar-menu > ul > li:hover > ul a:hover, body[data-sidebar-size=sm] .vertical-menu #sidebar-menu > ul > li:hover > ul li.mm-active > a { color: #1e40af !important; background: #f8fbff; }
+}

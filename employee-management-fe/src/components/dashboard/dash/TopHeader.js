@@ -7,6 +7,7 @@ import roleActions from '../../../redux/role/Actions';
 import announcementActions from '../../../redux/announcement/Actions';
 import { useChatUnread } from '../../../hooks/useChatUnread';
 import '../../../pages/dashboard/chat/Chat.css';
+import { hasRealPhoto, photoSrc } from '../../../utils/photo'
 
 // Header colour themes, picked from the palette menu and remembered per browser.
 const HEADER_THEMES = [
@@ -50,7 +51,8 @@ export const TopHeader = () => {
     const shortName = [user?.firstName, user?.lastName ? `${user.lastName[0]}.` : ''].filter(Boolean).join(' ')
     const initials = `${user?.firstName?.[0] || ''}${user?.lastName?.[0] || ''}`.toUpperCase()
     // Seed data points everyone at the same stock photo — treat that as "no photo".
-    const hasPhoto = user?.profileImage && !/avatar-\d+\.jpg$/.test(user.profileImage)
+    const [photoBroken, setPhotoBroken] = useState(false)
+    const hasPhoto = hasRealPhoto(user?.profileImage) && !photoBroken
 
     useEffect(() => {
         dispatch({ type: notificationActions.GET_NOTIFICATIONS })
@@ -248,7 +250,7 @@ export const TopHeader = () => {
                             <button type="button" className="btn header-item bg-light-subtle border-start border-end" id="page-header-user-dropdown"
                                 data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                                 {hasPhoto ? (
-                                    <img className="rounded-circle header-profile-user" src={user.profileImage} alt="" />
+                                    <img className="rounded-circle header-profile-user" src={photoSrc(user.profileImage)} alt="" onError={() => setPhotoBroken(true)} />
                                 ) : (
                                     <span className="header-profile-user hk-initials" aria-hidden="true">{initials || <i className="mdi mdi-account"></i>}</span>
                                 )}

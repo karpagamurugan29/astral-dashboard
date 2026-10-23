@@ -54,6 +54,17 @@ const auditTimeLogSchema = new mongoose.Schema(
             default: "",
             trim: true,
         },
+
+        // forgotten-timer protection: sessions the system stopped, or that ran very long, wait for
+        // a manager's review and are left out of bills until then
+        autoStopped: { type: Boolean, default: false },
+        needsReview: { type: Boolean, default: false },
+        reviewReason: { type: String, default: "" },
+        reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: "Employee", default: null },
+        reviewedAt: { type: Date, default: null },
+        originalMinutes: { type: Number, default: null },
+        billable: { type: Boolean, default: true },
+        billedInvoice: { type: mongoose.Schema.Types.ObjectId, ref: "Invoice", default: null },
     },
     {
         timestamps: true,

@@ -5,6 +5,7 @@ import { getCurrentLocation, mapsLink } from '../../../utils/geo'
 import { Avatar, fullName } from '../../../components/people/PeopleUI'
 import { PRIORITY, TASK_COLUMNS, TASK_STATUS, PeoplePicker, DueTag } from '../../../components/projects/ProjectUI'
 import './ProjectWorkspace.css'
+import { Live } from '../../../components/common/Live'
 
 /* Shared pieces for the projects screens: API helper, formatters, project form, task modal, timer. */
 
@@ -192,7 +193,6 @@ const clock = (ms) => { const s = Math.max(0, Math.floor(ms / 1000)); return `${
 export const TimerCard = ({ project, tasks, myTimer, me, onChanged, disabled }) => {
     const runningHere = myTimer && (myTimer.projectId?._id || myTimer.projectId) === project._id
     const runningElsewhere = myTimer && !runningHere
-    const now = useTick(!!runningHere)
     const [taskId, setTaskId] = useState('')
     const [note, setNote] = useState('')
     const [busy, setBusy] = useState('')
@@ -214,7 +214,7 @@ export const TimerCard = ({ project, tasks, myTimer, me, onChanged, disabled }) 
             <div className="pw-timer-head">
                 <span className="pw-timer-ic"><i className="mdi mdi-timer-outline"></i></span>
                 <div><b>Work timer</b><small>{runningHere ? `Started ${fmtTime(myTimer.startTime)}${myTimer.taskId?.title ? ` · ${myTimer.taskId.title}` : ''}` : 'Your location is recorded when you start and stop'}</small></div>
-                {runningHere && <span className="pw-clock"><i className="pw-dot"></i>{clock(now - new Date(myTimer.startTime))}</span>}
+                {runningHere && <span className="pw-clock"><i className="pw-dot"></i><Live>{(n) => clock(n - new Date(myTimer.startTime))}</Live></span>}
             </div>
             {runningHere ? (
                 <>
@@ -259,8 +259,8 @@ export const CloseTaskModal = ({ tasks, mode = 'close', onClose, onDone }) => {
     }
     return (
         <Modal title={reopen ? `Reopen ${taskTag(one)}` : one ? `Close ${taskTag(one)}` : `Close ${tasks.length} tasks`} sub={one ? one.title : 'They move to the closed history with this note'}
-            icon={<span className="pw-dicon" style={{ '--c': reopen ? '#d97706' : '#059669' }}><i className={`mdi ${reopen ? 'mdi-restore' : 'mdi-archive-check-outline'}`}></i></span>} onClose={onClose}
-            footer={<>{err && <span className="pw-err">{err}</span>}<button type="button" className="pp-btn" onClick={onClose}>Cancel</button><button type="button" className="pp-btn primary" disabled={busy} onClick={go}><i className={`mdi ${reopen ? 'mdi-restore' : 'mdi-archive-check-outline'}`}></i>{busy ? 'Saving…' : reopen ? 'Reopen' : 'Close'}</button></>}>
+            icon={<span className="pw-dicon" style={{ '--c': reopen ? '#d97706' : '#059669' }}><i className={`mdi ${reopen ? 'mdi-restore' : 'mdi-archive-arrow-down-outline'}`}></i></span>} onClose={onClose}
+            footer={<>{err && <span className="pw-err">{err}</span>}<button type="button" className="pp-btn" onClick={onClose}>Cancel</button><button type="button" className="pp-btn primary" disabled={busy} onClick={go}><i className={`mdi ${reopen ? 'mdi-restore' : 'mdi-archive-arrow-down-outline'}`}></i>{busy ? 'Saving…' : reopen ? 'Reopen' : 'Close'}</button></>}>
             <p className="pw-close-hint">{reopen ? 'It goes back on the board as In Progress. Everyone on the task is told why.' : 'Closed tasks leave the board and are kept in the Closed history with this note. They can be reopened later.'}</p>
             {!reopen && <div className="pw-close-chips">{CLOSE_REASONS.map((r) => <button key={r} type="button" onClick={() => setNote((n) => (n ? `${n} ${r}` : r))}>{r}</button>)}</div>}
             <textarea className="pp-input" rows={4} autoFocus value={note} onChange={(e) => setNote(e.target.value)} placeholder={reopen ? 'Why is it being reopened?' : 'Closing note — what was done, the outcome, or why it’s closed'} />

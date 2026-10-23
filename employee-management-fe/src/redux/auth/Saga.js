@@ -23,6 +23,8 @@ const homePageLogin = function* (data) {
     const result = yield Post(`${API_URL}/login`, payload)
     if (result?.success) {
       if (result.token) localStorage.setItem(TOKEN_KEY, result.token)
+      // start clean: nothing from a previous person's session may show for this one
+      yield put({ type: actions.RESET_STORE })
       navigate("/dashboard")
       yield put({ type: actions.SET_AUTH, payload: result?.user })
       localStorage.setItem('session', true)

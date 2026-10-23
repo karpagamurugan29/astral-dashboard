@@ -8,6 +8,7 @@ import { logAudit } from "../utils/audit.js";
 import { parseLocation, fillAddressLater, LOCATION_REQUIRED } from "../utils/location.js";
 import { sessionsOf, openSession, workedHoursOf, ensureSessions, statusFor } from "../utils/attendanceSessions.js";
 import { scopeOf, visibleIds } from "../utils/hierarchy.js";
+import { stopTimersAtCheckout } from "../utils/timerGuard.js";
 
 export const checkIn = async (req, res) => {
     try {
@@ -139,10 +140,8 @@ export const todayAttendance = async (req, res) => {
         });
 
         if (!attendance) {
-            return res.status(404).json({
-                success: false,
-                message: "No attendance found for today.",
-            });
+            // not checked in yet today — a normal state, not an error
+            return res.status(200).json({ success: true, data: null, message: "Not checked in yet today." });
         }
 
         const requiredHours = 9;
@@ -244,6 +243,8 @@ export const checkOut = async (req, res) => {
         attendance.status = statusFor(attendance, halfDayHours);
 
         await attendance.save();
+        // leaving for the day stops any audit timer still running, so it can't run on overnight
+        const timersStopped = await stopTimersAtCheckout(employeeId, new Date());
 
         fillAddressLater({ ...location, address }, (addr) =>
             attendanceModel.updateOne(
@@ -254,7 +255,7 @@ export const checkOut = async (req, res) => {
 
         return res.status(200).json({
             success: true,
-            message: "Checked out successfully.",
+            message: timersStopped ? `Checked out — your audit timer was stopped too.` : "Checked out successfully.",
             data: attendance,
         });
 
@@ -460,5 +461,197 @@ export const decideRegularization = async (req, res) => {
             success: false,
             message: err.message,
         });
+    }
+};
+// ==============================
+// Subordinate attendance — a month calendar per person for the people you look after
+// (leads: their team, any depth; HR / firm-wide seniors: everyone). Each day is one of:
+// present (office), wfh, field (client / field visit), half, leave, holiday, weekend,
+// absent (a past working day with nothing recorded), rejected leave, or upcoming.
+// ==============================
+export const subordinateAttendance = async (req, res) => {
+    try {
+        const now = new Date();
+        const year = Number(req.query.year) || now.getFullYear();
+        const month = Number(req.query.month) || now.getMonth() + 1;
+        const pad = (n) => String(n).padStart(2, "0");
+        const days = new Date(year, month, 0).getDate();
+        const from = `${year}-${pad(month)}-01`, to = `${year}-${pad(month)}-${pad(days)}`;
+        const scope = await scopeOf(req);
+        const ids = visibleIds(scope, "people");
+        const filter = { status: "Active" };
+        if (ids) filter._id = { $in: ids.filter((id) => id !== scope.me) };
+        else filter._id = { $ne: req.user.id };
+        if (req.query.department) filter.department = req.query.department;
+        const people = await employeeModel.find(filter).select("employeeId firstName lastName designation department profileImage manager").sort({ firstName: 1 }).lean();
+        const pids = people.map((p) => p._id);
+        const { default: holidayModel } = await import("../models/holidayModel.js");
+        const [records, leaves, holidays] = await Promise.all([
+            attendanceModel.find({ employeeId: { $in: pids }, attendanceDate: { $gte: from, $lte: to } }).select("employeeId attendanceDate attendanceType status workingHours sessions checkIn checkOut").lean(),
+            leaveModel.find({ employeeId: { $in: pids }, status: { $in: ["Approved", "Rejected", "Pending"] }, fromDate: { $lte: new Date(`${to}T23:59:59`) }, toDate: { $gte: new Date(`${from}T00:00:00`) } }).select("employeeId leaveType status fromDate toDate").lean(),
+            holidayModel.find({ date: { $gte: new Date(`${from}T00:00:00Z`), $lte: new Date(`${to}T23:59:59Z`) } }).select("date name").lean().catch(() => []),
+        ]);
+        const holidayMap = new Map(holidays.map((h) => [new Date(h.date).toISOString().slice(0, 10), h.name]));
+        const todayKey = new Date().toLocaleDateString("en-CA");
+        const calendar = Array.from({ length: days }, (_, i) => {
+            const key = `${year}-${pad(month)}-${pad(i + 1)}`;
+            const dow = new Date(`${key}T12:00:00`).getDay();
+            return { key, day: i + 1, dow, weekend: dow === 0 || dow === 6, holiday: holidayMap.get(key) || null };
+        });
+        const data = people.map((p) => {
+            const mine = records.filter((r) => String(r.employeeId) === String(p._id));
+            const myLeaves = leaves.filter((l) => String(l.employeeId) === String(p._id));
+            const byDay = new Map(mine.map((r) => [r.attendanceDate, r]));
+            const cells = calendar.map((c) => {
+                const r = byDay.get(c.key);
+                const lv = myLeaves.find((l) => c.key >= new Date(l.fromDate).toLocaleDateString("en-CA") && c.key <= new Date(l.toDate).toLocaleDateString("en-CA"));
+                let s = "upcoming", note = "";
+                if (r && (r.checkIn?.time || (r.sessions || []).length)) {
+                    const mode = r.attendanceType || r.sessions?.[0]?.mode || "Office";
+                    s = r.status === "Half Day" ? "half" : mode === "Home" ? "wfh" : mode === "Client" || mode === "Field" ? "field" : "present";
+                    note = `${r.status === "Late" ? "Late · " : ""}${r.workingHours ? `${Math.round(r.workingHours * 10) / 10}h` : "checked in"}`;
+                } else if (lv && lv.status === "Approved") { s = "leave"; note = lv.leaveType; }
+                else if (c.holiday) { s = "holiday"; note = c.holiday; }
+                else if (c.weekend) { s = "weekend"; }
+                else if (lv && lv.status === "Rejected" && c.key <= todayKey) { s = "rejected"; note = `${lv.leaveType} rejected`; }
+                else if (c.key < todayKey) { s = "absent"; note = lv?.status === "Pending" ? `${lv.leaveType} pending` : "No check-in"; }
+                else if (lv && lv.status === "Pending") { s = "upcoming"; note = `${lv.leaveType} pending`; }
+                return { s, note };
+            });
+            const count = (k) => cells.filter((c) => c.s === k).length;
+            return { employee: p, cells, summary: { present: count("present") + count("half"), wfh: count("wfh"), field: count("field"), leave: count("leave"), absent: count("absent") + count("rejected") } };
+        });
+        return res.status(200).json({ success: true, year, month, today: todayKey, calendar, data, scope: { firm: scope.firm || scope.people, teamSize: scope.team.size } });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: err.message });
+    }
+};
+
+// ==============================
+// Attendance over a date range — one calculation shared by Team Attendance (range view) and the export.
+// ==============================
+const pad2 = (n) => String(n).padStart(2, "0");
+const TZ_ = "Asia/Kolkata";
+const MODE_NAME = { Office: "Office", Home: "Work from home", Client: "Client site", Field: "Field visit" };
+const DOW_ = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const rangeFromQuery = (q) => {
+    const now = new Date();
+    let from = q.from, to = q.to;
+    if (q.month && /^\d{4}-\d{2}$/.test(q.month)) { const [y, m] = q.month.split("-").map(Number); from = `${y}-${pad2(m)}-01`; to = `${y}-${pad2(m)}-${pad2(new Date(y, m, 0).getDate())}`; }
+    if (!from || !to) { const t = now.toLocaleDateString("en-CA", { timeZone: TZ_ }); from = from || t; to = to || t; }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to) || from > to) throw Object.assign(new Error("Pick a valid date range."), { status: 400 });
+    const days = Math.round((new Date(`${to}T12:00:00`) - new Date(`${from}T12:00:00`)) / 864e5) + 1;
+    if (days > 366) throw Object.assign(new Error("Pick up to one year at a time."), { status: 400 });
+    return { from, to, days };
+};
+const peopleInView = async (req, extra = {}) => {
+    const ids = visibleIds(await scopeOf(req), "people");
+    const filter = { status: { $in: ["Active", "Resigned", "Terminated"] }, ...extra };
+    if (ids) filter._id = { $in: ids };
+    return employeeModel.find(filter).select("employeeId firstName lastName designation department branch manager status joiningDate profileImage").populate("manager", "firstName lastName").sort({ firstName: 1, lastName: 1 }).lean();
+};
+// per person: one cell per day (status code + details) and a summary
+const attendanceMatrix = async (people, from, to, days) => {
+    const pids = people.map((p) => p._id);
+    const { default: holidayModel } = await import("../models/holidayModel.js");
+    const [records, leaves, holidays] = await Promise.all([
+        attendanceModel.find({ employeeId: { $in: pids }, attendanceDate: { $gte: from, $lte: to } }).lean(),
+        leaveModel.find({ employeeId: { $in: pids }, status: "Approved", fromDate: { $lte: new Date(`${to}T23:59:59`) }, toDate: { $gte: new Date(`${from}T00:00:00`) } }).select("employeeId leaveType fromDate toDate").lean(),
+        holidayModel.find({ date: { $gte: new Date(`${from}T00:00:00Z`), $lte: new Date(`${to}T23:59:59Z`) } }).select("date name").lean().catch(() => []),
+    ]);
+    const holidayMap = new Map(holidays.map((h) => [new Date(h.date).toISOString().slice(0, 10), h.name]));
+    const recMap = new Map(records.map((r) => [`${r.employeeId}|${r.attendanceDate}`, r]));
+    const t = (d) => (d ? new Date(d).toLocaleTimeString("en-IN", { timeZone: TZ_, hour: "2-digit", minute: "2-digit", hour12: false }) : "");
+    const todayKey = new Date().toLocaleDateString("en-CA", { timeZone: TZ_ });
+    const dates = Array.from({ length: days }, (_, i) => { const d = new Date(`${from}T12:00:00`); d.setDate(d.getDate() + i); return d.toLocaleDateString("en-CA"); });
+    const where = (p) => (p && Number.isFinite(p.latitude) ? { latitude: p.latitude, longitude: p.longitude, address: p.address || "" } : null);
+    return { dates, todayKey, holidayMap, rows: people.map((p) => {
+        const s = { present: 0, late: 0, half: 0, wfh: 0, field: 0, leave: 0, holiday: 0, weekend: 0, absent: 0, hours: 0, lateMin: 0, workDays: 0, inMinutes: 0 };
+        const joined = p.joiningDate ? new Date(p.joiningDate).toLocaleDateString("en-CA") : null;
+        const cells = dates.map((key) => {
+            const dow = new Date(`${key}T12:00:00`).getDay();
+            const r = recMap.get(`${p._id}|${key}`);
+            const lv = leaves.find((l) => String(l.employeeId) === String(p._id) && key >= new Date(l.fromDate).toLocaleDateString("en-CA", { timeZone: TZ_ }) && key <= new Date(l.toDate).toLocaleDateString("en-CA", { timeZone: TZ_ }));
+            const c = { date: key, dow: DOW_[dow] };
+            if (r && (r.checkIn?.time || (r.sessions || []).length)) {
+                const ss = (r.sessions || []).length ? r.sessions : [{ mode: r.attendanceType, checkIn: r.checkIn, checkOut: r.checkOut }];
+                const lastOut = [...ss].reverse().find((x) => x.checkOut?.time)?.checkOut;
+                const open = !!ss[ss.length - 1] && !ss[ss.length - 1].checkOut?.time;
+                Object.assign(c, {
+                    code: r.status === "Half Day" ? "half" : r.attendanceType === "Home" ? "wfh" : ["Client", "Field"].includes(r.attendanceType) ? "field" : r.status === "Late" ? "late" : "present",
+                    status: r.status === "Half Day" ? "Half day" : r.status === "Late" ? "Late" : "Present",
+                    mode: MODE_NAME[r.attendanceType] || r.attendanceType || "", first: t(ss[0]?.checkIn?.time), last: open ? "" : t(lastOut?.time), inNow: open && key === todayKey,
+                    sessions: ss.length, hours: Math.round((Number(r.workingHours) || 0) * 100) / 100, late: r.lateByMinutes || 0,
+                    inPlace: where(ss[0]?.checkIn), outPlace: open ? null : where(lastOut), remarks: ss[0]?.checkIn?.remarks || "",
+                    note: r.autoCheckedOut ? "Auto check-out" : open ? (key === todayKey ? "Still checked in" : "No check-out") : "",
+                });
+                s.workDays++; s.hours += Number(r.workingHours) || 0;
+                if (c.code === "half") s.half++; else s.present++;
+                if (c.late) { s.late++; s.lateMin += c.late; }
+                if (r.attendanceType === "Home") s.wfh++;
+                if (["Client", "Field"].includes(r.attendanceType)) s.field++;
+                const fi = ss[0]?.checkIn?.time; if (fi) { const [h, m] = t(fi).split(":").map(Number); s.inMinutes += h * 60 + m; }
+            } else if (lv) { Object.assign(c, { code: "leave", status: `Leave — ${lv.leaveType}`, leaveType: lv.leaveType }); s.leave++; }
+            else if (holidayMap.has(key)) { Object.assign(c, { code: "holiday", status: `Holiday — ${holidayMap.get(key)}` }); s.holiday++; }
+            else if (dow === 0 || dow === 6) { Object.assign(c, { code: "weekend", status: "Weekend" }); s.weekend++; }
+            else if (joined && key < joined) Object.assign(c, { code: "na", status: "Not joined yet" });
+            else if (key > todayKey) Object.assign(c, { code: "upcoming", status: "Upcoming" });
+            else { Object.assign(c, { code: "absent", status: "Absent", note: "No check-in" }); s.absent++; }
+            return c;
+        });
+        const working = dates.filter((k) => { const d = new Date(`${k}T12:00:00`).getDay(); return d !== 0 && d !== 6 && !holidayMap.has(k) && k <= todayKey && (!joined || k >= joined); }).length;
+        const avgIn = s.workDays ? Math.round(s.inMinutes / s.workDays) : null;
+        return { employee: p, cells, summary: { ...s, working: Math.max(working, s.workDays + s.absent + s.leave), hours: Math.round(s.hours * 100) / 100, avgHours: s.workDays ? Math.round((s.hours / s.workDays) * 100) / 100 : 0, avgIn: avgIn === null ? "" : `${pad2(Math.floor(avgIn / 60))}:${pad2(avgIn % 60)}`, rate: (s.workDays + s.absent) ? Math.min(100, Math.round(((s.present + s.half * 0.5) / (s.workDays + s.absent)) * 1000) / 10) : 0 } };
+    }) };
+};
+
+// GET /attendance/team-range?from&to&department&branch — Team Attendance over a range
+export const teamAttendanceRange = async (req, res) => {
+    try {
+        const { from, to, days } = rangeFromQuery(req.query);
+        const extra = { status: "Active" };
+        if (req.query.department) extra.department = req.query.department;
+        if (req.query.branch) extra.branch = req.query.branch;
+        const people = await peopleInView(req, extra);
+        const m = await attendanceMatrix(people, from, to, days);
+        return res.status(200).json({ success: true, from, to, days, today: m.todayKey, dates: m.dates, data: m.rows });
+    } catch (err) {
+        return res.status(err.status || 500).json({ success: false, message: err.message });
+    }
+};
+
+// ==============================
+// Export attendance — every employee you can see, for a month or any date range.
+// GET /reports/attendance/export?from=YYYY-MM-DD&to=YYYY-MM-DD | ?month=YYYY-MM [&department=][&format=xlsx|csv]
+// Sheet 1 "Summary": one row per person. Sheet 2 "Daily detail": one row per person per day.
+// ==============================
+export const exportAttendance = async (req, res) => {
+    try {
+        const q = { ...req.query };
+        if (!q.month && !q.from && !q.to) { const n = new Date(); q.month = `${n.getFullYear()}-${pad2(n.getMonth() + 1)}`; }
+        const { from, to, days } = rangeFromQuery(q);
+        const people = await peopleInView(req, req.query.department ? { department: req.query.department } : {});
+        const m = await attendanceMatrix(people, from, to, days);
+        const mgr = (p) => (p.manager ? `${p.manager.firstName} ${p.manager.lastName}` : "");
+        const detail = [], summary = [];
+        for (const r of m.rows) {
+            const p = r.employee, s = r.summary;
+            for (const c of r.cells) detail.push([p.employeeId, `${p.firstName} ${p.lastName}`.trim(), p.designation, p.department, mgr(p), c.date, c.dow, c.status, c.mode || "", c.first || "", c.last || "", c.sessions ?? "", c.hours ?? "", c.late ?? "", c.inPlace?.address || "", c.outPlace?.address || "", c.note || ""]);
+            summary.push([p.employeeId, `${p.firstName} ${p.lastName}`.trim(), p.designation, p.department, mgr(p), p.status, s.working, s.present, s.half, s.late, s.wfh, s.field, s.leave, s.absent, s.holiday, s.hours, s.avgHours, s.avgIn, s.lateMin, s.rate]);
+        }
+        const detailCols = [{ header: "Employee ID", width: 12 }, { header: "Name", width: 24 }, { header: "Designation", width: 20 }, { header: "Department", width: 20 }, { header: "Reports to", width: 22 }, { header: "Date", width: 12 }, { header: "Day", width: 6 }, { header: "Status", width: 24 }, { header: "Mode", width: 16 }, { header: "First in", width: 9 }, { header: "Last out", width: 9 }, { header: "Sessions", width: 9, type: "number" }, { header: "Hours worked", width: 12, type: "number" }, { header: "Late by (min)", width: 12, type: "number" }, { header: "Check-in place", width: 40 }, { header: "Check-out place", width: 40 }, { header: "Note", width: 18 }];
+        const summaryCols = [{ header: "Employee ID", width: 12 }, { header: "Name", width: 24 }, { header: "Designation", width: 20 }, { header: "Department", width: 20 }, { header: "Reports to", width: 22 }, { header: "Employment", width: 12 }, { header: "Working days", width: 13, type: "number" }, { header: "Present", width: 9, type: "number" }, { header: "Half days", width: 10, type: "number" }, { header: "Late", width: 8, type: "number" }, { header: "WFH", width: 8, type: "number" }, { header: "Field / client", width: 13, type: "number" }, { header: "Leave", width: 8, type: "number" }, { header: "Absent", width: 9, type: "number" }, { header: "Holidays", width: 10, type: "number" }, { header: "Total hours", width: 12, type: "number" }, { header: "Avg hours / day", width: 15, type: "number" }, { header: "Avg first in", width: 12 }, { header: "Total late (min)", width: 15, type: "number" }, { header: "Attendance %", width: 13, type: "number" }];
+        const { buildXlsx, buildCsv } = await import("../utils/xlsx.js");
+        const name = `attendance_${from}_to_${to}${req.query.department ? `_${req.query.department.replace(/[^\w]+/g, "-")}` : ""}`;
+        logAudit(req, "report.export", `Exported attendance ${from} to ${to} (${people.length} people)`, { type: "Report" });
+        if (req.query.format === "csv") {
+            res.set({ "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": `attachment; filename="${name}.csv"` });
+            return res.send(buildCsv({ columns: detailCols, rows: detail }));
+        }
+        const buf = buildXlsx([{ name: "Summary", columns: summaryCols, rows: summary }, { name: "Daily detail", columns: detailCols, rows: detail }]);
+        res.set({ "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Content-Disposition": `attachment; filename="${name}.xlsx"`, "Content-Length": buf.length });
+        return res.send(buf);
+    } catch (err) {
+        return res.status(err.status || 500).json({ success: false, message: err.message });
     }
 };

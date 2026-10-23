@@ -49,6 +49,10 @@ import { AuditsList } from './pages/dashboard/audits/AuditsList';
 import { AuditDetail } from './pages/dashboard/audits/AuditDetail';
 import { ClientsList } from './pages/dashboard/audits/ClientsList';
 import { ClientDetail } from './pages/dashboard/audits/ClientDetail';
+import { Billing } from './pages/dashboard/audits/Billing';
+import { Files } from './pages/dashboard/files/Files';
+import { SubordinateAttendance } from './pages/dashboard/attendance/SubordinateAttendance';
+import { InvoicePrint } from './pages/dashboard/audits/InvoicePrint';
 import { LocationLog } from './pages/dashboard/locationLog/LocationLog';
 import { ReportBuilder } from './pages/dashboard/reports/ReportBuilder';
 import { EmployeeProfile } from './pages/dashboard/employees/EmployeeProfile';
@@ -90,6 +94,8 @@ function App() {
             <Route path="/dashboard" element={<DashContent />} />
             <Route path="/profile" element={<MyProfile />} />
             <Route path="/organisation" element={<Organisation />} />
+            <Route path="/files" element={<Files />} />
+            <Route path="/attendance/subordinates" element={<SubordinateAttendance />} />
             <Route path="/change-password" element={<ChangePassword />} />
             <Route path="/notifications" element={<NotificationCenter />} />
 
@@ -137,9 +143,12 @@ function App() {
             <Route path="/audits" element={<ScreenGuard screen="screen:audits"><AuditsList /></ScreenGuard>} />
             <Route path="/audits/clients" element={<ScreenGuard screen="screen:audits"><ClientsList /></ScreenGuard>} />
             <Route path="/audits/clients/:id" element={<ScreenGuard screen="screen:audits"><ClientDetail /></ScreenGuard>} />
+            <Route path="/audits/billing" element={<Billing />} />
+            <Route path="/audits/invoices/:id/print" element={<InvoicePrint />} />
             <Route path="/audits/:id" element={<ScreenGuard screen="screen:audits"><AuditDetail /></ScreenGuard>} />
 
             <Route path="/reports/employees" element={<ReportBuilder />} />
+            <Route path="/reports/overview" element={<ReportBuilder />} />
             <Route path="/reports/attendance" element={<ReportBuilder />} />
             <Route path="/reports/leave" element={<ReportBuilder />} />
             <Route path="/reports/payroll" element={<ReportBuilder />} />
