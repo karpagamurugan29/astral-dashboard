@@ -3,7 +3,7 @@ import employeeModel from "../models/employeeModel.js";
 // Who may see an employee's documents: the employee, everyone above them in the reporting line
 // (manager, manager's manager, …), Admin / HR, and the firm-wide senior designations below.
 export const DOC_ADMIN_ROLES = ["Admin", "HR"];
-export const DOC_ALL_DESIGNATIONS = ["Director", "Company Partner", "HR Head"];
+export const DOC_ALL_DESIGNATIONS = ["Director", "Company Partner", "Partner", "Managing Director", "Senior Manager", "HR Head", "Accounts Head", "Finance Head"];
 
 export const viewerOf = async (req) => {
     const me = await employeeModel.findById(req.user.id).select("role designation").lean();

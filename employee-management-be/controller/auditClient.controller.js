@@ -3,14 +3,17 @@ import AuditEngagementModel from "../models/auditEngagementModel.js";
 import AuditTimeLogModel from "../models/auditTimeLogModel.js";
 import { logAudit } from "../utils/audit.js";
 import { PERSON, MANAGERS, CLOSED, summarise, nextClientCode, linkLegacyAudits } from "../utils/auditShared.js";
+import { scopeOf, workFilter } from "../utils/hierarchy.js";
 
 const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 // Engagements the caller may see: all for Admin/HR, otherwise only the ones they're on.
-const visibleEngagementFilter = (req, extra = {}) =>
+// HR and firm-wide seniors: every engagement; everyone else: ones they or their team work on.
+const visibleEngagementFilter = async (req, extra = {}) =>
     MANAGERS.includes(req.user.role)
         ? { isDeleted: false, ...extra }
-        : { isDeleted: false, ...extra, $or: [{ teamMembers: req.user.id }, { auditManager: req.user.id }] };
+        : { isDeleted: false, ...extra, ...(await workFilter(req, "auditManager", "teamMembers")) };
+const seesAllClients = async (req) => MANAGERS.includes(req.user.role) || (await scopeOf(req)).firm;
 
 const peopleOn = (a) => [a.auditManager, ...(a.teamMembers || [])].filter(Boolean).map((p) => String(p._id || p));
 
@@ -18,7 +21,7 @@ export const getClients = async (req, res) => {
     try {
         await linkLegacyAudits();
 
-        const engagements = await AuditEngagementModel.find(visibleEngagementFilter(req))
+        const engagements = await AuditEngagementModel.find(await visibleEngagementFilter(req))
             .select("clientId status endDate auditManager teamMembers")
             .lean();
         const logs = await AuditTimeLogModel.find({ auditId: { $in: engagements.map((e) => e._id) } })
@@ -40,7 +43,7 @@ export const getClients = async (req, res) => {
         logs.forEach((l) => statFor(engagementClient.get(String(l.auditId))).logs.push(l));
 
         // Admin/HR see every client (including ones with no engagements yet); others only clients they work for.
-        const clientFilter = MANAGERS.includes(req.user.role)
+        const clientFilter = (await seesAllClients(req))
             ? { isDeleted: false }
             : { isDeleted: false, _id: { $in: [...new Set(engagements.map((e) => e.clientId))] } };
         const clients = await AuditClientModel.find(clientFilter).sort({ name: 1 }).lean();
@@ -77,13 +80,13 @@ export const getClientById = async (req, res) => {
             return res.status(404).json({ success: false, message: "Client not found" });
         }
 
-        const engagements = await AuditEngagementModel.find(visibleEngagementFilter(req, { clientId: id }))
+        const engagements = await AuditEngagementModel.find(await visibleEngagementFilter(req, { clientId: id }))
             .populate("auditManager", PERSON)
             .populate("teamMembers", PERSON)
             .sort({ startDate: -1 })
             .lean();
 
-        if (!MANAGERS.includes(req.user.role) && !engagements.length) {
+        if (!(await seesAllClients(req)) && !engagements.length) {
             return res.status(403).json({ success: false, message: "You are not assigned to any audit for this client" });
         }
 

@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import authActions from '../../redux/auth/Actions'
 import { useForm } from 'react-hook-form'
-import { Link, useNavigate } from 'react-router-dom'
-import './Login.css'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { AuthShell } from './AuthShell'
 
 // TEST ONLY: one-click sign-in for test accounts. Shown in development, or in a build made with
 // REACT_APP_DEMO_LOGINS=true. The condition must stay inline in the ternary (and the variable must be
@@ -49,15 +49,47 @@ const DemoAccounts = ({ onPick, disabled }) => {
     )
 }
 
-const Logo = ({ className = '' }) => (
-    <Link to="/" className={`lg-logo ${className}`}>
-        <img src="assets/images/astral-logo.png" alt="Astral Consulting Limited" />
-    </Link>
+// Left panel: who Astral is and what this workspace is for.
+const YEARS = new Date().getFullYear() - 1982
+const PRACTICES = [
+    ['mdi-magnify-scan', 'Internal Audit'],
+    ['mdi-chart-line', 'Business Performance'],
+    ['mdi-laptop', 'Technology Advisory'],
+    ['mdi-finance', 'Strategic Finance'],
+    ['mdi-calculator-variant-outline', 'Managed Finance & Accounting'],
+]
+
+const WorkspaceWelcome = () => (
+    <div className="lg-welcome">
+        <span className="lg-eyebrow">Audit · Assurance · Advisory</span>
+        <h1>Stronger governance.<br /><em>Sustainable growth.</em></h1>
+        <p>The private workspace for Astral’s Chartered Accountants and Management Consultants — your engagements, clients and team in one place.</p>
+        <div className="lg-wp" aria-label="Our practices">
+            <header><i className="mdi mdi-file-document-check-outline"></i><b>Engagement checklist</b><small>Director-led</small></header>
+            <ol>
+                {PRACTICES.map(([icon, label], i) => (
+                    <li key={label} style={{ '--d': `${0.6 + i * 0.32}s` }}>
+                        <span className="lg-wp-ref">{String(i + 1).padStart(2, '0')}</span>
+                        <i className={`mdi ${icon}`}></i>
+                        <span className="lg-wp-label">{label}</span>
+                        <svg className="lg-tick" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12.5l4.8 4.8L19.5 7" /></svg>
+                    </li>
+                ))}
+            </ol>
+            <span className="lg-stamp" aria-hidden="true"><b>Reviewed</b><small>Astral · Est. 1982</small></span>
+        </div>
+        <dl className="lg-stats">
+            <div><dt>{YEARS}+</dt><dd>Years of trust</dd></div>
+            <div><dt>5</dt><dd>Integrated practices</dd></div>
+            <div><dt>CA</dt><dd>Led teams</dd></div>
+        </dl>
+    </div>
 )
 
 export const Login = () => {
     const dispatch = useDispatch()
     const navigate = useNavigate()
+    const location = useLocation()
     const { error } = useSelector((state) => state.authReducer || {})
     const { register, reset, handleSubmit, formState: { errors }, } = useForm()
     const [showPassword, setShowPassword] = useState(false)
@@ -85,50 +117,22 @@ export const Login = () => {
     const onPasswordKey = (e) => setCapsLock(e.getModifierState?.('CapsLock') || false)
 
     return (
-        <div className="lg-page">
-            <aside className="lg-brand">
-                <Logo />
+        <AuthShell side={<WorkspaceWelcome />}>
+                    <h2>Welcome back</h2>
+                    <p className="lg-sub">Sign in with your Astral work email to continue to your workspace.</p>
 
-                <div className="lg-pitch">
-                    <h1>Your whole workforce, in one calm workspace.</h1>
-                    <p>Attendance, leave, payroll and people data — organised, secure and always up to date.</p>
-                    <ul className="lg-features">
-                        <li><i className="mdi mdi-clock-check-outline"></i> Real-time attendance &amp; shifts</li>
-                        <li><i className="mdi mdi-calendar-check-outline"></i> One-click leave approvals</li>
-                        <li><i className="mdi mdi-cash-multiple"></i> Payroll &amp; payslips without spreadsheets</li>
-                    </ul>
-
-                    <div className="lg-glance" aria-hidden="true">
-                        <div className="lg-glance-head">
-                            <span>Today at a glance</span>
-                            <span className="lg-live">Preview</span>
-                        </div>
-                        <div className="lg-stats">
-                            <div className="lg-stat"><b>128</b><span>Present</span></div>
-                            <div className="lg-stat"><b>6</b><span>On leave</span></div>
-                            <div className="lg-stat"><b>3</b><span>Requests</span></div>
-                        </div>
-                        <div className="lg-bar"><span></span></div>
-                    </div>
-                </div>
-
-                <div className="lg-brand-foot">Astral Consulting Limited</div>
-            </aside>
-
-            <main className="lg-main">
-                <Logo className="lg-mobile-logo" />
-
-                <div className="lg-card">
-                    <h2>Welcome back 👋</h2>
-                    <p className="lg-sub">Sign in to continue to your Astral workspace.</p>
-
-                    {/expired=1/.test(window.location.search) && !error && (
+                    {/\bexpired=1\b/.test(window.location.search) && !error && (
                         <div className="lg-alert info" role="status">
                             <i className="mdi mdi-information-outline"></i>
                             <span>Your session ended. Please sign in again.</span>
                         </div>
                     )}
-
+                    {location.state?.passwordReset && !error && (
+                        <div className="lg-alert success" role="status">
+                            <i className="mdi mdi-check-circle-outline"></i>
+                            <span>Password changed. Sign in with your new password.</span>
+                        </div>
+                    )}
                     {error && (
                         <div className="lg-alert" role="alert">
                             <i className="mdi mdi-alert-circle-outline"></i>
@@ -187,7 +191,7 @@ export const Login = () => {
                         </div>
 
                         <label className="lg-remember">
-                            <input type="checkbox" {...register('remember')} /> Keep me signed in for 30 days
+                            <input type="checkbox" {...register('remember')} /><span className="lg-check" aria-hidden="true"><i className="mdi mdi-check"></i></span> Keep me signed in for 30 days
                         </label>
 
                         <button type="submit" className="lg-submit" disabled={submitting}>
@@ -201,13 +205,11 @@ export const Login = () => {
                         <DemoAccounts disabled={submitting} onPick={(a) => { reset({ email: a.email, password: a.password, remember: true }); OnLogin({ email: a.email, password: a.password, remember: true }) }} />
                     )}
 
-                    <div className="lg-secure">
-                        <i className="mdi mdi-shield-check-outline"></i> Secured with encrypted, HTTP-only sessions
-                    </div>
-                </div>
-
-                <p className="lg-foot">© {new Date().getFullYear()} Astral Consulting Limited. All rights reserved.</p>
-            </main>
-        </div>
+                    <ul className="lg-trust">
+                        <li><i className="mdi mdi-lock-check-outline"></i>Encrypted</li>
+                        <li><i className="mdi mdi-account-key-outline"></i>Role-based access</li>
+                        <li><i className="mdi mdi-eye-off-outline"></i>Private to Astral</li>
+                    </ul>
+        </AuthShell>
     )
 }

@@ -6,10 +6,12 @@ import actions from "./Actions";
 const rootSaga = function* () {
   yield all([
     yield takeEvery(actions.GET_ASSETS, fetchAssets),
-    yield takeEvery(actions.ADD_ASSET, addAsset),
-    yield takeEvery(actions.ASSIGN_ASSET, assignAsset),
-    yield takeEvery(actions.RETURN_ASSET, returnAsset),
-    yield takeEvery(actions.DELETE_ASSET, deleteAsset),
+    yield takeEvery(actions.GET_MY_ASSETS, fetchMyAssets),
+    yield takeEvery(actions.ADD_ASSET, write("POST", () => "/assets", "Unable to add asset")),
+    yield takeEvery(actions.UPDATE_ASSET, write("PUT", (a) => `/assets/${a.id}`, "Unable to update asset")),
+    yield takeEvery(actions.ASSIGN_ASSET, write("PUT", (a) => `/assets/${a.id}/assign`, "Unable to assign asset")),
+    yield takeEvery(actions.RETURN_ASSET, write("PUT", (a) => `/assets/${a.id}/return`, "Unable to mark asset returned")),
+    yield takeEvery(actions.DELETE_ASSET, write("DELETE", (a) => `/assets/${a.id}`, "Unable to remove asset")),
   ]);
 };
 
@@ -17,11 +19,8 @@ const fetchAssets = function* () {
   yield put({ type: actions.SET_ASSETS_LOADING, payload: true });
   try {
     const result = yield Get(`${API_URL}/assets`);
-    if (result?.success) {
-      yield put({ type: actions.SET_ASSETS, payload: result?.data });
-    } else {
-      yield put({ type: actions.SET_ASSET_ERROR, payload: result?.message || "Unable to load assets" });
-    }
+    if (result?.success) yield put({ type: actions.SET_ASSETS, payload: result?.data });
+    else yield put({ type: actions.SET_ASSET_ERROR, payload: result?.message || "Unable to load assets" });
   } catch (err) {
     yield put({ type: actions.SET_ASSET_ERROR, payload: err.message || "Unable to load assets" });
   } finally {
@@ -29,59 +28,26 @@ const fetchAssets = function* () {
   }
 };
 
-const addAsset = function* (action) {
-  const { payload } = action;
+const fetchMyAssets = function* () {
   try {
-    const result = yield Post(`${API_URL}/assets`, payload);
-    if (result?.success) {
-      yield fetchAssets();
-    } else {
-      yield put({ type: actions.SET_ASSET_ERROR, payload: result?.message || "Unable to add asset" });
-    }
+    const result = yield Get(`${API_URL}/assets/mine`);
+    if (result?.success) yield put({ type: actions.SET_MY_ASSETS, payload: result?.data });
+    else yield put({ type: actions.SET_ASSET_ERROR, payload: result?.message || "Unable to load your assets" });
   } catch (err) {
-    yield put({ type: actions.SET_ASSET_ERROR, payload: err.message || "Unable to add asset" });
+    yield put({ type: actions.SET_ASSET_ERROR, payload: err.message || "Unable to load your assets" });
   }
 };
 
-const assignAsset = function* (action) {
-  const { id, payload } = action;
+// Every change refreshes the register; onDone(ok, message) lets the screen show the result.
+const write = (method, path, fallback) => function* (action) {
+  const { payload, onDone } = action;
   try {
-    const result = yield Put(`${API_URL}/assets/${id}/assign`, payload);
-    if (result?.success) {
-      yield fetchAssets();
-    } else {
-      yield put({ type: actions.SET_ASSET_ERROR, payload: result?.message || "Unable to assign asset" });
-    }
+    const url = `${API_URL}${path(action)}`;
+    const result = yield method === "POST" ? Post(url, payload) : method === "PUT" ? Put(url, payload) : Delete(url);
+    if (result?.success) yield fetchAssets();
+    onDone?.(!!result?.success, result?.message || (result?.success ? "Done" : fallback));
   } catch (err) {
-    yield put({ type: actions.SET_ASSET_ERROR, payload: err.message || "Unable to assign asset" });
-  }
-};
-
-const returnAsset = function* (action) {
-  const { id } = action;
-  try {
-    const result = yield Put(`${API_URL}/assets/${id}/return`);
-    if (result?.success) {
-      yield fetchAssets();
-    } else {
-      yield put({ type: actions.SET_ASSET_ERROR, payload: result?.message || "Unable to mark asset returned" });
-    }
-  } catch (err) {
-    yield put({ type: actions.SET_ASSET_ERROR, payload: err.message || "Unable to mark asset returned" });
-  }
-};
-
-const deleteAsset = function* (action) {
-  const { id } = action;
-  try {
-    const result = yield Delete(`${API_URL}/assets/${id}`);
-    if (result?.success) {
-      yield fetchAssets();
-    } else {
-      yield put({ type: actions.SET_ASSET_ERROR, payload: result?.message || "Unable to delete asset" });
-    }
-  } catch (err) {
-    yield put({ type: actions.SET_ASSET_ERROR, payload: err.message || "Unable to delete asset" });
+    onDone?.(false, err.message || fallback);
   }
 };
 

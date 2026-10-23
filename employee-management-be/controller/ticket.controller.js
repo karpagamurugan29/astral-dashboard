@@ -1,11 +1,14 @@
 import ticketModel from "../models/ticketModel.js";
 import { notify } from "../utils/notify.js";
+import { scopeOf, visibleIds } from "../utils/hierarchy.js";
 
 export const getTickets = async (req, res) => {
     try {
-        const isManager = ["Admin", "HR", "Manager", "Team Lead"].includes(req.user.role);
+        // HR and firm-wide seniors handle every ticket; leads see their team's; everyone else their own.
+        const ids = visibleIds(await scopeOf(req), "people");
+        const isManager = !ids;
 
-        const filter = isManager ? {} : { employeeId: req.user.id };
+        const filter = isManager ? {} : { employeeId: { $in: ids } };
 
         const tickets = await ticketModel
             .find(filter)

@@ -1,243 +1,271 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link, useParams } from 'react-router-dom'
-import projectActions from '../../../redux/project/Actions'
-import taskActions from '../../../redux/task/Actions'
 import employeeActions from '../../../redux/employee/Actions'
-import { PeopleShell, Avatar, ProgressRing, EmptyState, ErrorBanner, fullName, fmtDate } from '../../../components/people/PeopleUI'
-import { money } from '../../../components/payroll/PayrollUI'
-import {
-    PROJECTS_ROOT, PROJECT_STATUS, TASK_STATUS, TASK_COLUMNS, PriorityTag, TaskStatus, DueTag, PeoplePicker,
-    projectStatusMeta, taskStatusMeta, isOverdue, startOfDay,
-} from '../../../components/projects/ProjectUI'
-import { TaskDetailModal } from './TaskDetailModal'
-import '../../../components/attendance/attendance.css'
-import './ProjectDetail.css'
+import { PeopleShell, Avatar, EmptyState, ErrorBanner, fullName } from '../../../components/people/PeopleUI'
+import { PROJECTS_ROOT, ProjectStatus, PriorityTag, AvatarStack, TASK_COLUMNS, TASK_STATUS, DueTag, isOverdue, projectStatusMeta } from '../../../components/projects/ProjectUI'
 import { useAccess } from '../../../hooks/useAccess'
+import { api, hm, fmtDay, fmtTime, modeIcon, PlaceLink, ProjectForm, TaskModal, TimerCard, taskTag, CloseTaskModal } from './ProjectParts'
+import { toast } from '../../../components/common/Toaster'
 
-const FORMER = ['Resigned', 'Terminated']
+/* -------------------------------------------------------------------------- */
+/*  One project's workspace: header (status, deadline, place, team), work     */
+/*  timer with location, and tabs — Board (drag & drop), List, Team, Time     */
+/*  log, Details. Tasks live inside the project.                              */
+/* -------------------------------------------------------------------------- */
+
+const VIEWS = [['board', 'Board', 'mdi-view-column-outline'], ['list', 'List', 'mdi-format-list-bulleted'], ['team', 'Team', 'mdi-account-group-outline'], ['time', 'Time log', 'mdi-timer-outline'], ['closed', 'Closed', 'mdi-archive-outline'], ['details', 'Details', 'mdi-information-outline']]
 
 export const ProjectDetail = () => {
     const { id } = useParams()
     const dispatch = useDispatch()
-    const { detail: project, error } = useSelector((state) => state.projectReducer || {})
-    const { list: allTasks } = useSelector((state) => state.taskReducer || {})
+    const { user } = useAccess()
+    const me = user?._id
     const { list: employees } = useSelector((state) => state.employeeReducer || {})
-    const { can } = useAccess()
-    const canManage = can(['Admin', 'HR', 'Manager', 'Team Lead'], 'projects')
-    const [tab, setTab] = useState('overview')
-    const [toAdd, setToAdd] = useState([])
-    const [openTask, setOpenTask] = useState(null)
-    const [taskFilter, setTaskFilter] = useState('')
+    const [w, setW] = useState(null)
+    const [error, setError] = useState('')
+    const [view, setView] = useState('board')
+    const [modal, setModal] = useState(null) // { task } | { newStatus }
+    const [closing, setClosing] = useState(null) // { tasks, mode: 'close' | 'reopen' }
+    const [cq, setCq] = useState('')
+    const [editing, setEditing] = useState(false)
+    const [filter, setFilter] = useState('all') // all | mine | overdue
+    const [drag, setDrag] = useState(null)
 
-    useEffect(() => {
-        dispatch({ type: projectActions.GET_PROJECT_BY_ID, id })
-        dispatch({ type: taskActions.GET_TASKS })
-        dispatch({ type: employeeActions.GET_EMPLOYEES })
-        return () => dispatch({ type: projectActions.CLEAR_PROJECT_DETAIL })
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [id])
+    const load = useCallback(() => api('GET', `/projects/${id}/workspace`).then((j) => { setW(j.data); setError('') }).catch((e) => setError(e.message)), [id])
+    useEffect(() => { load() }, [load])
+    useEffect(() => { const t = setInterval(load, 60000); return () => clearInterval(t) }, [load])
+    useEffect(() => { if (w?.canManage && !employees?.length) dispatch({ type: employeeActions.GET_EMPLOYEES }) }, [w?.canManage, employees?.length, dispatch])
 
-    const projectTasks = useMemo(() => (allTasks || []).filter((t) => (t.projectId?._id || t.projectId) === id), [allTasks, id])
-    const total = projectTasks.length
-    const done = projectTasks.filter((t) => t.status === 'Done').length
-    const overdue = projectTasks.filter(isOverdue).length
-    const pct = total ? Math.round((done / total) * 100) : 0
-    const byStatus = TASK_COLUMNS.map((s) => ({ s, n: projectTasks.filter((t) => t.status === s).length }))
+    const p = w?.project
+    const tasks = useMemo(() => w?.tasks || [], [w])
+    const members = useMemo(() => (p ? [p.projectManager, ...(p.teamMembers || [])].filter(Boolean) : []), [p])
+    const people = useMemo(() => (employees || []).filter((e) => e.status === 'Active'), [employees])
+    const shown = tasks.filter((t) => filter === 'all' || (filter === 'mine' ? (t.assignedTo?._id || t.assignedTo) === me : isOverdue(t)))
+    const canEditTask = (t) => w?.canManage || (t.assignedTo?._id || t.assignedTo) === me || (t.createdBy?._id || t.createdBy) === me
 
-    const onAddMembers = () => {
-        toAdd.forEach((employeeId) => dispatch({ type: projectActions.ADD_PROJECT_MEMBER, id, employeeId }))
-        setToAdd([])
+    const upsertTask = (t, isNew, keepOpen) => {
+        setW((x) => ({ ...x, tasks: isNew ? [...x.tasks, { ...t, loggedMinutes: 0 }] : x.tasks.map((y) => (y._id === t._id ? { ...y, ...t } : y)) }))
+        if (!keepOpen) { setModal(null); toast.success(isNew ? `“${t.title}” added to the board.` : 'Your changes are saved.', { title: isNew ? 'Task added' : 'Task saved' }) }
+        if (keepOpen) setModal((m) => (m?.task ? { task: { ...m.task, ...t } } : m))
+    }
+    const move = async (task, status) => {
+        if (task.status === status) return
+        const col = tasks.filter((t) => t.status === status)
+        const order = (col.length ? Math.max(...col.map((t) => t.order || 0)) : 0) + 1
+        setW((x) => ({ ...x, tasks: x.tasks.map((t) => (t._id === task._id ? { ...t, status, order } : t)) }))
+        try { await api('PUT', `/tasks/${task._id}/move`, { status, order }) } catch (e) { toast.error(e.message, { title: 'Couldn’t move task' }); load() }
     }
 
-    const onRemoveMember = (m) => {
-        if (window.confirm(`Remove ${fullName(m)} from this project?`)) dispatch({ type: projectActions.REMOVE_PROJECT_MEMBER, id, employeeId: m._id })
-    }
+    if (error && !w) return <PeopleShell title="Project" root={PROJECTS_ROOT} crumbs={[{ label: 'Project' }]}><div className="pp-card"><EmptyState icon="mdi-folder-lock-outline" title="Can’t open this project" text={error} action={<Link to="/projects" className="pp-btn">Back to projects</Link>} /></div></PeopleShell>
+    if (!w) return <PeopleShell title="Project" root={PROJECTS_ROOT} crumbs={[{ label: 'Loading…' }]}><div className="pw-loading"><i className="mdi mdi-loading mdi-spin"></i></div></PeopleShell>
 
-    const onStatus = (status) => dispatch({ type: projectActions.UPDATE_PROJECT, id, payload: { status } })
-
-    if (!project) {
-        return (
-            <PeopleShell title="Project" root={PROJECTS_ROOT} crumbs={[{ label: 'Project' }]} backTo="/projects">
-                <ErrorBanner error={error} />
-                {!error && <div className="pp-card pp-card-body"><div className="pp-skel" style={{ height: 200 }}></div></div>}
-            </PeopleShell>
-        )
-    }
-
-    const m = projectStatusMeta(project.status)
-    const members = project.teamMembers || []
-    const available = (employees || []).filter((e) => !FORMER.includes(e.status))
-    const memberIds = members.map((x) => x._id)
-
-    // Time elapsed between start and deadline, to compare with work done.
-    const start = project.startDate ? startOfDay(project.startDate) : null
-    const end = project.endDate ? startOfDay(project.endDate) : null
-    const now = startOfDay(Date.now())
-    const elapsed = start && end && end > start ? Math.max(0, Math.min(100, ((now - start) / (end - start)) * 100)) : null
-    const closed = ['Completed', 'Cancelled'].includes(project.status)
-    const health = closed ? null
-        : end && now > end ? { text: 'Past deadline', color: '#e11d48', icon: 'mdi-alert-circle-outline' }
-            : elapsed !== null && total && pct + 15 < elapsed ? { text: 'At risk', color: '#d97706', icon: 'mdi-alert-outline' }
-                : elapsed !== null ? { text: 'On track', color: '#059669', icon: 'mdi-check-circle-outline' } : null
-
-    const openFor = (memberId) => projectTasks.filter((t) => t.assignedTo?._id === memberId && t.status !== 'Done').length
-    const visibleTasks = (taskFilter ? projectTasks.filter((t) => t.status === taskFilter) : projectTasks)
-        .slice().sort((a, b) => TASK_COLUMNS.indexOf(a.status) - TASK_COLUMNS.indexOf(b.status) || new Date(a.dueDate || 8.64e15) - new Date(b.dueDate || 8.64e15))
+    const st = projectStatusMeta(p.status)
+    const done = tasks.filter((t) => t.status === 'Done').length
+    const overdue = tasks.filter(isOverdue).length
+    const est = (p.estimatedHours || 0) * 60
+    const used = est ? Math.round((w.totals.loggedMinutes / est) * 100) : null
+    const today = new Date(); today.setHours(0, 0, 0, 0)
+    const daysLeft = p.endDate ? Math.ceil((new Date(p.endDate).setHours(0, 0, 0, 0) - today) / 864e5) : null
+    const closed = ['Completed', 'Cancelled'].includes(p.status)
 
     return (
-        <PeopleShell
-            title={project.projectName}
-            root={PROJECTS_ROOT}
-            crumbs={[{ label: 'All projects', to: '/projects' }, { label: project.projectName }]}
-            backTo="/projects"
-            actions={<Link to="/tasks" state={{ projectId: id }} className="pp-btn primary"><i className="mdi mdi-plus"></i> Add task</Link>}
-        >
+        <PeopleShell title={p.projectName} root={PROJECTS_ROOT} crumbs={[{ label: p.projectCode }]}
+            actions={w.canManage && <button type="button" className="pp-btn" onClick={() => setEditing(true)}><i className="mdi mdi-pencil-outline"></i>Edit project</button>}>
             <ErrorBanner error={error} />
 
-            <section className="pp-card pd-head" style={{ '--c': m.color }}>
-                <div>
-                    <span className="pd-code">{project.projectCode}</span>
-                    <h2>{project.projectName}</h2>
-                    <p>{project.description || 'No description yet.'}</p>
-                    <div className="pd-tags">
-                        {canManage ? (
-                            <select className="pp-select pd-status-select" value={project.status} onChange={(e) => onStatus(e.target.value)} aria-label="Project status">
-                                {Object.keys(PROJECT_STATUS).map((s) => <option key={s} value={s}>{s}</option>)}
-                            </select>
-                        ) : <span className="pj-pill" style={{ '--c': m.color }}><i className={`mdi ${m.icon}`}></i>{project.status}</span>}
-                        {project.priority && <PriorityTag priority={project.priority} />}
-                        {health && <span className="pd-health" style={{ '--h': health.color }}><i className={`mdi ${health.icon}`}></i>{health.text}</span>}
+            {/* ---------- header ---------- */}
+            <section className="pw-hero" style={{ '--c': st.color }}>
+                <div className="pw-hero-main">
+                    <div className="pw-hero-tags"><span className="pw-code">{p.projectCode}</span><ProjectStatus status={p.status} /><PriorityTag priority={p.priority} /></div>
+                    <p className="pw-hero-sub"><i className="mdi mdi-domain"></i>{p.clientName || 'Internal project'}</p>
+                    <div className="pw-hero-facts">
+                        <span><i className="mdi mdi-calendar-range"></i>{fmtDay(p.startDate)} → {fmtDay(p.endDate)}</span>
+                        <span className={daysLeft !== null && daysLeft < 0 && !closed ? 'bad' : daysLeft !== null && daysLeft <= 7 && !closed ? 'warn' : ''}><i className="mdi mdi-flag-checkered"></i>{closed ? p.status : daysLeft < 0 ? `${-daysLeft} days past deadline` : daysLeft === 0 ? 'Due today' : `${daysLeft} days left`}</span>
+                        <span><i className={`mdi ${modeIcon(p.workMode)}`}></i>{p.workMode || 'Office'}{p.location?.siteName ? ` · ${p.location.siteName}` : ''}</span>
+                        {p.location?.address && <a href={`https://www.google.com/maps/search/${encodeURIComponent(p.location.address)}`} target="_blank" rel="noreferrer"><i className="mdi mdi-map-marker-outline"></i>{p.location.address}</a>}
                     </div>
+                    <div className="pw-hero-team"><Avatar person={p.projectManager} size={30} /><span><small>Lead</small><b>{fullName(p.projectManager)}</b></span><AvatarStack people={p.teamMembers || []} max={6} size={28} /></div>
                 </div>
-                <div className="pd-ring">
-                    <ProgressRing value={pct} size={96} stroke={9} color={m.color} />
-                    <small>{done}/{total} tasks done</small>
+                <div className="pw-hero-kpis">
+                    <div className="pw-ring" style={{ '--p': p.progress }}><b>{p.progress}%</b><small>done</small></div>
+                    <div className="pw-kpi-list">
+                        <span><b>{done}/{tasks.length}</b>tasks done</span>
+                        <span className={overdue ? 'bad' : ''}><b>{overdue}</b>overdue</span>
+                        <span><b>{hm(w.totals.loggedMinutes)}</b>{est ? `of ${p.estimatedHours}h` : 'logged'}</span>
+                        {w.totals.runningNow > 0 && <span className="live"><b><i className="pw-dot"></i>{w.totals.runningNow}</b>working now</span>}
+                    </div>
+                    {used !== null && <div className={`pw-budget big ${used > 100 ? 'over' : used >= 80 ? 'near' : ''}`} title={`${used}% of estimated hours used`}><i style={{ width: `${Math.min(100, used)}%` }}></i></div>}
                 </div>
+            </section>
 
-                {start && end && (
-                    <div className="pd-time">
-                        <div className="pd-time-head">
-                            <span><b>{Math.round(elapsed)}%</b> of time used · <b>{pct}%</b> of tasks done</span>
-                            <span>{end >= now ? `${Math.round((end - now) / 864e5)} days to deadline` : `${Math.round((now - end) / 864e5)} days past deadline`}</span>
-                        </div>
-                        <div className="pd-track" aria-hidden="true">
-                            <span className="elapsed" style={{ width: `${elapsed}%` }}></span>
-                            <span className="done" style={{ width: `calc(${pct}% - 4px)` }}></span>
-                            {now >= start && now <= end && <i className="pd-today" style={{ left: `${elapsed}%` }}></i>}
-                        </div>
-                        <div className="pd-dates"><span>{fmtDate(project.startDate)}</span><span>{fmtDate(project.endDate)}</span></div>
+            {w.isMember && <TimerCard project={p} tasks={tasks} myTimer={w.myTimer} me={me} disabled={closed} onChanged={(msg, stopped) => { toast.success(stopped ? `${(msg.match(/\d+h \d+m/) || ['Your time'])[0]} added to the time log, with your stop location.` : 'Your start location is recorded. Stop the timer when you finish.', { title: stopped ? 'Timer stopped' : 'Timer started' }); load() }} />}
+
+            {/* ---------- views ---------- */}
+            <div className="pw-viewbar">
+                <div className="pw-views">{VIEWS.map(([k, l, ic]) => <button key={k} type="button" className={view === k ? 'on' : ''} onClick={() => setView(k)}><i className={`mdi ${ic}`}></i><span>{l}</span>{k === 'closed' && (w.closedTasks || []).length > 0 && <b className="pw-count" style={{ background: '#059669' }}>{w.closedTasks.length}</b>}</button>)}</div>
+                {(view === 'board' || view === 'list') && (
+                    <div className="pw-filters">
+                        {[['all', 'All'], ['mine', 'Mine'], ['overdue', 'Overdue']].map(([k, l]) => <button key={k} type="button" className={filter === k ? 'on' : ''} onClick={() => setFilter(k)}>{l}</button>)}
+                        {!closed && (w.canManage || w.isMember) && <button type="button" className="pp-btn primary sm" onClick={() => setModal({ newStatus: 'To Do' })}><i className="mdi mdi-plus"></i>Task</button>}
                     </div>
                 )}
-            </section>
-
-            <div className="at-tiles">
-                <div className="at-tile" style={{ '--c': '#059669' }}><span className="at-tile-icon"><i className="mdi mdi-check-all"></i></span><div><b>{done}/{total}</b><span>Tasks done</span></div></div>
-                <div className="at-tile" style={{ '--c': overdue ? '#e11d48' : '#64748b' }}><span className="at-tile-icon"><i className="mdi mdi-alert-circle-outline"></i></span><div><b>{overdue}</b><span>Overdue tasks</span></div></div>
-                <div className="at-tile" style={{ '--c': '#7c3aed' }}><span className="at-tile-icon"><i className="mdi mdi-account-group-outline"></i></span><div><b>{members.length}</b><span>Team members</span></div></div>
-                <div className="at-tile" style={{ '--c': '#0284c7' }}><span className="at-tile-icon"><i className="mdi mdi-wallet-outline"></i></span><div><b>{project.budget ? money(project.budget) : '—'}</b><span>Budget</span></div></div>
             </div>
 
-            <section className="pp-card">
-                <div className="pd-tabs" role="tablist">
-                    {[
-                        { k: 'overview', label: 'Overview', icon: 'mdi-view-dashboard-outline' },
-                        { k: 'team', label: 'Team', icon: 'mdi-account-group-outline', n: members.length },
-                        { k: 'tasks', label: 'Tasks', icon: 'mdi-format-list-checks', n: total },
-                    ].map((t) => (
-                        <button key={t.k} type="button" role="tab" aria-selected={tab === t.k} className={`pd-tab ${tab === t.k ? 'active' : ''}`} onClick={() => setTab(t.k)}>
-                            <i className={`mdi ${t.icon}`}></i>{t.label}{t.n !== undefined && <b>{t.n}</b>}
-                        </button>
-                    ))}
-                </div>
-
-                <div className="pd-panel">
-                    {tab === 'overview' && (
-                        <>
-                            <div className="pd-facts">
-                                <div className="pd-fact" style={{ '--c': '#0b0f19' }}><span><i className="mdi mdi-account-tie-outline"></i>Manager</span><b>{fullName(project.projectManager)}</b></div>
-                                <div className="pd-fact" style={{ '--c': '#0284c7' }}><span><i className="mdi mdi-domain"></i>Client</span><b>{project.clientName || 'Internal'}</b></div>
-                                <div className="pd-fact" style={{ '--c': '#059669' }}><span><i className="mdi mdi-calendar-start"></i>Start</span><b>{fmtDate(project.startDate)}</b></div>
-                                <div className="pd-fact" style={{ '--c': '#e11d48' }}><span><i className="mdi mdi-flag-checkered"></i>Deadline</span><b>{fmtDate(project.endDate)}</b></div>
-                            </div>
-                            <h4 className="pd-breakdown-title">Tasks by status</h4>
-                            {!total ? <p className="pp-muted-dash mb-0">No tasks yet — <Link to="/tasks" state={{ projectId: id }} style={{ color: '#0284c7', fontWeight: 600 }}>add the first one</Link>.</p> : (
-                                <>
-                                    <div className="pd-bar" aria-hidden="true">
-                                        {byStatus.map(({ s, n }) => n > 0 && <span key={s} style={{ width: `${(n / total) * 100}%`, background: taskStatusMeta(s).color }}></span>)}
-                                    </div>
-                                    <div className="pd-legend">
-                                        {byStatus.map(({ s, n }) => <span key={s} style={{ '--c': TASK_STATUS[s].color }}><i></i>{s} <b>{n}</b></span>)}
-                                    </div>
-                                </>
-                            )}
-                        </>
-                    )}
-
-                    {tab === 'team' && (
-                        <>
-                            {canManage && (
-                                <div className="pd-add">
-                                    <PeoplePicker people={available} value={toAdd} onChange={setToAdd} exclude={memberIds} placeholder="Add people to this project…" />
-                                    <button type="button" className="pp-btn primary" onClick={onAddMembers} disabled={!toAdd.length}><i className="mdi mdi-account-plus-outline"></i> Add</button>
-                                </div>
-                            )}
-                            {!members.length ? <EmptyState icon="mdi-account-group-outline" title="No team members yet" text={canManage ? 'Search above to add people.' : 'Team members will appear here.'} /> : (
-                                <div className="pd-team">
-                                    {members.map((mb) => (
-                                        <div key={mb._id} className="pd-member">
-                                            <Avatar person={mb} size={40} />
-                                            <div className="pd-member-main">
-                                                <Link to={`/employees/${mb._id}`}>{fullName(mb)}</Link>
-                                                <small>{openFor(mb._id)} open task{openFor(mb._id) === 1 ? '' : 's'}</small>
-                                                {project.projectManager?._id === mb._id && <div className="pd-role">Project manager</div>}
-                                            </div>
-                                            {canManage && (
-                                                <button type="button" className="pd-remove" onClick={() => onRemoveMember(mb)} title="Remove from project" aria-label={`Remove ${fullName(mb)}`}>
-                                                    <i className="mdi mdi-account-remove-outline"></i>
-                                                </button>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </>
-                    )}
-
-                    {tab === 'tasks' && (
-                        <>
-                            <div className="pd-task-head">
-                                <div className="pj-filters">
-                                    <button type="button" className={`pj-filter ${!taskFilter ? 'active' : ''}`} style={{ '--c': '#0b0f19' }} onClick={() => setTaskFilter('')}>All <b>{total}</b></button>
-                                    {byStatus.filter((x) => x.n).map(({ s, n }) => (
-                                        <button key={s} type="button" className={`pj-filter ${taskFilter === s ? 'active' : ''}`} style={{ '--c': TASK_STATUS[s].color }} onClick={() => setTaskFilter(taskFilter === s ? '' : s)}>
-                                            <i className={`mdi ${TASK_STATUS[s].icon}`}></i>{s} <b>{n}</b>
-                                        </button>
-                                    ))}
-                                </div>
-                                <Link to="/tasks" className="pp-btn sm"><i className="mdi mdi-view-column-outline"></i> Open board</Link>
-                            </div>
-                            {!visibleTasks.length ? <EmptyState icon="mdi-format-list-checks" title="No tasks here" text="Tasks linked to this project will show up here." /> : (
-                                <div>
-                                    {visibleTasks.map((t) => (
-                                        <button key={t._id} type="button" className="pd-task" style={{ '--c': taskStatusMeta(t.status).color }} onClick={() => setOpenTask(t._id)}>
-                                            <span className="pd-task-dot"></span>
-                                            <span className="pd-task-main">
+            {view === 'board' && (
+                <div className="pw-kanban">
+                    {TASK_COLUMNS.map((col) => {
+                        const m = TASK_STATUS[col]
+                        const items = shown.filter((t) => t.status === col).sort((a, b) => (a.order || 0) - (b.order || 0))
+                        return (
+                            <div key={col} className={`pw-col ${drag?.over === col ? 'over' : ''}`} style={{ '--c': m.color }}
+                                onDragOver={(e) => { if (drag) { e.preventDefault(); if (drag.over !== col) setDrag({ ...drag, over: col }) } }}
+                                onDragLeave={(e) => { if (e.currentTarget === e.target) setDrag((d) => (d ? { ...d, over: null } : d)) }}
+                                onDrop={(e) => { e.preventDefault(); if (drag) move(drag.task, col); setDrag(null) }}>
+                                <header><i className={`mdi ${m.icon}`}></i><b>{col}</b><span>{items.length}</span>
+                                    {col === 'Done' && items.filter(canEditTask).length > 1 && <button type="button" className="pw-closebtn" style={{ marginLeft: 6 }} onClick={() => setClosing({ tasks: items.filter(canEditTask), mode: 'close' })} title="Close every finished task with one note"><i className="mdi mdi-archive-check-outline"></i>Close all</button>}
+                                </header>
+                                <div className="pw-col-body">
+                                    {items.map((t) => {
+                                        const cl = t.checklist || []
+                                        const cd = cl.filter((c) => c.done).length
+                                        const draggable = canEditTask(t)
+                                        return (
+                                            <article key={t._id} className={`pw-tcard ${drag?.task?._id === t._id ? 'dragging' : ''}`} draggable={draggable}
+                                                onDragStart={() => setDrag({ task: t, over: null })} onDragEnd={() => setDrag(null)} onClick={() => setModal({ task: t })}>
+                                                {t.labels?.length > 0 && <div className="pw-labels">{t.labels.map((l) => <span key={l}>{l}</span>)}</div>}
+                                                {t.taskNo ? <span className="pw-tno">{taskTag(t)}{t.type && t.type !== 'Task' ? ` · ${t.type}` : ''}</span> : null}
                                                 <b>{t.title}</b>
-                                                <small><PriorityTag priority={t.priority} /><DueTag date={t.dueDate} done={t.status === 'Done'} />{t.comments?.length > 0 && <span><i className="mdi mdi-comment-outline"></i> {t.comments.length}</span>}</small>
-                                            </span>
-                                            {t.assignedTo ? <Avatar person={t.assignedTo} size={28} /> : <span className="pp-muted-dash hide-sm" style={{ fontSize: 12 }}>Unassigned</span>}
-                                            <span className="hide-sm"><TaskStatus status={t.status} /></span>
-                                        </button>
-                                    ))}
+                                                <div className="pw-tcard-meta">
+                                                    {t.priority === 'High' && <span className="hi"><i className="mdi mdi-chevron-double-up"></i>High</span>}
+                                                    {t.dueDate && <DueTag date={t.dueDate} done={t.status === 'Done'} />}
+                                                    {cl.length > 0 && <span className={cd === cl.length ? 'ok' : ''}><i className="mdi mdi-format-list-checks"></i>{cd}/{cl.length}</span>}
+                                                    {t.comments?.length > 0 && <span><i className="mdi mdi-comment-outline"></i>{t.comments.length}</span>}
+                                                    {t.loggedMinutes > 0 && <span><i className="mdi mdi-timer-outline"></i>{hm(t.loggedMinutes)}</span>}
+                                                </div>
+                                                <div className="pw-tcard-foot">
+                                                    {t.assignedTo ? <span className="pw-who"><Avatar person={t.assignedTo} size={22} />{t.assignedTo.firstName}</span> : <span className="pw-who none">Unassigned</span>}
+                                                    {draggable && t.status === 'Done' && <button type="button" className="pw-closebtn" onClick={(e) => { e.stopPropagation(); setClosing({ tasks: [t], mode: 'close' }) }} title="Close with a note — moves it to the Closed history"><i className="mdi mdi-archive-check-outline"></i>Close</button>}
+                                                    {draggable && <select className="pw-move" value={t.status} onClick={(e) => e.stopPropagation()} onChange={(e) => move(t, e.target.value)} aria-label="Move task">{TASK_COLUMNS.map((s) => <option key={s}>{s}</option>)}</select>}
+                                                </div>
+                                            </article>
+                                        )
+                                    })}
+                                    {!items.length && <p className="pw-col-empty">{drag ? 'Drop here' : 'No tasks'}</p>}
+                                    {!closed && (w.canManage || w.isMember) && <button type="button" className="pw-quick" onClick={() => setModal({ newStatus: col })}><i className="mdi mdi-plus"></i>Add task</button>}
                                 </div>
-                            )}
-                        </>
-                    )}
+                            </div>
+                        )
+                    })}
                 </div>
-            </section>
+            )}
 
-            {openTask && <TaskDetailModal taskId={openTask} onClose={() => setOpenTask(null)} />}
+            {view === 'list' && (
+                <section className="pp-card pw-list">
+                    {!shown.length ? <EmptyState icon="mdi-format-list-checks" title="No tasks here" /> : (
+                        <ul>
+                            {[...shown].sort((a, b) => (a.status === 'Done') - (b.status === 'Done') || new Date(a.dueDate || 8.64e15) - new Date(b.dueDate || 8.64e15)).map((t) => (
+                                <li key={t._id} onClick={() => setModal({ task: t })} className={t.status === 'Done' ? 'done' : ''}>
+                                    <button type="button" className="pw-tick" disabled={!canEditTask(t)} onClick={(e) => { e.stopPropagation(); move(t, t.status === 'Done' ? 'To Do' : 'Done') }} aria-label={t.status === 'Done' ? 'Reopen' : 'Mark done'}><i className={`mdi ${t.status === 'Done' ? 'mdi-checkbox-marked-circle' : 'mdi-checkbox-blank-circle-outline'}`}></i></button>
+                                    <span className="pw-list-main"><b>{t.taskNo ? <span className="pw-tno">{taskTag(t)}</span> : null}{t.title}</b><small><span className="pw-dotstatus" style={{ '--c': TASK_STATUS[t.status]?.color }}></span>{t.status}{t.labels?.length ? ` · ${t.labels.join(', ')}` : ''}</small></span>
+                                    {t.dueDate && <DueTag date={t.dueDate} done={t.status === 'Done'} />}
+                                    {t.assignedTo ? <Avatar person={t.assignedTo} size={26} /> : <span className="pw-who none">—</span>}
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </section>
+            )}
+
+            {view === 'team' && (
+                <section className="pp-card pw-team">
+                    {members.map((m) => {
+                        const t = w.team.find((x) => (x.employee?._id || x.employee) === m._id)
+                        const open = tasks.filter((x) => (x.assignedTo?._id || x.assignedTo) === m._id && x.status !== 'Done').length
+                        const finished = tasks.filter((x) => (x.assignedTo?._id || x.assignedTo) === m._id && x.status === 'Done').length
+                        const running = w.logs.find((l) => l.running && (l.employeeId?._id || l.employeeId) === m._id)
+                        return (
+                            <div key={m._id} className="pw-member">
+                                <Avatar person={m} size={42} />
+                                <span className="pw-member-main"><b>{fullName(m)}{m._id === p.projectManager?._id && <em>Lead</em>}</b><small>{m.designation || ''}</small></span>
+                                <span className="pw-member-stat"><b>{open}</b>open</span>
+                                <span className="pw-member-stat"><b>{finished}</b>done</span>
+                                <span className="pw-member-stat"><b>{hm(t?.minutes || 0)}</b>logged</span>
+                                {running ? <span className="pw-live"><i className="pw-dot"></i>Working now</span> : <span className="pw-member-last">{t?.last ? `Last ${fmtDay(t.last)}` : 'No time yet'}</span>}
+                            </div>
+                        )
+                    })}
+                </section>
+            )}
+
+            {view === 'time' && (
+                <section className="pp-card pw-time">
+                    {!w.logs.length ? <EmptyState icon="mdi-timer-off-outline" title="No time logged yet" text="Team members start the work timer above — the time and place are recorded here." /> : (
+                        <ul>
+                            {w.logs.map((l) => (
+                                <li key={l._id}>
+                                    <Avatar person={l.employeeId} size={34} />
+                                    <span className="pw-time-main">
+                                        <b>{fullName(l.employeeId)}{l.taskId?.title ? <small> · {l.taskId.title}</small> : null}</b>
+                                        <small>{fmtDay(l.startTime)} · {fmtTime(l.startTime)} → {l.running ? <span className="pw-now">running</span> : fmtTime(l.endTime)}</small>
+                                        <span className="pw-time-places"><span className="pw-tp">Start</span><PlaceLink place={l.startLocation} />{!l.running && <><span className="pw-tp">Stop</span><PlaceLink place={l.stopLocation} /></>}</span>
+                                        {l.note && <em className="pw-note">“{l.note}”</em>}
+                                    </span>
+                                    <b className="pw-dur">{hm(l.minutes)}</b>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </section>
+            )}
+
+            {view === 'closed' && (() => {
+                const q = cq.trim().toLowerCase()
+                const list = (w.closedTasks || []).filter((t) => !q || `${taskTag(t)} ${t.title} ${t.closeNote} ${fullName(t.assignedTo)}`.toLowerCase().includes(q))
+                return (
+                    <section className="pp-card pw-closed">
+                        <div className="pw-closed-head">
+                            <div><b>Closed tasks</b><br /><small>Finished work, closed with a note. Reopen anything that needs more work.</small></div>
+                            <div className="pp-search"><i className="mdi mdi-magnify"></i><input type="search" className="pp-input" value={cq} onChange={(e) => setCq(e.target.value)} placeholder="Search closed tasks…" /></div>
+                        </div>
+                        {!list.length ? <EmptyState icon="mdi-archive-outline" title={(w.closedTasks || []).length ? 'No closed task matches' : 'Nothing closed yet'} text="When a Done task is closed it moves here with its closing note." /> : (
+                            <ul>{list.map((t) => (
+                                <li key={t._id}>
+                                    <span className="pw-closed-ic"><i className="mdi mdi-archive-check-outline"></i></span>
+                                    <div className="pw-closed-main">
+                                        <b><span className="pw-tno">{taskTag(t)}</span>{t.title}</b>
+                                        <small>{t.assignedTo ? fullName(t.assignedTo) : 'Unassigned'}{t.loggedMinutes ? ` · ${hm(t.loggedMinutes)} logged` : ''} · closed {fmtDay(t.closedAt)}{t.closedBy ? ` by ${fullName(t.closedBy)}` : ''}</small>
+                                        {t.closeNote && <q>{t.closeNote}</q>}
+                                    </div>
+                                    {(w.canManage || w.isMember) && <button type="button" className="pw-reopen" onClick={() => setClosing({ tasks: [t], mode: 'reopen' })}><i className="mdi mdi-restore"></i>Reopen</button>}
+                                </li>
+                            ))}</ul>
+                        )}
+                    </section>
+                )
+            })()}
+
+            {view === 'details' && (
+                <section className="pp-card pw-details">
+                    <h3>About this project</h3>
+                    <p>{p.description || 'No description yet.'}</p>
+                    <dl>
+                        <div><dt>Code</dt><dd>{p.projectCode}</dd></div>
+                        <div><dt>Client</dt><dd>{p.clientName || 'Internal'}</dd></div>
+                        <div><dt>Lead</dt><dd>{fullName(p.projectManager)}</dd></div>
+                        <div><dt>Team</dt><dd>{(p.teamMembers || []).map(fullName).join(', ') || '—'}</dd></div>
+                        <div><dt>Dates</dt><dd>{fmtDay(p.startDate)} → {fmtDay(p.endDate)}</dd></div>
+                        <div><dt>Estimate</dt><dd>{p.estimatedHours ? `${p.estimatedHours} hours` : '—'}</dd></div>
+                        <div><dt>Work mode</dt><dd>{p.workMode || 'Office'}</dd></div>
+                        <div><dt>Site</dt><dd>{[p.location?.siteName, p.location?.address].filter(Boolean).join(' · ') || '—'}</dd></div>
+                        <div><dt>Created</dt><dd>{fmtDay(p.createdAt)}{p.createdBy ? ` by ${fullName(p.createdBy)}` : ''}</dd></div>
+                    </dl>
+                </section>
+            )}
+
+            {closing && <CloseTaskModal tasks={closing.tasks} mode={closing.mode} onClose={() => setClosing(null)} onDone={(msg) => { setClosing(null); toast.success(msg, { title: closing.mode === 'reopen' ? 'Task reopened' : 'Closed' }); load() }} />}
+            {modal && <TaskModal task={modal.task} defaultStatus={modal.newStatus} project={p} members={members} me={me} canManage={w.canManage} onClose={() => setModal(null)} onSaved={upsertTask} onDeleted={(tid) => { setW((x) => ({ ...x, tasks: x.tasks.filter((t) => t._id !== tid) })); setModal(null); toast.success('The task was removed from this project.', { title: 'Task deleted' }) }} />}
+            {editing && <ProjectForm project={p} people={people.length ? people : members} onClose={() => setEditing(false)} onSaved={() => { setEditing(false); toast.success('Project details are updated.', { title: 'Project saved' }); load() }} />}
         </PeopleShell>
     )
 }

@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import attendanceModel from "../models/attendanceModel.js";
 import leaveModel from "../models/leaveModel.js";
 import payrollRunModel from "../models/payrollRunModel.js";
@@ -7,6 +8,7 @@ import taskModel from "../models/taskModel.js";
 import employeeModel from "../models/employeeModel.js";
 import holidayModel from "../models/holidayModel.js";
 import { getHeadcountByDepartment } from "./dashboard.controller.js";
+import { scopeOf, visibleIds, workFilter } from "../utils/hierarchy.js";
 
 // Attendance for a month, per active employee, measured against the working calendar:
 // working days = weekdays up to today (or month end) minus holidays; absent = working days with
@@ -23,7 +25,8 @@ export const attendanceReport = async (req, res) => {
         const endDate = `${year}-${pad(month)}-${pad(endDay)}`;
 
         const empFilter = { status: "Active" };
-        if (["Manager", "Team Lead"].includes(req.user.role)) empFilter.manager = req.user.id;
+        const teamIds = visibleIds(await scopeOf(req), "people");
+        if (teamIds) empFilter._id = { $in: teamIds };
         const employees = await employeeModel.find(empFilter).select("employeeId firstName lastName department designation joiningDate").lean();
         const ids = employees.map((e) => e._id);
 
@@ -81,14 +84,16 @@ export const attendanceReport = async (req, res) => {
 export const leaveReport = async (req, res) => {
     try {
         const year = Number(req.query.year) || new Date().getFullYear();
+        const ids = visibleIds(await scopeOf(req), "people");
+        const who = ids ? { employeeId: { $in: ids.map((id) => new mongoose.Types.ObjectId(id)) } } : {};
 
         const byType = await leaveModel.aggregate([
-            { $match: { fromDate: { $gte: new Date(`${year}-01-01`), $lte: new Date(`${year}-12-31`) } } },
+            { $match: { ...who, fromDate: { $gte: new Date(`${year}-01-01`), $lte: new Date(`${year}-12-31`) } } },
             { $group: { _id: "$leaveType", totalDays: { $sum: "$totalDays" }, count: { $sum: 1 } } },
         ]);
 
         const byStatus = await leaveModel.aggregate([
-            { $match: { fromDate: { $gte: new Date(`${year}-01-01`), $lte: new Date(`${year}-12-31`) } } },
+            { $match: { ...who, fromDate: { $gte: new Date(`${year}-01-01`), $lte: new Date(`${year}-12-31`) } } },
             { $group: { _id: "$status", count: { $sum: 1 } } },
         ]);
 
@@ -120,18 +125,14 @@ export const headcountReport = async (req, res) => {
 
 // A Manager/Team Lead's project/task reports are scoped to the projects they manage or are a
 // member of, matching the same scoping already used for the plain project list (getAllProjects).
-const projectScopeFilter = (user) => {
-    if (["Manager", "Team Lead"].includes(user.role)) {
-        return { $or: [{ projectManager: user.id }, { teamMembers: user.id }] };
-    }
-    return {};
-};
+// Now: the projects the caller or anyone in their team leads or works on (firm-wide seniors: all).
+const projectScopeFilter = (req) => workFilter(req);
 
 export const projectReport = async (req, res) => {
     try {
         const { projectId, projectManager, status, startDate, endDate } = req.query;
 
-        const filter = { isDeleted: false, ...projectScopeFilter(req.user) };
+        const filter = { isDeleted: false, ...(await projectScopeFilter(req)) };
         if (projectId) filter._id = projectId;
         if (projectManager) filter.projectManager = projectManager;
         if (status) filter.status = status;
@@ -217,9 +218,10 @@ export const taskReport = async (req, res) => {
             if (!filter.status) filter.status = { $ne: "Done" };
         }
 
-        if (["Manager", "Team Lead"].includes(req.user.role)) {
-            const scopedProjects = await ProjectModel.find(projectScopeFilter(req.user)).select("_id");
-            const reports = await employeeModel.find({ manager: req.user.id }).select("_id");
+        const scope = await scopeOf(req);
+        if (!scope.firm) {
+            const scopedProjects = await ProjectModel.find(await projectScopeFilter(req)).select("_id");
+            const reports = [...scope.team].map((id) => ({ _id: id }));
             filter.$and = [
                 {
                     $or: [

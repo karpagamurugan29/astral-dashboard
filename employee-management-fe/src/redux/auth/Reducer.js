@@ -6,6 +6,8 @@ const initialState = {
   permissions: [],
   // Modules opened beyond the user's role (by their department or for them personally).
   granted: [],
+  // Reporting-tree reach: { leads, firm, people, finance, size } — who this person looks after.
+  team: null,
   // False until the first permission list arrives, so screen guards don't flash "No access".
   permissionsLoaded: false,
   message: "",
@@ -29,6 +31,8 @@ const authReducer = (state = initialState, action) => {
         permissions: action.payload || [],
         permissionsLoaded: true
       };
+    case actions.SET_TEAM_SCOPE:
+      return { ...state, team: action.payload || null };
     case actions.SET_GRANTED_PERMISSIONS:
       return {
         ...state,

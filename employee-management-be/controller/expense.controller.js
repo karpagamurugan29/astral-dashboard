@@ -5,6 +5,7 @@ import mongoose from "mongoose";
 import expenseModel from "../models/expenseModel.js";
 import { logAudit } from "../utils/audit.js";
 import { notify } from "../utils/notify.js";
+import { scopeOf, visibleIds, canSee } from "../utils/hierarchy.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const LEGACY_DIR = process.env.VERCEL ? "/tmp/uploads" : path.join(__dirname, "..", "uploads");
@@ -14,9 +15,9 @@ const safeName = (s) => String(s || "receipt").replace(/[^\w.\- ]+/g, "_").repla
 
 export const getExpenses = async (req, res) => {
     try {
-        const isManager = ["Admin", "HR", "Manager", "Team Lead"].includes(req.user.role);
-
-        const filter = isManager ? {} : { employeeId: req.user.id };
+        // Accounts and firm-wide seniors see every claim; leads see their team's; everyone else their own.
+        const ids = visibleIds(await scopeOf(req), "finance");
+        const filter = ids ? { employeeId: { $in: ids } } : {};
 
         const expenses = await expenseModel
             .find(filter)
@@ -89,6 +90,10 @@ export const updateExpenseStatus = async (req, res) => {
                 message: "Expense not found.",
             });
         }
+        const scope = await scopeOf(req);
+        if (String(expense.employeeId) === String(req.user.id) || !(scope.finance || scope.team.has(String(expense.employeeId)))) {
+            return res.status(403).json({ success: false, message: "Only this person's managers or Accounts can decide this claim." });
+        }
 
         expense.status = status;
         expense.approvedBy = req.user.id;
@@ -149,8 +154,7 @@ export const getReceipt = async (req, res) => {
         if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ success: false, message: "Receipt not found." });
         const expense = await expenseModel.findById(req.params.id).lean();
         if (!expense) return res.status(404).json({ success: false, message: "Receipt not found." });
-        const reviewer = ["Admin", "HR", "Manager", "Team Lead"].includes(req.user.role);
-        if (!reviewer && String(expense.employeeId) !== String(req.user.id)) return res.status(403).json({ success: false, message: "You can't open this receipt." });
+        if (!canSee(await scopeOf(req), expense.employeeId, "finance")) return res.status(403).json({ success: false, message: "You can't open this receipt." });
         res.set({ "Cache-Control": "private, max-age=3600", "X-Content-Type-Options": "nosniff" });
         if (expense.receiptFileId) {
             const file = await mongoose.connection.db.collection("expenseReceipts.files").findOne({ _id: expense.receiptFileId });

@@ -47,6 +47,17 @@ const TaskSchema = new mongoose.Schema(
             type: Number,
             default: null,
         },
+        // small to-do items inside the task
+        checklist: [
+            {
+                text: { type: String, trim: true, maxlength: 200 },
+                done: { type: Boolean, default: false },
+            },
+        ],
+        labels: [{ type: String, trim: true, maxlength: 24 }],
+        // position within its board column (lower first)
+        order: { type: Number, default: 0 },
+        completedAt: { type: Date, default: null },
         comments: [
             {
                 employeeId: { type: mongoose.Schema.Types.ObjectId, ref: "Employee" },
@@ -58,6 +69,26 @@ const TaskSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: "Employee",
         },
+        // closing: once a Done task is checked it's closed with a note and leaves the boards
+        closedAt: { type: Date, default: null },
+        closedBy: { type: mongoose.Schema.Types.ObjectId, ref: "Employee", default: null },
+        closeNote: { type: String, default: "", maxlength: 1000 },
+        // tracker number shown as #T-0001 (assigned on create, backfilled for older tasks)
+        taskNo: { type: Number, index: true, sparse: true },
+        type: { type: String, enum: ["Task", "Issue", "Query", "Review point"], default: "Task" },
+        // people following the task (notified of changes), like "Monitor" in a bug tracker
+        watchers: [{ type: mongoose.Schema.Types.ObjectId, ref: "Employee" }],
+        // every change, newest last
+        history: [
+            {
+                at: { type: Date, default: Date.now },
+                by: { type: mongoose.Schema.Types.ObjectId, ref: "Employee" },
+                action: { type: String, trim: true },   // created | status | assigned | priority | due | title | type | note | checklist | watch
+                from: { type: String, default: "" },
+                to: { type: String, default: "" },
+                note: { type: String, default: "" },
+            },
+        ],
     },
     {
         timestamps: true,

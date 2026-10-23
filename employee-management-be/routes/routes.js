@@ -16,7 +16,7 @@ import { createAudit, updateAudit, deleteAudit, getAuditById, getAllAudits, addA
 import { getDepartments, createDepartment, updateDepartment, deleteDepartment } from "../controller/department.controller.js";
 import { getDesignations, createDesignation, updateDesignation, deleteDesignation } from "../controller/designation.controller.js";
 import { getExpenses, createExpense, updateExpenseStatus, deleteExpense, getReceipt } from "../controller/expense.controller.js";
-import { getAssets, createAsset, updateAsset, assignAsset, returnAsset, deleteAsset } from "../controller/asset.controller.js";
+import { getAssets, myAssets, createAsset, updateAsset, assignAsset, returnAsset, deleteAsset } from "../controller/asset.controller.js";
 import { getTickets, createTicket, updateTicketStatus, addTicketComment } from "../controller/ticket.controller.js";
 import { getAnnouncements, createAnnouncement, deleteAnnouncement } from "../controller/announcement.controller.js";
 import { getBranches, createBranch, updateBranch, deleteBranch } from "../controller/branch.controller.js";
@@ -29,6 +29,8 @@ import { getNotifications, markNotificationRead, markAllNotificationsRead } from
 import { uploadDocument, getDocuments, deleteDocument, downloadDocument } from "../controller/document.controller.js";
 import { utilisationReport, profitabilityReport, punctualityReport, complianceReport, businessPulse } from "../controller/businessReport.controller.js";
 import { chatContacts, listConversations, createConversation, getConversation, getMessages, sendMessage, editMessage, deleteMessage, reactToMessage, starMessage, markRead, setTyping, updateConversation, chatUpdates, chatUnread, chatFile, searchMessages, deleteGroup, adminListGroups, adminUpdateGroup } from "../controller/chat.controller.js";
+import { listProjects, projectWorkspace, createProjectV2, updateProjectV2, startProjectTimer, stopProjectTimer, createProjectTask, updateProjectTask, moveTask, commentOnTask, deleteProjectTask, myTasks, getTask, watchTask, bulkMoveTasks, closeTask, bulkCloseTasks, reopenTask } from "../controller/projectWorkspace.controller.js";
+import { orgTree, setManager } from "../controller/org.controller.js";
 import multer from "multer";
 // documents go to MongoDB (GridFS), so keep them in memory rather than on disk
 const docUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
@@ -137,10 +139,14 @@ router.put("/leave/cancel/:id", authMiddleWare, cancelLeave);
 
 
 // Projects
-router.get("/projects", authMiddleWare, getAllProjects);
+router.get("/projects", authMiddleWare, listProjects);
 router.get("/projects/:id", authMiddleWare, getProjectById);
-router.post("/projects", authMiddleWare, adminHRManager("projects"), createProject);
-router.put("/projects/:id", authMiddleWare, adminHRManager("projects"), updateProject);
+router.get("/projects/:id/workspace", authMiddleWare, projectWorkspace);
+router.post("/projects/:id/timer/start", authMiddleWare, startProjectTimer);
+router.post("/projects/:id/timer/stop", authMiddleWare, stopProjectTimer);
+router.post("/projects/:id/tasks", authMiddleWare, createProjectTask);
+router.post("/projects", authMiddleWare, createProjectV2); // permission checked in the controller
+router.put("/projects/:id", authMiddleWare, updateProjectV2); // managers or the project lead
 router.delete("/projects/:id", authMiddleWare, adminHRManager("projects"), deleteProject);
 router.post("/projects/:id/members", authMiddleWare, adminHRManager("projects"), addProjectMember);
 router.delete("/projects/:id/members/:userId", authMiddleWare, adminHRManager("projects"), removeProjectMember);
@@ -165,13 +171,24 @@ router.post("/audits/:id/timer/start", authMiddleWare, startAuditTimer);
 router.post("/audits/:id/timer/stop", authMiddleWare, stopAuditTimer);
 
 // Tasks
+router.get("/tasks/mine", authMiddleWare, myTasks);
+
+// Organisation: reporting tree for everyone; HR / leadership change reporting lines
+router.get("/org/tree", authMiddleWare, orgTree);
+router.put("/org/:id/manager", authMiddleWare, setManager);
 router.get("/tasks", authMiddleWare, getTasks);
-router.get("/tasks/:id", authMiddleWare, getTaskById);
+router.get("/tasks/:id", authMiddleWare, getTask); // tracker view: notes, history, watchers
 router.post("/tasks", authMiddleWare, adminHRManager("tasks"), createTask);
-router.put("/tasks/:id", authMiddleWare, adminHRManager("tasks"), updateTask);
+router.put("/tasks/bulk", authMiddleWare, bulkMoveTasks);
+router.put("/tasks/bulk-close", authMiddleWare, bulkCloseTasks);
+router.post("/tasks/:id/close", authMiddleWare, closeTask);
+router.post("/tasks/:id/reopen", authMiddleWare, reopenTask);
+router.post("/tasks/:id/watch", authMiddleWare, watchTask);
+router.put("/tasks/:id", authMiddleWare, updateProjectTask); // assignee, creator, project lead or manager
+router.put("/tasks/:id/move", authMiddleWare, moveTask);
 router.put("/tasks/:id/status", authMiddleWare, updateTaskStatus);
-router.post("/tasks/:id/comments", authMiddleWare, addTaskComment);
-router.delete("/tasks/:id", authMiddleWare, adminHRManager("tasks"), deleteTask);
+router.post("/tasks/:id/comments", authMiddleWare, commentOnTask);
+router.delete("/tasks/:id", authMiddleWare, deleteProjectTask);
 
 
 // Departments
@@ -213,7 +230,8 @@ router.put("/expenses/:id/status", authMiddleWare, adminHRManager("expenses"), u
 router.delete("/expenses/:id", authMiddleWare, deleteExpense);
 
 // Assets
-router.get("/assets", authMiddleWare, getAssets);
+router.get("/assets/mine", authMiddleWare, myAssets);
+router.get("/assets", authMiddleWare, adminHR("assets"), getAssets);
 router.post("/assets", authMiddleWare, adminHR("assets"), createAsset);
 router.put("/assets/:id", authMiddleWare, adminHR("assets"), updateAsset);
 router.put("/assets/:id/assign", authMiddleWare, adminHR("assets"), assignAsset);

@@ -2,6 +2,7 @@ import attendanceModel from "../models/attendanceModel.js";
 import AuditTimeLogModel from "../models/auditTimeLogModel.js";
 import employeeModel from "../models/employeeModel.js";
 import { sessionsOf } from "../utils/attendanceSessions.js";
+import { scopeOf, visibleIds } from "../utils/hierarchy.js";
 
 const PERSON = "employeeId firstName lastName designation department profileImage";
 const YMD = /^\d{4}-\d{2}-\d{2}$/;
@@ -30,11 +31,7 @@ export const getLocationLog = async (req, res) => {
         }
 
         // Who the caller may see.
-        let scope = null;
-        if (["Manager", "Team Lead"].includes(req.user.role)) {
-            const reports = await employeeModel.find({ manager: req.user.id }).select("_id").lean();
-            scope = [req.user.id, ...reports.map((r) => String(r._id))];
-        }
+        const scope = visibleIds(await scopeOf(req), "people");
         let employeeFilter = scope;
         if (req.query.employeeId) {
             if (scope && !scope.includes(String(req.query.employeeId))) {

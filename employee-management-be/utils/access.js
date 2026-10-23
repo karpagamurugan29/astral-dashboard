@@ -36,12 +36,19 @@ export const combineAccess = ({ role, roleAllow = [], deptAllow = [], designatio
 // department, their designation or to them personally, and modules blocked for them personally.
 export const getAccess = async (user, allModules = []) => {
     const profile = await cached(`profile-of:${user.id}`, async () => (await employeeModel.findById(user.id).select("department designation").lean()) || {});
-    const [roleAllow, dept, desig, person] = await Promise.all([
+    const [baseAllow, dept, desig, person] = await Promise.all([
         rolePermissions(user.role),
         rule("department", profile.department),
         rule("designation", profile.designation),
         rule("employee", user.id),
     ]);
+    // Permissions follow the role someone plays in the reporting tree: an "Employee" who leads
+    // a team (e.g. a Consultant with juniors under them) also gets the Team Lead permissions.
+    let roleAllow = baseAllow;
+    if (user.role === "Employee") {
+        const { teamUnder } = await import("./hierarchy.js");
+        if ((await teamUnder(user.id)).size) roleAllow = [...new Set([...baseAllow, ...(await rolePermissions("Team Lead"))])];
+    }
     return {
         roleAllow,
         ...combineAccess({ role: user.role, roleAllow, deptAllow: dept?.allow, designationAllow: desig?.allow, personAllow: person?.allow, personDeny: person?.deny, allModules }),

@@ -7,6 +7,7 @@ import { notify, notifyApprovers } from "../utils/notify.js";
 import { logAudit } from "../utils/audit.js";
 import { parseLocation, fillAddressLater, LOCATION_REQUIRED } from "../utils/location.js";
 import { sessionsOf, openSession, workedHoursOf, ensureSessions, statusFor } from "../utils/attendanceSessions.js";
+import { scopeOf, visibleIds } from "../utils/hierarchy.js";
 
 export const checkIn = async (req, res) => {
     try {
@@ -276,8 +277,9 @@ export const teamAttendance = async (req, res) => {
         const employeeFilter = { status: "Active" };
         if (department) employeeFilter.department = department;
         if (branch) employeeFilter.branch = branch;
-        // A Manager/Team Lead only sees their own direct reports; Admin/HR see the whole active roster.
-        if (["Manager", "Team Lead"].includes(req.user.role)) employeeFilter.manager = req.user.id;
+        // Leads see their whole team (any depth); HR and firm-wide seniors see everyone.
+        const ids = visibleIds(await scopeOf(req), "people");
+        if (ids) employeeFilter._id = { $in: ids };
 
         const employees = await employeeModel
             .find(employeeFilter)
@@ -361,7 +363,7 @@ export const requestRegularization = async (req, res) => {
         });
 
         logAudit(req, "attendance.regularization_request", `Requested regularization for ${attendanceDate}`, { type: "Regularization", id: regularization._id });
-        notifyApprovers("Attendance regularization request", `A correction request for ${attendanceDate} is waiting for your review.`, "General", "/attendance/regularization");
+        notifyApprovers("Attendance regularization request", `A correction request for ${attendanceDate} is waiting for your review.`, "General", "/attendance/regularization", employeeId);
 
         return res.status(201).json({
             success: true,
@@ -390,8 +392,9 @@ export const getMyRegularizations = async (req, res) => {
 
 export const getPendingRegularizations = async (req, res) => {
     try {
+        const scope = await scopeOf(req);
         const records = await regularizationModel
-            .find({ status: "Pending" })
+            .find({ status: "Pending", employeeId: scope.people ? { $ne: req.user.id } : { $in: [...scope.team] } })
             .populate("employeeId", "employeeId firstName lastName department")
             .sort({ createdAt: -1 });
 
@@ -410,6 +413,10 @@ export const decideRegularization = async (req, res) => {
 
         if (!regularization) {
             return res.status(404).json({ success: false, message: "Regularization request not found." });
+        }
+        const scope = await scopeOf(req);
+        if (String(regularization.employeeId) === String(req.user.id) || !(scope.people || scope.team.has(String(regularization.employeeId)))) {
+            return res.status(403).json({ success: false, message: "Only someone above this person in the reporting line, or HR, can decide this." });
         }
 
         regularization.status = status;
@@ -440,7 +447,7 @@ export const decideRegularization = async (req, res) => {
             await attendance.save();
         }
 
-        notify(regularization.employeeId, `Regularization ${status}`, `Your attendance correction for ${regularization.attendanceDate} was ${status.toLowerCase()}.`, "General", "/attendance/regularization");
+        notify(regularization.employeeId, `Regularization ${status}`, `Your attendance correction for ${regularization.attendanceDate} was ${status.toLowerCase()}.`, "General", "/attendance/regularization", employeeId);
         logAudit(req, "attendance.regularization_decision", `${status} a regularization request`, { type: "Regularization", id: regularization._id });
 
         return res.status(200).json({

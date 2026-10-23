@@ -3,6 +3,7 @@ import LeaveBalance from "../models/LeaveBalanceModel.js";
 import employeeModel from "../models/employeeModel.js";
 import { logAudit } from "../utils/audit.js";
 import { notify, notifyApprovers } from "../utils/notify.js";
+import { scopeOf, circleOf } from "../utils/hierarchy.js";
 
 const daysBetween = (fromDate, toDate) => {
     const from = new Date(fromDate);
@@ -10,15 +11,12 @@ const daysBetween = (fromDate, toDate) => {
     return Math.round((to - from) / (1000 * 60 * 60 * 24)) + 1;
 };
 
-// A Manager/Team Lead may only act on leave requests belonging to their direct reports.
-// Admin/HR are unrestricted. Returns true if `actor` is allowed to view/decide `targetEmployeeId`'s leave.
-const isWithinApproverScope = async (actor, targetEmployeeId) => {
-    if (actor.role === "Admin" || actor.role === "HR") return true;
-    if (actor.role === "Manager" || actor.role === "Team Lead") {
-        const target = await employeeModel.findById(targetEmployeeId).select("manager");
-        return target?.manager && String(target.manager) === String(actor.id);
-    }
-    return false;
+// Leave is decided up the reporting line: anyone above the person (manager, their manager, …),
+// HR, and the firm-wide seniors. Nobody approves their own leave.
+const isWithinApproverScope = async (req, targetEmployeeId) => {
+    if (String(targetEmployeeId) === String(req.user.id)) return false;
+    const scope = await scopeOf(req);
+    return scope.people || scope.team.has(String(targetEmployeeId));
 };
 
 const leaveTypeMap = {
@@ -129,7 +127,7 @@ export const applyLeave = async (req, res) => {
 
         const leave = await Leave.create({ employeeId, leaveType, fromDate, toDate, totalDays, halfDay, session, reason, attachment, });
 
-        notifyApprovers("New leave request", `A ${leaveType} request for ${totalDays} day(s) is waiting for your review.`, "Leave", "/leave/approvals");
+        notifyApprovers("New leave request", `A ${leaveType} request for ${totalDays} day(s) is waiting for your review.`, "Leave", "/leave/approvals", employeeId);
 
         return res.status(201).json({
             success: true,
@@ -196,7 +194,7 @@ export const leaveDetails = async (
         }
 
         const isOwner = String(leave.employeeId) === String(req.user.id);
-        if (!isOwner && !(await isWithinApproverScope(req.user, leave.employeeId))) {
+        if (!isOwner && !(await isWithinApproverScope(req, leave.employeeId))) {
             return res.status(403).json({
                 success: false,
                 message: "You are not authorized to view this leave request.",
@@ -255,11 +253,10 @@ export const pendingLeaves = async (
 
         const filter = { status: "Pending" };
 
-        // A Manager/Team Lead only sees pending requests from their direct reports; Admin/HR see everyone's.
-        if (["Manager", "Team Lead"].includes(req.user.role)) {
-            const reports = await employeeModel.find({ manager: req.user.id }).select("_id");
-            filter.employeeId = { $in: reports.map((r) => r._id) };
-        }
+        // Leads see requests from everyone in their team (any depth); HR and firm-wide seniors see all.
+        // Never your own — someone above you decides those.
+        const scope = await scopeOf(req);
+        filter.employeeId = scope.people ? { $ne: req.user.id } : { $in: [...scope.team] };
 
         const leaves = await Leave.find(filter).populate(
             "employeeId",
@@ -310,7 +307,7 @@ export const approveLeave = async (
             });
         }
 
-        if (!(await isWithinApproverScope(req.user, leave.employeeId))) {
+        if (!(await isWithinApproverScope(req, leave.employeeId))) {
             return res.status(403).json({
                 success: false,
                 message: "You are not authorized to approve this employee's leave.",
@@ -400,7 +397,7 @@ export const rejectLeave = async (
             });
         }
 
-        if (!(await isWithinApproverScope(req.user, leave.employeeId))) {
+        if (!(await isWithinApproverScope(req, leave.employeeId))) {
             return res.status(403).json({
                 success: false,
                 message: "You are not authorized to reject this employee's leave.",
@@ -500,7 +497,10 @@ export const teamLeaveCalendar = async (req, res) => {
         const startDate = new Date(year, month - 1, 1);
         const endDate = new Date(year, month, 0, 23, 59, 59);
 
+        // Your own circle only (officials above, team mates, your team); firm-wide seniors and HR see all.
+        const circle = await circleOf(await scopeOf(req));
         const leaves = await Leave.find({
+            ...(circle ? { employeeId: { $in: [...circle] } } : {}),
             status: { $in: ["Pending", "Approved"] },
             fromDate: { $lte: endDate },
             toDate: { $gte: startDate },

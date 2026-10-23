@@ -100,6 +100,7 @@ const fetchMyPermissions = function* () {
     if (result?.success) {
       yield put({ type: actions.SET_PERMISSIONS, payload: result.data });
       yield put({ type: actions.SET_GRANTED_PERMISSIONS, payload: result.granted });
+      yield put({ type: actions.SET_TEAM_SCOPE, payload: result.team });
     }
   } catch (err) {
     // Non-fatal — pages fall back to their role-based checks if this fails.

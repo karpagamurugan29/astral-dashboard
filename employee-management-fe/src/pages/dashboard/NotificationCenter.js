@@ -12,6 +12,8 @@ const TYPES = [
     { value: 'Expense', icon: 'mdi-credit-card-outline', color: '#10b981' },
     { value: 'Asset', icon: 'mdi-laptop', color: '#f59e0b' },
     { value: 'Ticket', icon: 'mdi-lifebuoy', color: '#8b5cf6' },
+    { value: 'Task', icon: 'mdi-checkbox-marked-circle-outline', color: '#1e40af' },
+    { value: 'Project', icon: 'mdi-folder-outline', color: '#0891b2' },
     { value: 'General', icon: 'mdi-bell-outline', color: '#0ea5e9' },
 ]
 const typeMeta = (type) => TYPES.find((t) => t.value === type) || TYPES[TYPES.length - 1]

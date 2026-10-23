@@ -8,15 +8,15 @@ import attendanceModel from "../models/attendanceModel.js";
 import leaveModel from "../models/leaveModel.js";
 import regularizationModel from "../models/regularizationModel.js";
 import expenseModel from "../models/expenseModel.js";
+import { scopeOf, workFilter } from "../utils/hierarchy.js";
+// People a senior keeps an eye on: everyone (HR / firm-wide seniors) or their whole team below them.
+const teamQuery = async (req) => { const s = await scopeOf(req); return s.people ? { status: "Active", _id: { $ne: req.user.id } } : { status: "Active", _id: { $in: [...s.team] } }; };
 
-const SENIOR = ["Admin", "HR", "Manager", "Team Lead"];
 
 // Things waiting on a senior: approvals, audits slipping, people not checked in yet.
 // Admin/HR look at everyone; Managers / Team Leads at their direct reports.
 const attentionFor = async (req, audits, totalByAudit, today) => {
-    const team = MANAGERS.includes(req.user.role)
-        ? await employeeModel.find({ status: "Active" }).select("_id firstName lastName employeeId").lean()
-        : await employeeModel.find({ status: "Active", manager: req.user.id }).select("_id firstName lastName employeeId").lean();
+    const team = await employeeModel.find(await teamQuery(req)).select("_id firstName lastName employeeId").lean();
     const ids = team.map((e) => e._id);
     const dateUtc = new Date().toISOString().split("T")[0];
     const [leaves, corrections, expenses, checkedIn, onLeave] = await Promise.all([
@@ -61,9 +61,8 @@ export const getAuditInsights = async (req, res) => {
         const from30 = today - 29 * DAY;
         const weekStart = (() => { const d = new Date(today); const dow = (d.getDay() + 6) % 7; return today - dow * DAY; })(); // Monday
 
-        const scope = MANAGERS.includes(req.user.role)
-            ? { isDeleted: false }
-            : { isDeleted: false, $or: [{ teamMembers: req.user.id }, { auditManager: req.user.id }] };
+        const viewer = await scopeOf(req);
+        const scope = { isDeleted: false, ...(await workFilter(req, "auditManager", "teamMembers")) };
 
         const audits = await AuditEngagementModel.find(scope)
             .select("auditCode clientName clientId engagementName auditType financialYear status endDate estimatedHours auditManager teamMembers")
@@ -141,7 +140,7 @@ export const getAuditInsights = async (req, res) => {
             openAudits: audits.filter((a) => !CLOSED.includes(a.status) && [a.auditManager, ...(a.teamMembers || [])].some((p) => String(p) === String(req.user.id))).length,
         };
 
-        const attention = SENIOR.includes(req.user.role) ? await attentionFor(req, audits, totalByAudit, today) : null;
+        const attention = viewer.people || viewer.leads ? await attentionFor(req, audits, totalByAudit, today) : null;
 
         // 9. "My audits": every open project the caller manages or works on, with their own hours.
         const myId = String(req.user.id);
@@ -172,7 +171,7 @@ export const getAuditInsights = async (req, res) => {
         const dayStart = localDayStart().getTime();
         const todaySessions = logs
             .filter((l) => l.employeeId && new Date(l.startTime).getTime() < now && (!l.endTime || new Date(l.endTime).getTime() >= dayStart))
-            .filter((l) => SENIOR.includes(req.user.role) || String(l.employeeId._id) === String(req.user.id))
+            .filter((l) => viewer.firm || viewer.leads || String(l.employeeId._id) === String(req.user.id))
             .map((l) => {
                 const a = byId.get(String(l.auditId));
                 const start = Math.max(new Date(l.startTime).getTime(), dayStart);
@@ -194,7 +193,7 @@ export const getAuditInsights = async (req, res) => {
 
         return res.status(200).json({
             success: true,
-            data: { scope: MANAGERS.includes(req.user.role) ? "firm" : "mine", daily, byClient, byPerson, statusCounts, deadlines, activeNow, me, attention, todaySessions, myAudits, dayStart: new Date(dayStart), weekStart: ymd(weekStart) },
+            data: { scope: viewer.firm ? "firm" : viewer.leads ? "team" : "mine", daily, byClient, byPerson, statusCounts, deadlines, activeNow, me, attention, todaySessions, myAudits, dayStart: new Date(dayStart), weekStart: ymd(weekStart) },
         });
     } catch (err) {
         return res.status(500).json({ success: false, message: err.message });
@@ -210,9 +209,7 @@ export const getTodayCheckins = async (req, res) => {
         const { sessionsOf, openSession } = await import("../utils/attendanceSessions.js");
         const since = localDayStart();
 
-        const team = MANAGERS.includes(req.user.role)
-            ? await employeeModel.find({ status: "Active" }).select("employeeId firstName lastName designation department profileImage phoneNumber").lean()
-            : await employeeModel.find({ status: "Active", manager: req.user.id }).select("employeeId firstName lastName designation department profileImage phoneNumber").lean();
+        const team = await employeeModel.find(await teamQuery(req)).select("employeeId firstName lastName designation department profileImage phoneNumber").lean();
         const ids = team.map((e) => e._id);
 
         const records = await attendanceModel
@@ -278,7 +275,7 @@ export const remindCheckin = async (req, res) => {
         const asked = (Array.isArray(req.body?.employeeIds) ? req.body.employeeIds : []).map(String);
         if (!asked.length) return res.status(400).json({ success: false, message: "Pick at least one person to remind." });
 
-        const scope = MANAGERS.includes(req.user.role) ? { status: "Active" } : { status: "Active", manager: req.user.id };
+        const scope = await teamQuery(req);
         const team = await employeeModel.find({ ...scope, _id: { $in: asked } }).select("_id").lean();
         const ids = team.map((e) => e._id);
         const records = await attendanceModel.find({ employeeId: { $in: ids }, "checkIn.time": { $gte: new Date(since.getTime() - 864e5) } }).lean();

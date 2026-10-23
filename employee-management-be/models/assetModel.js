@@ -40,6 +40,31 @@ const AssetSchema = new mongoose.Schema(
             type: String,
             trim: true,
         },
+        // short label printed on the sticker, e.g. AST-0007 (set automatically)
+        assetTag: {
+            type: String,
+            trim: true,
+            unique: true,
+            sparse: true,
+        },
+        brand: { type: String, trim: true, default: "" },
+        model: { type: String, trim: true, default: "" },
+        condition: { type: String, enum: ["New", "Good", "Fair", "Damaged"], default: "Good" },
+        purchaseDate: { type: Date, default: null },
+        warrantyUntil: { type: Date, default: null },
+        // every hand-over, newest last: who had it, when, who gave / took it back, in what condition
+        history: [
+            {
+                employee: { type: mongoose.Schema.Types.ObjectId, ref: "Employee" },
+                assignedAt: { type: Date },
+                assignedBy: { type: mongoose.Schema.Types.ObjectId, ref: "Employee" },
+                assignNote: { type: String, default: "" },
+                returnedAt: { type: Date, default: null },
+                returnedBy: { type: mongoose.Schema.Types.ObjectId, ref: "Employee", default: null },
+                returnCondition: { type: String, default: "" },
+                returnNote: { type: String, default: "" },
+            },
+        ],
     },
     {
         timestamps: true,

@@ -1,5 +1,16 @@
 import ProjectModel from "../models/ProjectModel.js"
 import { logAudit } from "../utils/audit.js";
+import { scopeOf, workFilter } from "../utils/hierarchy.js";
+// Who may change a project: firm-wide seniors, its lead, and anyone above the lead.
+const canRunProject = async (req, id) => {
+    const p = await ProjectModel.findOne({ _id: id, isDeleted: false }).select("projectManager").lean();
+    if (!p) return null;
+    const scope = await scopeOf(req);
+    const lead = String(p.projectManager || "");
+    return scope.firm || lead === scope.me || scope.team.has(lead);
+};
+const refuse = (res, ok) => res.status(ok === null ? 404 : 403).json({ success: false, message: ok === null ? "Project not found" : "Only the project lead or their seniors can change this project." });
+
 
 export const createProject = async (req, res) => {
     try {
@@ -69,6 +80,8 @@ export const updateProject = async (req, res) => {
 export const deleteProject = async (req, res) => {
     try {
         const { id } = req.params
+        const ok = await canRunProject(req, id)
+        if (!ok) return refuse(res, ok)
 
         const project = await ProjectModel.findByIdAndUpdate(id, { isDeleted: true }, { new: true })
 
@@ -88,7 +101,8 @@ export const getProjectById = async (req, res) => {
     try {
         const { id } = req.params
 
-        const project = await ProjectModel.findOne({ _id: id, isDeleted: false })
+        // only projects the caller or their team works on (firm-wide seniors: any)
+        const project = await ProjectModel.findOne({ _id: id, isDeleted: false, ...(await workFilter(req)) })
             .populate("projectManager", "employeeId firstName lastName")
             .populate("teamMembers", "employeeId firstName lastName")
 
@@ -135,6 +149,8 @@ export const addProjectMember = async (req, res) => {
     try {
         const { id } = req.params
         const { employeeId } = req.body
+        const ok = await canRunProject(req, id)
+        if (!ok) return refuse(res, ok)
 
         const project = await ProjectModel.findByIdAndUpdate(
             id,
@@ -155,6 +171,8 @@ export const addProjectMember = async (req, res) => {
 export const removeProjectMember = async (req, res) => {
     try {
         const { id, userId } = req.params
+        const ok = await canRunProject(req, id)
+        if (!ok) return refuse(res, ok)
 
         const project = await ProjectModel.findByIdAndUpdate(
             id,

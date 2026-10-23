@@ -3,18 +3,20 @@ import ProjectModel from "../models/ProjectModel.js";
 import employeeModel from "../models/employeeModel.js";
 import { notify } from "../utils/notify.js";
 import { logAudit } from "../utils/audit.js";
+import { scopeOf } from "../utils/hierarchy.js";
 
 export const getTasks = async (req, res) => {
     try {
-        const isOrgWide = ["Admin", "HR"].includes(req.user.role);
+        const scope = await scopeOf(req);
+        const isOrgWide = scope.firm;
 
         let filter = { assignedTo: req.user.id };
 
         // A Manager/Team Lead sees their own tasks, plus enough to actually "monitor" their
         // people: their direct reports' tasks and any task in a project they manage/belong to.
-        if (["Manager", "Team Lead"].includes(req.user.role)) {
+        if (scope.leads) {
             const [reports, scopedProjects] = await Promise.all([
-                employeeModel.find({ manager: req.user.id }).select("_id"),
+                [...scope.team].map((id) => ({ _id: id })),
                 ProjectModel.find({ $or: [{ projectManager: req.user.id }, { teamMembers: req.user.id }] }).select("_id"),
             ]);
 

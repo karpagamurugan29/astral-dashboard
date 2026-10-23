@@ -10,6 +10,7 @@ import { COMPANY_TZ, localDayStart } from "../utils/autoCheckout.js";
 import { minutesOf } from "../utils/auditShared.js";
 import { viewerOf, reportsUnder } from "../utils/documentAccess.js";
 import { range, teamScope } from "./workbenchReport.controller.js";
+import { scopeOf, workFilter } from "../utils/hierarchy.js";
 
 // Business insight reports (utilisation, profitability, punctuality, document compliance) and
 // the dashboard's "Business pulse". Admin / HR see everyone; Managers / Team Leads their team.
@@ -25,10 +26,12 @@ const fail = (res, err) => res.status(err.status || 500).json({ success: false, 
 const dayKey = (d) => new Date(d).toLocaleDateString("en-CA", { timeZone: COMPANY_TZ() });
 const r1 = (n) => Math.round(n * 10) / 10;
 
+// Fees, cost and margin: Admin / HR, the firm-wide seniors (incl. Senior Managers) and Accounts.
 const canSeeMoney = async (req) => {
     if (["Admin", "HR"].includes(req.user.role)) return true;
-    const me = await employeeModel.findById(req.user.id).select("designation").lean();
-    return MONEY_DESIGNATIONS.includes(me?.designation);
+    const scope = await scopeOf(req);
+    if (scope.firm || scope.finance) return true;
+    return MONEY_DESIGNATIONS.includes(scope.designation);
 };
 
 // Working days (Mon–Fri, not a holiday) in [start, end), as YYYY-MM-DD in company time.
@@ -139,7 +142,7 @@ export const utilisationReport = async (req, res) => {
 export const computeProfitability = async (req, { status, clientId, financialYear } = {}) => {
     const money = await canSeeMoney(req);
     const filter = { isDeleted: false };
-    if (!["Admin", "HR"].includes(req.user.role) && !money) filter.$or = [{ auditManager: req.user.id }, { teamMembers: req.user.id }];
+    if (!["Admin", "HR"].includes(req.user.role) && !money) Object.assign(filter, await workFilter(req, "auditManager", "teamMembers"));
     if (status === "open") filter.status = { $nin: ["Completed", "Cancelled"] };
     else if (status) filter.status = status;
     if (clientId) filter.clientId = clientId;
@@ -364,7 +367,8 @@ export const businessPulse = async (req, res) => {
 
         const meDoc = await employeeModel.findById(req.user.id).select(`${PERSON} salary`).lean();
         const meUtil = await computeUtilisation(req, { start: weekStart, end, people: meDoc ? [meDoc] : [] });
-        const senior = ["Admin", "HR", "Manager", "Team Lead"].includes(req.user.role);
+        const viewer = await scopeOf(req);
+        const senior = viewer.people || viewer.leads;
         const people = senior ? await peopleInScope(req) : null;
         const expenses = await computeExpenses(req, { people: people && people.filter((p) => String(p._id) !== String(req.user.id)), monthStart });
         const data = { me: { utilisation: meUtil.rows[0] || null, weekStart, expenses: expenses.me } };

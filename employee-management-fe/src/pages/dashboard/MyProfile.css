@@ -60,3 +60,5 @@
     .mp-bar > div { width: 100%; display: flex; gap: 8px; }
     .mp-bar .pp-btn { flex: 1; }
 }
+.mp-main { min-width: 0; }
+.mp-main > .og-card { margin-bottom: 16px; }

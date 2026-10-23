@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
@@ -17,8 +17,13 @@ import { useSelector } from 'react-redux';
 /* -------------------------------------------------------------------------- */
 // A module granted beyond the role (Access Control: department or personal) opens items
 // whose role list would otherwise hide them.
-const roleOk = (menuItem, userRole, granted) =>
-    !menuItem.roles || menuItem.roles.includes(userRole) || (!!menuItem.module && !!granted?.includes(menuItem.module));
+// item.team — a team screen: shown to anyone who leads a team (any designation), HR and the
+// firm-wide seniors; item.finance also opens it to Accounts. ('@team' / '@finance' are added to
+// `granted` from the reporting-tree scope in the Sidebar below.)
+const roleOk = (menuItem, userRole, granted) => {
+    if (menuItem.team) return userRole === 'Admin' || !!granted?.includes('@team') || (!!menuItem.finance && !!granted?.includes('@finance'));
+    return !menuItem.roles || menuItem.roles.includes(userRole) || (!!menuItem.module && !!granted?.includes(menuItem.module));
+};
 
 // item.screen — a screen permission (Access Control) needed to see this item at all.
 const screenOk = (menuItem, userRole, permissions) => !menuItem.screen || userRole === 'Admin' || !!permissions?.includes(menuItem.screen);
@@ -149,9 +154,14 @@ export const Sidebar = () => {
     /*  than left as dead links: those are full modules of their own that     */
     /*  aren't built, not a missing screen or two.                            */
     /* ---------------------------------------------------------------------- */
-    const { isAuthenticated: user, permissions, granted } = useSelector((state) => state.authReducer || {});
+    const { isAuthenticated: user, permissions, granted: grantedModules, team } = useSelector((state) => state.authReducer || {});
     const userRole = user?.role;
-    const isAdminHR = ADMIN_HR.includes(userRole);
+    // Until the reporting-tree scope arrives, fall back to the old role list for team screens.
+    const granted = useMemo(() => [
+        ...(grantedModules || []),
+        ...((team ? team.leads || team.people : ADMIN_HR_MANAGER.includes(userRole)) ? ['@team'] : []),
+        ...(team?.finance ? ['@finance'] : []),
+    ], [grantedModules, team, userRole]);
 
     // Grouped by purpose. Inside each module the person's own items come first,
     // team / admin items after. Section titles hide when nothing below them is visible.
@@ -163,6 +173,7 @@ export const Sidebar = () => {
         { name: "announcements", label: "Announcements", icon: "volume-2", link: "/announcements", screen: "screen:announcements" },
 
         { name: "people-title", isTitle: true, label: "People" },
+        { name: "organisation", label: "Organisation", icon: "git-merge", link: "/organisation" },
         {
             name: "employees",
             label: "Employees",
@@ -185,10 +196,10 @@ export const Sidebar = () => {
                 { name: "attendance-regularization", label: "Regularization", link: "/attendance/regularization", screen: "screen:attendance" },
                 { name: "attendance-holidays", label: "Holidays", link: "/attendance/holidays", screen: "screen:holidays" },
                 { name: "attendance-shifts", label: "Shifts", link: "/attendance/shifts", screen: "screen:shifts" },
-                { name: "attendance-team", label: "Team Attendance", link: "/attendance/team", roles: ADMIN_HR_MANAGER, module: "attendance" },
+                { name: "attendance-team", label: "Team Attendance", link: "/attendance/team", team: true, module: "attendance" },
             ],
         },
-        { name: "location-log", label: "Location Log", icon: "map-pin", link: "/location-log", roles: ADMIN_HR_MANAGER, module: "attendance" },
+        { name: "location-log", label: "Location Log", icon: "map-pin", link: "/location-log", team: true, module: "attendance" },
         {
             name: "leave",
             label: "Leave",
@@ -197,7 +208,7 @@ export const Sidebar = () => {
                 { name: "leave-my", label: "My Leave", link: "/leave", screen: "screen:leave" },
                 { name: "leave-apply", label: "Apply Leave", link: "/leave/apply", screen: "screen:leave" },
                 { name: "leave-team-calendar", label: "Team Calendar", link: "/leave/team-calendar", screen: "screen:leave" },
-                { name: "leave-approvals", label: "Approvals", link: "/leave/approvals", roles: ADMIN_HR_MANAGER, module: "leave" },
+                { name: "leave-approvals", label: "Approvals", link: "/leave/approvals", team: true, module: "leave" },
                 { name: "leave-settings", label: "Leave Settings", link: "/settings/company", roles: ADMIN, module: "settings" },
             ],
         },
@@ -227,7 +238,7 @@ export const Sidebar = () => {
             icon: "folder",
             children: [
                 { name: "projects-list", label: "Projects", link: "/projects", screen: "screen:projects" },
-                { name: "projects-tasks", label: "Task Board", link: "/tasks", screen: "screen:projects" },
+                { name: "projects-tasks", label: "My Tasks", link: "/tasks", screen: "screen:projects" },
             ],
         },
 
@@ -249,7 +260,7 @@ export const Sidebar = () => {
             icon: "credit-card",
             children: [
                 { name: "expenses-my", label: "My Expenses", link: "/expenses", screen: "screen:expenses" },
-                { name: "expenses-approvals", label: "Approvals", link: "/expenses/approvals", roles: ADMIN_HR_MANAGER, module: "expenses" },
+                { name: "expenses-approvals", label: "Approvals", link: "/expenses/approvals", team: true, finance: true, module: "expenses" },
             ],
         },
         {
@@ -257,14 +268,15 @@ export const Sidebar = () => {
             label: "Assets",
             icon: "monitor",
             children: [
-                { name: "assets-assignments", label: isAdminHR ? "Assignments" : "My Assets", link: "/assets/assignments", screen: "screen:assets" },
-                // The full register is a management screen.
+                // everyone sees what's assigned to them; the register and assigning are for top levels
+                { name: "assets-mine", label: "My Assets", link: "/assets/mine" },
                 { name: "assets-list", label: "Asset Register", link: "/assets", roles: ADMIN_HR, module: "assets" },
+                { name: "assets-assignments", label: "Who Has What", link: "/assets/assignments", roles: ADMIN_HR, module: "assets" },
             ],
         },
 
         { name: "insights-title", isTitle: true, label: "Insights" },
-        { name: "reports", label: "Reports", icon: "bar-chart-2", link: "/reports/attendance", roles: ADMIN_HR_MANAGER, module: "reports" },
+        { name: "reports", label: "Reports", icon: "bar-chart-2", link: "/reports/attendance", team: true, module: "reports" },
 
         { name: "admin-title", isTitle: true, label: "Administration" },
         {

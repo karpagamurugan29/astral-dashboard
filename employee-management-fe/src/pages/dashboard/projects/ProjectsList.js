@@ -1,259 +1,126 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { useForm } from 'react-hook-form'
-import { Link } from 'react-router-dom'
-import projectActions from '../../../redux/project/Actions'
-import taskActions from '../../../redux/task/Actions'
+import { Link, useNavigate } from 'react-router-dom'
 import employeeActions from '../../../redux/employee/Actions'
-import { PeopleShell, Avatar, ProgressRing, EmptyState, ErrorBanner, fullName } from '../../../components/people/PeopleUI'
-import { CURRENCY } from '../../../components/payroll/PayrollUI'
-import {
-    PROJECTS_ROOT, PROJECT_STATUS, PRIORITY, ProjectStatus, PriorityTag, projectStatusMeta, AvatarStack, PeoplePicker, progressOf, startOfDay,
-} from '../../../components/projects/ProjectUI'
-import '../../../components/attendance/attendance.css'
-import './ProjectsList.css'
-import { useAccess } from '../../../hooks/useAccess'
+import { PeopleShell, EmptyState, ErrorBanner, fullName } from '../../../components/people/PeopleUI'
+import { PROJECTS_ROOT, ProjectStatus, PriorityTag, AvatarStack, projectStatusMeta } from '../../../components/projects/ProjectUI'
+import { toast } from '../../../components/common/Toaster'
+import { api, hm, fmtDay, modeIcon, ProjectForm, useTick } from './ProjectParts'
 
-const DAY = 24 * 60 * 60 * 1000
-const FORMER = ['Resigned', 'Terminated']
-const BLANK = { projectCode: '', projectName: '', clientName: '', description: '', projectManager: '', priority: 'Medium', startDate: '', endDate: '', budget: '' }
+/* -------------------------------------------------------------------------- */
+/*  Projects. Seniors (who manage projects) see every project with status,    */
+/*  deadlines, progress and hours, and can add new ones. Everyone else sees   */
+/*  the projects they're part of and their open tasks in each.                */
+/* -------------------------------------------------------------------------- */
 
-const deadline = (p) => {
-    if (!p.endDate || ['Completed', 'Cancelled'].includes(p.status)) return null
-    const days = Math.round((startOfDay(p.endDate) - startOfDay(Date.now())) / DAY)
-    if (days < 0) return { text: `${-days}d past deadline`, color: '#e11d48', icon: 'mdi-alert-circle-outline' }
-    if (days === 0) return { text: 'Due today', color: '#d97706', icon: 'mdi-flag-checkered' }
-    if (days <= 14) return { text: `${days}d left`, color: '#d97706', icon: 'mdi-timer-sand' }
-    return { text: `Ends ${new Date(p.endDate).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}`, color: '#64748b', icon: 'mdi-flag-outline' }
-}
-
-const SORTS = {
-    deadline: { label: 'Deadline', fn: (a, b) => new Date(a.endDate || 8.64e15) - new Date(b.endDate || 8.64e15) },
-    name: { label: 'Name', fn: (a, b) => a.projectName.localeCompare(b.projectName) },
-    progress: { label: 'Least progress', fn: (a, b, tasks) => progressOf(a, tasks).pct - progressOf(b, tasks).pct },
-}
+const TABS = ['All', 'Active', 'Planning', 'On Hold', 'Completed']
 
 export const ProjectsList = () => {
     const dispatch = useDispatch()
-    const { list, error } = useSelector((state) => state.projectReducer || {})
-    const { list: tasks } = useSelector((state) => state.taskReducer || {})
+    const navigate = useNavigate()
     const { list: employees } = useSelector((state) => state.employeeReducer || {})
-    const { can } = useAccess()
-    const canManage = can(['Admin', 'HR', 'Manager', 'Team Lead'], 'projects')
-    const { register, handleSubmit, reset, watch, formState: { errors } } = useForm({ defaultValues: BLANK })
-    const [team, setTeam] = useState([])
+    const [data, setData] = useState(null)
+    const [error, setError] = useState('')
+    const [tab, setTab] = useState('All')
+    const [q, setQ] = useState('')
+    const [lead, setLead] = useState('')
     const [creating, setCreating] = useState(false)
-    const [search, setSearch] = useState('')
-    const [statusFilter, setStatusFilter] = useState('')
-    const [sort, setSort] = useState('deadline')
 
-    useEffect(() => {
-        dispatch({ type: projectActions.GET_PROJECTS })
-        dispatch({ type: taskActions.GET_TASKS })
-        dispatch({ type: employeeActions.GET_EMPLOYEES })
-    }, [dispatch])
+    const load = useCallback(() => api('GET', '/projects').then((j) => { setData(j); setError('') }).catch((e) => setError(e.message)), [])
+    useEffect(() => { load() }, [load])
+    useEffect(() => { if (data?.canManage && !employees?.length) dispatch({ type: employeeActions.GET_EMPLOYEES }) }, [data?.canManage, employees?.length, dispatch])
 
-    const onSubmit = (data) => {
-        const payload = { ...data, teamMembers: team, budget: data.budget === '' ? undefined : Number(data.budget) }
-        dispatch({ type: projectActions.ADD_PROJECT, payload })
-        reset(BLANK)
-        setTeam([])
-        setCreating(false)
-    }
-
-    const onCancel = () => { reset(BLANK); setTeam([]); setCreating(false) }
-
-    const onDelete = (p) => {
-        if (window.confirm(`Archive project "${p.projectName}"? It will be hidden from everyone's project list.`)) {
-            dispatch({ type: projectActions.DELETE_PROJECT, id: p._id })
-        }
-    }
-
-    const all = useMemo(() => list || [], [list])
-    const people = useMemo(() => (employees || []).filter((e) => !FORMER.includes(e.status)), [employees])
-    const counts = useMemo(() => Object.fromEntries(Object.keys(PROJECT_STATUS).map((s) => [s, all.filter((p) => p.status === s).length])), [all])
-    const late = all.filter((p) => p.endDate && !['Completed', 'Cancelled'].includes(p.status) && startOfDay(p.endDate) < startOfDay(Date.now())).length
-
-    const rows = useMemo(() => {
-        const q = search.trim().toLowerCase()
-        return all
-            .filter((p) => !statusFilter || p.status === statusFilter)
-            .filter((p) => !q || `${p.projectName} ${p.projectCode} ${p.clientName || ''} ${fullName(p.projectManager)}`.toLowerCase().includes(q))
-            .sort((a, b) => SORTS[sort].fn(a, b, tasks))
-    }, [all, statusFilter, search, sort, tasks])
-
-    const startDate = watch('startDate')
+    const people = useMemo(() => (employees || []).filter((e) => e.status === 'Active').sort((a, b) => fullName(a).localeCompare(fullName(b))), [employees])
+    const projects = useMemo(() => data?.data || [], [data])
+    const manage = !!data?.canManage
+    const leads = useMemo(() => { const m = new Map(); projects.forEach((p) => p.projectManager && m.set(p.projectManager._id, p.projectManager)); return [...m.values()] }, [projects])
+    const list = projects.filter((p) => (tab === 'All' ? p.status !== 'Cancelled' : p.status === tab))
+        .filter((p) => !lead || p.projectManager?._id === lead)
+        .filter((p) => !q || [p.projectName, p.projectCode, p.clientName, fullName(p.projectManager)].join(' ').toLowerCase().includes(q.toLowerCase()))
+    const open = projects.filter((p) => !['Completed', 'Cancelled'].includes(p.status))
+    const dueSoon = open.filter((p) => p.daysLeft !== null && p.daysLeft >= 0 && p.daysLeft <= 7).length
+    const overdue = open.filter((p) => p.daysLeft !== null && p.daysLeft < 0).length
+    const myOpenTasks = projects.reduce((s, p) => s + (p.taskCounts?.mine || 0), 0)
+    const weekMin = projects.reduce((s, p) => s + (p.weekMinutes || 0), 0)
+    const myTimer = data?.myTimer
+    const now = useTick(!!myTimer, 30000)
 
     return (
-        <PeopleShell
-            title="Projects"
-            root={PROJECTS_ROOT}
-            crumbs={[{ label: 'All projects' }]}
+        <PeopleShell title={manage ? 'All projects' : 'My projects'} root={PROJECTS_ROOT} crumbs={[{ label: manage ? 'All projects' : 'My projects' }]}
             actions={<>
-                <Link to="/tasks" className="pp-btn"><i className="mdi mdi-view-column-outline"></i> Task board</Link>
-                {canManage && !creating && <button type="button" className="pp-btn primary" onClick={() => setCreating(true)}><i className="mdi mdi-plus"></i> New project</button>}
-            </>}
-        >
+                <Link to="/tasks" className="pp-btn"><i className="mdi mdi-format-list-checks"></i>My tasks{myOpenTasks ? <b className="pw-count">{myOpenTasks}</b> : null}</Link>
+                {manage && <button type="button" className="pp-btn primary" onClick={() => setCreating(true)}><i className="mdi mdi-plus"></i>New project</button>}
+            </>}>
             <ErrorBanner error={error} />
 
-            <div className="at-tiles">
-                <div className="at-tile" style={{ '--c': '#0284c7' }}>
-                    <span className="at-tile-icon"><i className="mdi mdi-rocket-launch-outline"></i></span>
-                    <div><b>{counts.Active}</b><span>Active</span></div>
-                </div>
-                <div className="at-tile" style={{ '--c': '#64748b' }}>
-                    <span className="at-tile-icon"><i className="mdi mdi-pencil-ruler"></i></span>
-                    <div><b>{counts.Planning}</b><span>In planning</span></div>
-                </div>
-                <div className="at-tile" style={{ '--c': '#059669' }}>
-                    <span className="at-tile-icon"><i className="mdi mdi-check-decagram"></i></span>
-                    <div><b>{counts.Completed}</b><span>Completed</span></div>
-                </div>
-                <div className="at-tile" style={{ '--c': late ? '#e11d48' : '#64748b' }}>
-                    <span className="at-tile-icon"><i className="mdi mdi-alert-circle-outline"></i></span>
-                    <div><b>{late}</b><span>Past deadline</span></div>
-                </div>
-            </div>
-
-            {canManage && creating && (
-                <form className="pp-card pj-panel" onSubmit={handleSubmit(onSubmit)} noValidate>
-                    <div className="pp-card-head">
-                        <h3><i className="mdi mdi-folder-plus-outline me-2" style={{ color: '#0284c7' }}></i>New project</h3>
-                        <button type="button" className="pp-btn icon ghost" onClick={onCancel} aria-label="Close"><i className="mdi mdi-close"></i></button>
-                    </div>
-                    <div className="pp-card-body">
-                        <div className="pj-form-grid">
-                            <div className="pp-field">
-                                <label className="pp-label">Code<span className="req">*</span></label>
-                                <input type="text" autoFocus placeholder="e.g. HRM-24" className={`pp-input ${errors.projectCode ? 'is-invalid' : ''}`} {...register('projectCode', { required: 'Required' })} />
-                                {errors.projectCode && <div className="pp-err">{errors.projectCode.message}</div>}
-                            </div>
-                            <div className="pp-field span-2">
-                                <label className="pp-label">Project name<span className="req">*</span></label>
-                                <input type="text" placeholder="e.g. Mobile app relaunch" className={`pp-input ${errors.projectName ? 'is-invalid' : ''}`} {...register('projectName', { required: 'Give the project a name' })} />
-                                {errors.projectName && <div className="pp-err">{errors.projectName.message}</div>}
-                            </div>
-                            <div className="pp-field">
-                                <label className="pp-label">Client</label>
-                                <input type="text" placeholder="Internal" className="pp-input" {...register('clientName')} />
-                            </div>
-                            <div className="pp-field">
-                                <label className="pp-label">Project manager<span className="req">*</span></label>
-                                <select className={`pp-select ${errors.projectManager ? 'is-invalid' : ''}`} {...register('projectManager', { required: 'Pick a manager' })}>
-                                    <option value="">Select</option>
-                                    {people.map((e) => <option key={e._id} value={e._id}>{fullName(e)}</option>)}
-                                </select>
-                                {errors.projectManager && <div className="pp-err">{errors.projectManager.message}</div>}
-                            </div>
-                            <div className="pp-field">
-                                <label className="pp-label">Priority</label>
-                                <select className="pp-select" {...register('priority')}>
-                                    {Object.keys(PRIORITY).map((p) => <option key={p} value={p}>{p}</option>)}
-                                </select>
-                            </div>
-                            <div className="pp-field">
-                                <label className="pp-label">Start<span className="req">*</span></label>
-                                <input type="date" className={`pp-input ${errors.startDate ? 'is-invalid' : ''}`} {...register('startDate', { required: 'Required' })} />
-                            </div>
-                            <div className="pp-field">
-                                <label className="pp-label">Deadline<span className="req">*</span></label>
-                                <input type="date" min={startDate || undefined} className={`pp-input ${errors.endDate ? 'is-invalid' : ''}`}
-                                    {...register('endDate', { required: 'Required', validate: (v) => !startDate || !v || v >= startDate || 'Must be after the start' })} />
-                                {errors.endDate && <div className="pp-err">{errors.endDate.message}</div>}
-                            </div>
-                            <div className="pp-field span-2">
-                                <label className="pp-label">Team</label>
-                                <PeoplePicker people={people} value={team} onChange={setTeam} placeholder="Add team members…" />
-                            </div>
-                            <div className="pp-field">
-                                <label className="pp-label">Budget ({CURRENCY})</label>
-                                <input type="number" min="0" placeholder="Optional" className="pp-input" {...register('budget')} />
-                            </div>
-                            <div className="pp-field span-4">
-                                <label className="pp-label">Description</label>
-                                <textarea rows={2} placeholder="What is this project about?" className="pp-input" {...register('description')}></textarea>
-                            </div>
-                        </div>
-                        <div className="pj-form-foot">
-                            <button type="button" className="pp-btn" onClick={onCancel}>Cancel</button>
-                            <button type="submit" className="pp-btn primary"><i className="mdi mdi-check"></i> Create project</button>
-                        </div>
-                    </div>
-                </form>
+            {myTimer && (
+                <Link to={`/projects/${myTimer.projectId?._id || myTimer.projectId}`} className="pw-running">
+                    <i className="pw-dot"></i><span>Timer running on <b>{myTimer.projectId?.projectName}</b> · {hm((now - new Date(myTimer.startTime)) / 60000)}</span><i className="mdi mdi-chevron-right"></i>
+                </Link>
             )}
 
-            <div className="pl-toolbar">
-                <div className="pp-search">
-                    <i className="mdi mdi-magnify"></i>
-                    <input type="search" className="pp-input" placeholder="Search projects…" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Search projects" />
-                </div>
-                <div className="pj-filters">
-                    <button type="button" className={`pj-filter ${!statusFilter ? 'active' : ''}`} style={{ '--c': '#0b0f19' }} onClick={() => setStatusFilter('')}>All <b>{all.length}</b></button>
-                    {Object.entries(PROJECT_STATUS).map(([s, m]) => counts[s] > 0 && (
-                        <button key={s} type="button" className={`pj-filter ${statusFilter === s ? 'active' : ''}`} style={{ '--c': m.color }} onClick={() => setStatusFilter(statusFilter === s ? '' : s)}>
-                            <i className={`mdi ${m.icon}`}></i>{s} <b>{counts[s]}</b>
-                        </button>
-                    ))}
-                </div>
-                <div className="at-spacer"></div>
-                <select className="pp-select" value={sort} onChange={(e) => setSort(e.target.value)} aria-label="Sort projects">
-                    {Object.entries(SORTS).map(([k, s]) => <option key={k} value={k}>Sort: {s.label}</option>)}
-                </select>
+            <div className="pw-stats">
+                {(manage ? [
+                    ['mdi-rocket-launch-outline', open.length, 'Open projects', '#0284c7'],
+                    ['mdi-calendar-clock', dueSoon, 'Due in 7 days', '#d97706'],
+                    ['mdi-alert-circle-outline', overdue, 'Past deadline', '#e11d48'],
+                    ['mdi-timer-outline', hm(weekMin), 'Logged this week', '#7c3aed'],
+                ] : [
+                    ['mdi-folder-account-outline', open.length, 'My open projects', '#0284c7'],
+                    ['mdi-format-list-checks', myOpenTasks, 'Tasks on my plate', '#d97706'],
+                    ['mdi-alert-circle-outline', projects.reduce((s, p) => s + (p.taskCounts?.overdue || 0), 0), 'Overdue tasks', '#e11d48'],
+                    ['mdi-timer-outline', hm(weekMin), 'Team time this week', '#7c3aed'],
+                ]).map(([ic, n, label, c]) => <div key={label} className="pw-stat" style={{ '--c': c }}><span><i className={`mdi ${ic}`}></i></span><b>{n}</b><small>{label}</small></div>)}
             </div>
 
-            {!rows.length ? (
-                <div className="pp-card">
-                    <EmptyState icon="mdi-folder-outline" title={all.length ? 'No projects match' : 'No projects yet'}
-                        text={all.length ? 'Try a different search or status.' : canManage ? 'Create a project to organise tasks and people.' : 'Projects you are part of will show up here.'}
-                        action={canManage && !all.length && <button type="button" className="pp-btn primary" onClick={() => setCreating(true)}><i className="mdi mdi-plus"></i> New project</button>} />
+            <section className="pp-card pw-board-card">
+                <div className="pw-toolbar">
+                    <div className="pw-tabs">{TABS.map((t) => <button key={t} type="button" className={tab === t ? 'on' : ''} onClick={() => setTab(t)}>{t}<b>{t === 'All' ? projects.filter((p) => p.status !== 'Cancelled').length : projects.filter((p) => p.status === t).length}</b></button>)}</div>
+                    <div className="pp-search pw-search"><i className="mdi mdi-magnify"></i><input type="search" className="pp-input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search project, code, client, lead…" /></div>
+                    {manage && leads.length > 1 && <select className="pp-select" value={lead} onChange={(e) => setLead(e.target.value)} aria-label="Lead"><option value="">All leads</option>{leads.map((l) => <option key={l._id} value={l._id}>{fullName(l)}</option>)}</select>}
                 </div>
-            ) : (
-                <div className="pl-grid">
-                    {rows.map((p) => {
-                        const m = projectStatusMeta(p.status)
-                        const prog = progressOf(p, tasks)
-                        const dl = deadline(p)
-                        return (
-                            <article key={p._id} className="pp-card pl-card" style={{ '--c': m.color }}>
-                                <div className="pl-top">
-                                    <div className="pl-titles">
-                                        <span className="pl-code">{p.projectCode}</span>
-                                        <h3><Link to={`/projects/${p._id}`}>{p.projectName}</Link></h3>
-                                        <span className="pl-client">{p.clientName || 'Internal'}</span>
+
+                {!data ? <div className="pw-loading"><i className="mdi mdi-loading mdi-spin"></i></div> : !list.length ? (
+                    <EmptyState icon="mdi-folder-outline" title={projects.length ? 'No projects match' : manage ? 'No projects yet' : 'You’re not on any project yet'} text={projects.length ? 'Try another tab or search.' : manage ? 'Create a project, add the team, and they can start logging time and working through tasks.' : 'When you’re added to a project it appears here with its task board.'}
+                        action={manage && !projects.length && <button type="button" className="pp-btn primary" onClick={() => setCreating(true)}><i className="mdi mdi-plus"></i>New project</button>} />
+                ) : (
+                    <div className="pw-grid">
+                        {list.map((p) => {
+                            const st = projectStatusMeta(p.status)
+                            const est = (p.estimatedHours || 0) * 60
+                            const used = est ? Math.round((p.loggedMinutes / est) * 100) : null
+                            const late = p.daysLeft !== null && p.daysLeft < 0 && !['Completed', 'Cancelled'].includes(p.status)
+                            return (
+                                <Link key={p._id} to={`/projects/${p._id}`} className="pw-pcard" style={{ '--c': st.color }}>
+                                    <div className="pw-pcard-top">
+                                        <span className="pw-code">{p.projectCode}</span>
+                                        <ProjectStatus status={p.status} />
+                                        {p.myRole && <span className="pw-role">{p.myRole}</span>}
+                                        {p.runningNow > 0 && <span className="pw-live" title="Timers running now"><i className="pw-dot"></i>{p.runningNow}</span>}
                                     </div>
-                                    <ProgressRing value={prog.pct} size={52} stroke={5} color={m.color} />
-                                </div>
-
-                                <p className="pl-desc">{p.description || <span className="pp-muted-dash">No description</span>}</p>
-
-                                <div className="pl-tags">
-                                    <ProjectStatus status={p.status} />
-                                    {p.priority && <PriorityTag priority={p.priority} />}
-                                    {dl && <span className="pp-tag" style={{ '--tag': dl.color }}><i className={`mdi ${dl.icon}`}></i>{dl.text}</span>}
-                                </div>
-
-                                <div className="pl-progress">
-                                    <div className="pl-progress-head">
-                                        <span>{prog.total ? <><b>{prog.done}</b> of {prog.total} tasks done</> : 'No tasks yet'}</span>
-                                        {prog.overdue > 0 && <span style={{ color: '#e11d48', fontWeight: 600 }}>{prog.overdue} overdue</span>}
+                                    <h3>{p.projectName}</h3>
+                                    <p className="pw-pcard-sub">{p.clientName || 'Internal'}<span><i className={`mdi ${modeIcon(p.workMode)}`}></i>{p.location?.siteName || p.workMode || 'Office'}</span></p>
+                                    <div className="pw-progress"><div><i style={{ width: `${p.progress}%` }}></i></div><b>{p.progress}%</b></div>
+                                    <div className="pw-pcard-facts">
+                                        <span title="Tasks done / total"><i className="mdi mdi-checkbox-marked-circle-outline"></i>{p.taskCounts.done}/{p.taskCounts.total} tasks</span>
+                                        {p.taskCounts.overdue > 0 && <span className="bad"><i className="mdi mdi-alert-circle-outline"></i>{p.taskCounts.overdue} overdue</span>}
+                                        {!manage && p.taskCounts.mine > 0 && <span className="mine"><i className="mdi mdi-account-check-outline"></i>{p.taskCounts.mine} mine</span>}
+                                        <span title="Time logged"><i className="mdi mdi-timer-outline"></i>{hm(p.loggedMinutes)}{est ? ` / ${p.estimatedHours}h` : ''}</span>
                                     </div>
-                                    <div className="pl-track"><span style={{ width: `${prog.pct}%` }}></span></div>
-                                </div>
+                                    {used !== null && <div className={`pw-budget ${used > 100 ? 'over' : used >= 80 ? 'near' : ''}`}><i style={{ width: `${Math.min(100, used)}%` }}></i></div>}
+                                    <div className="pw-pcard-foot">
+                                        <AvatarStack people={[p.projectManager, ...(p.teamMembers || [])].filter(Boolean)} max={5} size={26} />
+                                        <span className={`pw-deadline ${late ? 'bad' : p.daysLeft !== null && p.daysLeft <= 7 ? 'warn' : ''}`}><i className="mdi mdi-flag-checkered"></i>{p.status === 'Completed' ? 'Completed' : late ? `${-p.daysLeft}d late` : p.daysLeft === 0 ? 'Due today' : p.daysLeft !== null ? `${p.daysLeft}d left` : fmtDay(p.endDate)}</span>
+                                    </div>
+                                    {p.priority && ['High', 'Critical'].includes(p.priority) && <span className="pw-prio"><PriorityTag priority={p.priority} /></span>}
+                                </Link>
+                            )
+                        })}
+                    </div>
+                )}
+            </section>
 
-                                <div className="pl-foot">
-                                    <span className="pl-mgr"><Avatar person={p.projectManager} size={24} /><span><b>{fullName(p.projectManager)}</b></span></span>
-                                    <AvatarStack people={p.teamMembers || []} max={4} size={26} />
-                                    {canManage && (
-                                        <button type="button" className="pl-archive" onClick={() => onDelete(p)} title="Archive project" aria-label={`Archive ${p.projectName}`}>
-                                            <i className="mdi mdi-archive-outline"></i>
-                                        </button>
-                                    )}
-                                </div>
-                            </article>
-                        )
-                    })}
-                </div>
-            )}
+            {creating && <ProjectForm people={people} onClose={() => setCreating(false)} onSaved={(p) => { setCreating(false); toast.success(`${p.projectCode} is ready — add tasks and the team can start.`, { title: 'Project created' }); navigate(`/projects/${p._id}`) }} />}
         </PeopleShell>
     )
 }

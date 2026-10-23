@@ -6,6 +6,8 @@ import auditLogModel from "../models/auditLogModel.js";
 import bcrypt from "bcrypt";
 import { logAudit } from "../utils/audit.js";
 import { DEFAULT_ONBOARDING_TASKS } from "../utils/checklists.js";
+import { defaultRoleFor, wouldLoop, invalidateHierarchy, scopeOf, circleOf } from "../utils/hierarchy.js";
+import { invalidateAccessCache } from "../utils/access.js";
 
 
 export const AddEmployee = async (req, res) => {
@@ -23,6 +25,10 @@ export const AddEmployee = async (req, res) => {
             });
         }
 
+        // The access role follows the designation unless HR picked one.
+        if (!reqData.role) reqData.role = defaultRoleFor(reqData.designation) || "Employee";
+        if (!reqData.manager) reqData.manager = null;
+
         // Encrypt password
         reqData.password = await bcrypt.hash(reqData.password, 10);
         reqData.onboarding = { status: "In Progress", tasks: DEFAULT_ONBOARDING_TASKS };
@@ -32,6 +38,7 @@ export const AddEmployee = async (req, res) => {
         await newEmployee.save();
 
         await LeaveBalance.create({ employeeId: newEmployee._id });
+        invalidateHierarchy();
 
         const response = newEmployee.toObject();
         delete response.password;
@@ -56,6 +63,12 @@ export const ModifyEmployee = async (req, res) => {
     try {
         const { id } = req.params;
         const { _id, password, email, ...restData } = req.body;
+        if ("manager" in restData) {
+            if (!restData.manager) restData.manager = null;
+            else if (await wouldLoop(id, restData.manager)) {
+                return res.status(400).json({ success: false, message: "That would make a loop — the new manager already reports to this person." });
+            }
+        }
 
         if (email) {
             const checkIfExist = await employeeModel.findOne({
@@ -87,6 +100,8 @@ export const ModifyEmployee = async (req, res) => {
             });
         }
 
+        invalidateHierarchy();
+        invalidateAccessCache();
         logAudit(req, "employee.update", `Updated employee ${updateEmployee.firstName} ${updateEmployee.lastName}`, { type: "Employee", id: updateEmployee._id });
 
         return res.status(200).json({
@@ -138,6 +153,10 @@ export const UpdateEmployeeRole = async (req, res) => {
 export const GetEmployeeById = async (req, res) => {
     try {
         const { id } = req.params
+        const circle = await circleOf(await scopeOf(req));
+        if (circle && !circle.has(String(id))) {
+            return res.status(403).json({ success: false, message: "This person isn't in your team." });
+        }
 
         const canSeeSalary = ["Admin", "HR"].includes(req.user.role) || req.user.id === id;
         const hiddenFields = canSeeSalary ? "-password" : "-password -salary -otp -otpExpiresAt";
@@ -176,6 +195,7 @@ export const DeleteEmployee = async (req, res) => {
             { status: "Terminated" },
             { new: true }
         ).select("-password");
+        invalidateHierarchy();
 
         if (!employee) {
             return res.status(404).json({
@@ -203,7 +223,9 @@ export const GetAllEmployees = async (req, res) => {
         const canSeeSalary = ["Admin", "HR"].includes(req.user.role);
         const hiddenFields = canSeeSalary ? "-password" : "-password -salary -otp -otpExpiresAt";
 
-        const findEmp = await employeeModel.find({}).select(hiddenFields)
+        // Managers and below see their own circle: the officials above them, their team mates and their team.
+        const circle = await circleOf(await scopeOf(req));
+        const findEmp = await employeeModel.find(circle ? { _id: { $in: [...circle] } } : {}).select(hiddenFields)
 
         if (!findEmp) {
             return res.status(404).json({

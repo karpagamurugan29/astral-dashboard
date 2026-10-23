@@ -5,6 +5,7 @@ import employeeActions from '../../../redux/employee/Actions'
 import { PeopleShell, Avatar, EmptyState, ErrorBanner, fullName, fmtDate } from '../../../components/people/PeopleUI'
 import './Lifecycle.css'
 import { useAccess } from '../../../hooks/useAccess'
+import { toast } from '../../../components/common/Toaster'
 
 const DAY = 24 * 60 * 60 * 1000
 const daysSince = (date) => Math.max(0, Math.floor((Date.now() - new Date(date).getTime()) / DAY))
@@ -35,13 +36,11 @@ export const EmployeeOnboarding = () => {
     const [open, setOpen] = useState(null)
     const [q, setQ] = useState('')
     const [busy, setBusy] = useState({})        // key → true while a request runs
-    const [toast, setToast] = useState(null)    // { ok, text }
     const [selected, setSelected] = useState({})
 
     useEffect(() => { dispatch({ type: employeeActions.GET_ONBOARDING_LIST }) }, [dispatch])
-    useEffect(() => { if (!toast) return undefined; const t = setTimeout(() => setToast(null), 4500); return () => clearTimeout(t) }, [toast])
 
-    const say = (key) => (ok, text) => { setBusy((b) => ({ ...b, [key]: false })); setToast({ ok, text }) }
+    const say = (key) => (ok, text) => { setBusy((b) => ({ ...b, [key]: false })); toast[ok ? 'success' : 'error'](text) }
     const toggle = (emp, i, completed) => dispatch({ type: employeeActions.UPDATE_ONBOARDING_TASK, id: emp._id, taskIndex: i, completed })
     const welcome = (emp) => { setBusy((b) => ({ ...b, [`w${emp._id}`]: true })); dispatch({ type: employeeActions.SEND_ONBOARDING_WELCOME, id: emp._id, onDone: say(`w${emp._id}`) }) }
     const close = (ids) => {
@@ -69,7 +68,7 @@ export const EmployeeOnboarding = () => {
             case 'documents':
                 return <Link to={`/employees/${id}?tab=documents`} className="pp-btn sm"><i className="mdi mdi-upload"></i>Upload documents</Link>
             case 'asset':
-                return <Link to="/assets/assignments" className="pp-btn sm"><i className="mdi mdi-laptop"></i>Assign asset</Link>
+                return <Link to="/assets" className="pp-btn sm"><i className="mdi mdi-laptop"></i>Assign asset</Link>
             case 'access':
                 return <span className="ob-wait"><i className="mdi mdi-timer-sand"></i>Waiting for first sign-in</span>
             default:
@@ -84,7 +83,6 @@ export const EmployeeOnboarding = () => {
             actions={canManage && <Link to="/employees/create" className="pp-btn primary"><i className="mdi mdi-account-plus-outline"></i> Add new joiner</Link>}
         >
             <ErrorBanner error={error} />
-            {toast && <div className={`ob-toast ${toast.ok ? 'ok' : 'bad'}`} role="status"><i className={`mdi ${toast.ok ? 'mdi-check-circle' : 'mdi-alert-circle'}`}></i>{toast.text}</div>}
 
             {!canManage ? (
                 <div className="pp-card"><EmptyState icon="mdi-lock-outline" title="You don't have access" text="Only Admin and HR can view onboarding." /></div>

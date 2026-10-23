@@ -6,12 +6,22 @@ import expenseModel from "../models/expenseModel.js";
 import ticketModel from "../models/ticketModel.js";
 import taskModel from "../models/taskModel.js";
 import ProjectModel from "../models/ProjectModel.js";
+import { scopeOf, workFilter, visibleIds } from "../utils/hierarchy.js";
+// Everyone in the caller's team (any depth), shaped like a find() result.
+const teamOf = async (req) => [...(await scopeOf(req)).team].map((id) => ({ _id: new mongoose.Types.ObjectId(id) }));
 
 // aggregate()'s $match stage doesn't auto-cast strings to ObjectId the way find() does.
 const oid = (id) => new mongoose.Types.ObjectId(id);
 
+// Firm-wide seniors and HR see firm totals; everyone else the totals for themselves and their team.
+const peopleMatch = async (req, field = "employeeId") => {
+    const ids = visibleIds(await scopeOf(req), "people");
+    return ids ? { [field]: { $in: ids.map((id) => new mongoose.Types.ObjectId(id)) } } : {};
+};
+
 export const getDashboardSummary = async (req, res) => {
     try {
+        const [who, emp] = await Promise.all([peopleMatch(req), peopleMatch(req, "_id")]);
         const today = new Date().toISOString().split("T")[0];
 
         const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
@@ -25,17 +35,18 @@ export const getDashboardSummary = async (req, res) => {
             pendingExpenses,
             newEmployeesThisMonth,
         ] = await Promise.all([
-            employeeModel.countDocuments({ status: "Active" }),
-            attendanceModel.countDocuments({ attendanceDate: today, "checkIn.time": { $ne: null } }),
+            employeeModel.countDocuments({ ...emp, status: "Active" }),
+            attendanceModel.countDocuments({ ...who, attendanceDate: today, "checkIn.time": { $ne: null } }),
             leaveModel.countDocuments({
+                ...who,
                 status: "Approved",
                 fromDate: { $lte: new Date(today) },
                 toDate: { $gte: new Date(today) },
             }),
-            leaveModel.countDocuments({ status: "Pending" }),
-            ticketModel.countDocuments({ status: { $in: ["Open", "In Progress"] } }),
-            expenseModel.countDocuments({ status: "Pending" }),
-            employeeModel.countDocuments({ joiningDate: { $gte: monthStart } }),
+            leaveModel.countDocuments({ ...who, status: "Pending" }),
+            ticketModel.countDocuments({ ...who, status: { $in: ["Open", "In Progress"] } }),
+            expenseModel.countDocuments({ ...who, status: "Pending" }),
+            employeeModel.countDocuments({ ...emp, joiningDate: { $gte: monthStart } }),
         ]);
 
         const absentToday = Math.max(0, totalEmployees - presentToday - onLeaveToday);
@@ -69,7 +80,7 @@ export const getAttendanceTrend = async (req, res) => {
         }
 
         const counts = await attendanceModel.aggregate([
-            { $match: { attendanceDate: { $in: dates } } },
+            { $match: { ...(await peopleMatch(req)), attendanceDate: { $in: dates } } },
             { $group: { _id: "$attendanceDate", present: { $sum: 1 } } },
         ]);
 
@@ -89,7 +100,7 @@ export const getLeaveTrend = async (req, res) => {
         const year = Number(req.query.year) || new Date().getFullYear();
 
         const results = await leaveModel.aggregate([
-            { $match: { fromDate: { $gte: new Date(`${year}-01-01`), $lte: new Date(`${year}-12-31`) } } },
+            { $match: { ...(await peopleMatch(req)), fromDate: { $gte: new Date(`${year}-01-01`), $lte: new Date(`${year}-12-31`) } } },
             { $group: { _id: { $month: "$fromDate" }, count: { $sum: 1 } } },
         ]);
 
@@ -107,7 +118,7 @@ export const getLeaveTrend = async (req, res) => {
 export const getHeadcountByDepartment = async (req, res) => {
     try {
         const results = await employeeModel.aggregate([
-            { $match: { status: "Active" } },
+            { $match: { ...(await peopleMatch(req, "_id")), status: "Active" } },
             { $group: { _id: "$department", count: { $sum: 1 } } },
             { $sort: { count: -1 } },
         ]);
@@ -127,11 +138,11 @@ export const getTaskStatusBreakdown = async (req, res) => {
     try {
         let filter = { assignedTo: oid(req.user.id) };
 
-        if (["Admin", "HR"].includes(req.user.role)) {
+        if ((await scopeOf(req)).firm) {
             filter = {};
-        } else if (["Manager", "Team Lead"].includes(req.user.role)) {
+        } else if ((await scopeOf(req)).leads) {
             const [reports, scopedProjects] = await Promise.all([
-                employeeModel.find({ manager: req.user.id }).select("_id"),
+                teamOf(req),
                 ProjectModel.find({ $or: [{ projectManager: req.user.id }, { teamMembers: req.user.id }] }).select("_id"),
             ]);
             filter = {
@@ -167,13 +178,15 @@ export const getLeaveBreakdown = async (req, res) => {
             fromDate: { $gte: new Date(`${year}-01-01`), $lte: new Date(`${year}-12-31`) },
         };
 
-        if (req.user.role === "Employee") {
-            match.employeeId = oid(req.user.id);
-        } else if (["Manager", "Team Lead"].includes(req.user.role)) {
-            const reports = await employeeModel.find({ manager: req.user.id }).select("_id");
+        const scope = await scopeOf(req);
+        if (scope.people) {
+            // HR and firm-wide seniors — no employeeId filter, firm-wide.
+        } else if (scope.leads) {
+            const reports = await teamOf(req);
             match.employeeId = { $in: [oid(req.user.id), ...reports.map((r) => r._id)] };
+        } else {
+            match.employeeId = oid(req.user.id);
         }
-        // Admin/HR — no employeeId filter, org-wide.
 
         const counts = await leaveModel.aggregate([
             { $match: match },
@@ -194,10 +207,7 @@ export const getLeaveBreakdown = async (req, res) => {
 // project list (own/managed projects for Manager/Team Lead/Employee, everyone's for Admin/HR).
 export const getProjectProgress = async (req, res) => {
     try {
-        const isOrgWide = ["Admin", "HR"].includes(req.user.role);
-        const filter = isOrgWide
-            ? { isDeleted: false }
-            : { isDeleted: false, $or: [{ teamMembers: req.user.id }, { projectManager: req.user.id }] };
+        const filter = { isDeleted: false, ...(await workFilter(req)) };
 
         const projects = await ProjectModel.find(filter)
             .select("projectName progress status")

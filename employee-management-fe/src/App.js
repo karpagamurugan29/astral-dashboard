@@ -5,9 +5,11 @@ import { ForgotPassword } from './pages/dashboard/ForgotPassword';
 import { ResetPassword } from './pages/dashboard/ResetPassword';
 import { ChangePassword } from './pages/dashboard/ChangePassword';
 import { MyProfile } from './pages/dashboard/MyProfile';
+import { Organisation } from './pages/dashboard/Organisation';
 import { NotificationCenter } from './pages/dashboard/NotificationCenter';
 import feather from "feather-icons";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { Toaster } from './components/common/Toaster';
 import { DashContent } from './pages/dashboard/dash/DashContent';
 import { Provider } from 'react-redux';
 import { store } from "./redux/Store"
@@ -23,7 +25,7 @@ import { DesignationList } from './pages/dashboard/organization/DesignationList'
 import { BranchList } from './pages/dashboard/organization/BranchList';
 import { ExpenseList } from './pages/dashboard/expense/ExpenseList';
 import { ExpenseApprovals } from './pages/dashboard/expense/ExpenseApprovals';
-import { AssetList } from './pages/dashboard/asset/AssetList';
+import { AssetList, MyAssets } from './pages/dashboard/asset/AssetList';
 import { TicketList } from './pages/dashboard/helpdesk/TicketList';
 import { HRTickets } from './pages/dashboard/helpdesk/HRTickets';
 import { AnnouncementFeed } from './pages/dashboard/announcements/AnnouncementFeed';
@@ -80,12 +82,14 @@ function App() {
       <div>
         <BrowserRouter>
           <FeatherIcons />
+          <Toaster />
           <Routes>
             <Route path="/" element={<Login />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/dashboard" element={<DashContent />} />
             <Route path="/profile" element={<MyProfile />} />
+            <Route path="/organisation" element={<Organisation />} />
             <Route path="/change-password" element={<ChangePassword />} />
             <Route path="/notifications" element={<NotificationCenter />} />
 
@@ -120,7 +124,8 @@ function App() {
             <Route path="/expenses" element={<ScreenGuard screen="screen:expenses"><ExpenseList /></ScreenGuard>} />
             <Route path="/expenses/approvals" element={<ExpenseApprovals />} />
             <Route path="/assets" element={<AssetList />} />
-            <Route path="/assets/assignments" element={<ScreenGuard screen="screen:assets"><AssetList /></ScreenGuard>} />
+            <Route path="/assets/assignments" element={<AssetList />} />
+            <Route path="/assets/mine" element={<MyAssets />} />
             <Route path="/helpdesk" element={<ScreenGuard screen="screen:helpdesk"><TicketList /></ScreenGuard>} />
             <Route path="/helpdesk/all" element={<HRTickets />} />
             <Route path="/messages" element={<Chat />} />

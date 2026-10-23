@@ -93,6 +93,16 @@ const projectSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: "Employee",
         },
+        // where the work happens
+        workMode: {
+            type: String,
+            enum: ["Office", "Client site", "Remote", "Hybrid"],
+            default: "Office",
+        },
+        location: {
+            siteName: { type: String, default: "" },
+            address: { type: String, default: "" },
+        },
 
         isDeleted: {
             type: Boolean,

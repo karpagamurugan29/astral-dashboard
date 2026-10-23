@@ -11,6 +11,7 @@ import './AddEditEmployee.css'
 import { useAccess } from '../../../hooks/useAccess'
 import documentActions from '../../../redux/document/Actions'
 import { PendingDocs, DocList, DocUploadForm } from '../../../components/documents/EmployeeDocs'
+import { ROLE_FOR_DESIGNATION, levelRank } from '../../../components/org/OrgUI'
 
 const ROLES = ['Employee', 'Team Lead', 'Manager', 'HR', 'Admin']
 
@@ -44,7 +45,7 @@ export const AddEditEmployee = () => {
     const { list: branches } = useSelector((state) => state.branchReducer || {})
     const { can } = useAccess()
     const canEdit = can(['Admin', 'HR'], 'employees')
-    const { register, handleSubmit, reset, watch, formState: { errors } } = useForm()
+    const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm()
     const [showPassword, setShowPassword] = useState(false)
     const [pendingDocs, setPendingDocs] = useState([])
     const { byEmployee, uploading } = useSelector((state) => state.documentReducer || {})
@@ -210,7 +211,7 @@ export const AddEditEmployee = () => {
                             <div><h3>Job details</h3><p>Position, reporting line and pay.</p></div>
                         </div>
                         <div className="pp-card-body">
-                            <Field label="Access role" required error={errors.role} help="Controls what they can see and do in Astral.">
+                            <Field label="Access role" required error={errors.role} help="Set automatically from the designation — change it only for exceptions.">
                                 <div className={`ae-roles ${errors.role ? 'is-invalid' : ''}`} role="radiogroup">
                                     {ROLES.map((r) => (
                                         <label key={r}>
@@ -223,7 +224,7 @@ export const AddEditEmployee = () => {
                             <div className="ae-fields">
                                 <Field label="Designation" required error={errors.designation}
                                     help={designations?.length === 0 ? <>No designations yet — <Link to="/designations">add one</Link> first.</> : null}>
-                                    <select className={`pp-select ${errors.designation ? 'is-invalid' : ''}`} {...register('designation', { required: 'Select a designation' })}>
+                                    <select className={`pp-select ${errors.designation ? 'is-invalid' : ''}`} {...register('designation', { required: 'Select a designation', onChange: (e) => { const r = ROLE_FOR_DESIGNATION[e.target.value.trim().toLowerCase()]; if (r) setValue('role', r, { shouldDirty: true, shouldValidate: true }) } })}>
                                         <option value="">Select</option>
                                         {designations?.map((d) => <option key={d._id} value={d.name}>{d.name}</option>)}
                                     </select>
@@ -257,10 +258,12 @@ export const AddEditEmployee = () => {
                                         {branches?.map((b) => <option key={b._id} value={b._id}>{b.name}</option>)}
                                     </select>
                                 </Field>
-                                <Field label="Reporting manager">
+                                <Field label="Reporting manager" help="Who they report to — they join that person’s team and the people above.">
                                     <select className="pp-select" {...register('manager')}>
-                                        <option value="">None</option>
-                                        {employees?.filter((e) => e._id !== current?._id).map((e) => <option key={e._id} value={e._id}>{e.firstName} {e.lastName}</option>)}
+                                        <option value="">None (top of the line)</option>
+                                        {employees?.filter((e) => e._id !== current?._id && e.status === 'Active')
+                                            .sort((a, b) => levelRank(a.designation) - levelRank(b.designation) || `${a.firstName}`.localeCompare(`${b.firstName}`))
+                                            .map((e) => <option key={e._id} value={e._id}>{e.firstName} {e.lastName} — {e.designation}</option>)}
                                     </select>
                                 </Field>
                                 {isEdit && (

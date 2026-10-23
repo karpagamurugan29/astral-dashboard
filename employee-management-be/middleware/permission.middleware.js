@@ -1,4 +1,7 @@
 import { getAccess, invalidateAccessCache } from "../utils/access.js";
+import { scopeOf } from "../utils/hierarchy.js";
+
+const FINANCE_MODULES = ["expenses", "loans", "payroll"];
 
 // Kept for callers that invalidate after a role edit; any permission change clears everything.
 export const invalidatePermissionCache = () => invalidateAccessCache();
@@ -17,7 +20,14 @@ const authorize = (module, ...roles) => {
                 return res.status(401).json({ success: false, message: "Unauthorized" });
             }
 
-            const roleListed = roles.includes(req.user.role);
+            let roleListed = roles.includes(req.user.role);
+            // The reporting tree counts too: anyone who leads a team may use team-lead routes, and
+            // firm-wide seniors / HR / Accounts staff may use the HR routes for their area.
+            if (!roleListed && req.user.role !== "Admin" && (roles.includes("Team Lead") || roles.includes("HR"))) {
+                const scope = await scopeOf(req);
+                roleListed = (roles.includes("Team Lead") && scope.leads)
+                    || (roles.includes("HR") && (scope.people || (scope.finance && FINANCE_MODULES.includes(module))));
+            }
 
             if (req.user.role === "Admin") {
                 return roleListed ? next() : res.status(403).json({ success: false, message: "Access denied" });

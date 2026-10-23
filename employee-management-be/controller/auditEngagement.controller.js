@@ -6,12 +6,18 @@ import { PERSON, MANAGERS, minutesOf, summarise, findOrCreateClientByName, linkL
 import { logAudit } from "../utils/audit.js";
 import { notify } from "../utils/notify.js";
 import { parseLocation, fillAddressLater, LOCATION_REQUIRED } from "../utils/location.js";
+import { scopeOf, workFilter } from "../utils/hierarchy.js";
 
 const isOnTeam = (audit, userId) =>
     String(audit.auditManager?._id || audit.auditManager) === String(userId) ||
     (audit.teamMembers || []).some((m) => String(m._id || m) === String(userId));
 
-const canSee = (req, audit) => MANAGERS.includes(req.user.role) || isOnTeam(audit, req.user.id);
+// HR, firm-wide seniors, people on the audit, and leads of anyone on it.
+const canSee = async (req, audit) => {
+    if (MANAGERS.includes(req.user.role) || isOnTeam(audit, req.user.id)) return true;
+    const scope = await scopeOf(req);
+    return scope.firm || [audit.auditManager, ...(audit.teamMembers || [])].some((m) => scope.team.has(String(m?._id || m)));
+};
 
 const CLIENT = "name clientCode city contactPerson phone email";
 
@@ -114,7 +120,7 @@ export const getAllAudits = async (req, res) => {
 
         const filter = MANAGERS.includes(req.user.role)
             ? { isDeleted: false }
-            : { isDeleted: false, $or: [{ teamMembers: req.user.id }, { auditManager: req.user.id }] };
+            : { isDeleted: false, ...(await workFilter(req, "auditManager", "teamMembers")) };
         if (req.query.clientId) filter.clientId = req.query.clientId;
 
         const audits = await AuditEngagementModel.find(filter)
@@ -162,7 +168,7 @@ export const getAuditById = async (req, res) => {
         if (!audit) {
             return res.status(404).json({ success: false, message: "Audit not found" });
         }
-        if (!canSee(req, audit)) {
+        if (!(await canSee(req, audit))) {
             return res.status(403).json({ success: false, message: "You are not assigned to this audit" });
         }
 

@@ -3,6 +3,7 @@ import employeeModel from "../models/employeeModel.js";
 import { logAudit } from "../utils/audit.js";
 import { invalidatePermissionCache } from "../middleware/permission.middleware.js";
 import { getAccess } from "../utils/access.js";
+import { scopeOf } from "../utils/hierarchy.js";
 
 // Screens a person can open (menu + page). Granted through the same layers as modules
 // (role, designation, department, person) and stored in the same permission arrays.
@@ -77,10 +78,13 @@ export const getMyPermissions = async (req, res) => {
 
         const access = await getAccess(req.user, [...ALL_PERMISSION_MODULES, ...ALL_SCREENS]);
 
+        const scope = await scopeOf(req);
         return res.status(200).json({
             success: true,
             data: access.effective,
             granted: access.granted,
+            // reporting-tree reach, so the menu shows team screens to anyone who leads a team
+            team: { leads: scope.leads, firm: scope.firm, people: scope.people, finance: scope.finance, size: scope.team.size },
         });
     } catch (error) {
         return res.status(500).json({ success: false, message: error.message });

@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form'
 import { Link } from 'react-router-dom'
 import authActions from '../../redux/auth/Actions'
 import { PeopleShell, Avatar, StatusPill, DeptTag, ErrorBanner, fullName, fmtDate, tenure } from '../../components/people/PeopleUI'
+import { MyTeamCard } from '../../components/org/OrgUI'
 import './MyProfile.css'
 
 const ACCOUNT_ROOT = { label: 'Account', to: '/profile' }
@@ -96,9 +97,13 @@ export const MyProfile = () => {
                         <Link to="/attendance/today" className="mp-link" style={{ '--c': '#059669' }}><i className="mdi mdi-clock-check-outline"></i>My attendance<i className="mdi mdi-chevron-right"></i></Link>
                         <Link to="/leave" className="mp-link" style={{ '--c': '#7c3aed' }}><i className="mdi mdi-beach"></i>My leave<i className="mdi mdi-chevron-right"></i></Link>
                         <Link to="/payroll/payslips" className="mp-link" style={{ '--c': '#0b0f19' }}><i className="mdi mdi-receipt"></i>My payslips<i className="mdi mdi-chevron-right"></i></Link>
-                        <Link to="/assets/assignments" className="mp-link" style={{ '--c': '#0284c7' }}><i className="mdi mdi-laptop"></i>My assets<i className="mdi mdi-chevron-right"></i></Link>
+                        <Link to="/assets/mine" className="mp-link" style={{ '--c': '#0284c7' }}><i className="mdi mdi-laptop"></i>My assets<i className="mdi mdi-chevron-right"></i></Link>
                     </nav>
                 </aside>
+
+                <div className="mp-main">
+                {/* ---------- team & reporting line ---------- */}
+               
 
                 {/* ---------- editable details ---------- */}
                 <form onSubmit={handleSubmit(onSubmit)} noValidate>
@@ -188,6 +193,8 @@ export const MyProfile = () => {
                         </div>
                     </div>
                 </form>
+                 <MyTeamCard />
+                </div>
             </div>
         </PeopleShell>
     )

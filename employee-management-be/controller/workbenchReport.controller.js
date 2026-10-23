@@ -5,6 +5,7 @@ import AuditTimeLogModel from "../models/auditTimeLogModel.js";
 import { sessionsOf } from "../utils/attendanceSessions.js";
 import { localDayStart } from "../utils/autoCheckout.js";
 import { minutesOf } from "../utils/auditShared.js";
+import { scopeOf, visibleIds, workFilter } from "../utils/hierarchy.js";
 
 // Business reports for the Reports workbench: check-in log, audit hours, audit projects.
 // Admin/HR see everyone; Managers / Team Leads their direct reports (and the audits they run).
@@ -28,11 +29,8 @@ export const range = (q) => {
 
 export const teamScope = async (req) => {
     const filter = { status: { $in: ["Active", "Resigned", "Terminated"] } };
-    if (["Manager", "Team Lead"].includes(req.user.role)) {
-        const reports = await employeeModel.find({ manager: req.user.id }).select("_id").lean();
-        return [req.user.id, ...reports.map((r) => String(r._id))];
-    }
-    return null; // everyone
+    // the caller plus their whole team (any depth); null = everyone (HR / firm-wide seniors)
+    return visibleIds(await scopeOf(req), "people");
 };
 
 const place = (p) => (p && Number.isFinite(p.latitude) ? { latitude: p.latitude, longitude: p.longitude, accuracy: p.accuracy ?? null, address: p.address || "" } : null);
@@ -104,15 +102,15 @@ export const auditHoursReport = async (req, res) => {
         const { start, end } = range(req.query);
         const now = Date.now();
         const auditFilter = { isDeleted: false };
-        if (["Manager", "Team Lead"].includes(req.user.role)) auditFilter.$or = [{ auditManager: req.user.id }, { teamMembers: req.user.id }];
-        else if (!["Admin", "HR"].includes(req.user.role)) auditFilter.$or = [{ teamMembers: req.user.id }, { auditManager: req.user.id }];
+        Object.assign(auditFilter, await workFilter(req, "auditManager", "teamMembers"));
         if (req.query.clientId) auditFilter.clientId = req.query.clientId;
         const audits = await AuditEngagementModel.find(auditFilter).select("auditCode clientName clientId engagementName auditType financialYear status estimatedHours").lean();
         const byId = new Map(audits.map((a) => [String(a._id), a]));
 
         const logFilter = { auditId: { $in: audits.map((a) => a._id) }, startTime: { $lt: end }, $or: [{ endTime: null }, { endTime: { $gte: start } }] };
         if (req.query.employeeId) logFilter.employeeId = req.query.employeeId;
-        if (!["Admin", "HR", "Manager", "Team Lead"].includes(req.user.role)) logFilter.employeeId = req.user.id;
+        const people = visibleIds(await scopeOf(req), "work");
+        if (people) logFilter.employeeId = req.query.employeeId && people.includes(String(req.query.employeeId)) ? req.query.employeeId : { $in: people };
         const logs = await AuditTimeLogModel.find(logFilter).populate("employeeId", PERSON).lean();
 
         const clip = (l) => {
@@ -165,7 +163,7 @@ export const auditProjectsReport = async (req, res) => {
         const now = Date.now();
         const today = localDayStart().getTime();
         const filter = { isDeleted: false };
-        if (!["Admin", "HR"].includes(req.user.role)) filter.$or = [{ auditManager: req.user.id }, { teamMembers: req.user.id }];
+        if (!["Admin", "HR"].includes(req.user.role)) Object.assign(filter, await workFilter(req, "auditManager", "teamMembers"));
         if (req.query.status) filter.status = req.query.status;
         if (req.query.clientId) filter.clientId = req.query.clientId;
         const audits = await AuditEngagementModel.find(filter).populate("auditManager", PERSON).lean();

@@ -16,8 +16,8 @@ export const allowedContactIds = async (meId) => {
     if (isSenior(me)) return new Set(active.map((e) => String(e._id)));
 
     const ok = new Set();
-    // seniors are reachable by everyone
-    active.filter(isSenior).forEach((e) => ok.add(String(e._id)));
+    // leadership and function heads are reachable by everyone; a Senior Manager only by their own line
+    active.filter((e) => isSenior(e) && e.designation !== "Senior Manager").forEach((e) => ok.add(String(e._id)));
     // up the line
     const byId = new Map(active.map((e) => [String(e._id), e]));
     let cur = me.manager ? String(me.manager) : null;
