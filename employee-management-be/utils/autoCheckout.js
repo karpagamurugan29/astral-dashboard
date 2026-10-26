@@ -18,6 +18,12 @@ export const CUTOFF_HOUR = () => {
     return Number.isInteger(h) && h >= 0 && h <= 23 ? h : 20;
 };
 export const COMPANY_TZ = () => process.env.COMPANY_TIMEZONE || "Asia/Kolkata";
+// Audit timers have their own, earlier stop: 7 PM company time by default (AUDIT_TIMER_STOP_HOUR, 0-23).
+export const TIMER_STOP_HOUR = () => {
+    const h = Number(process.env.AUDIT_TIMER_STOP_HOUR);
+    return Number.isInteger(h) && h >= 0 && h <= 23 ? h : 19;
+};
+const hourLabel = (h) => `${h % 12 || 12} ${h < 12 ? "AM" : "PM"}`;
 
 // Calendar parts of an instant in a time zone.
 const partsIn = (date, tz) => {
@@ -86,15 +92,16 @@ export const runAutoCheckout = async (now = new Date()) => {
         entry(att.employeeId).checkout = { checkIn: session.checkIn.time, checkOut: cutoff, hours: att.workingHours };
     }
 
-    // 2. Audit timers left running.
+    // 2. Audit timers left running (normally already stopped at the timer stop hour).
+    const timerHour = TIMER_STOP_HOUR();
     const running = await AuditTimeLogModel.find({ endTime: null, startTime: { $gte: since, $lt: now } });
     for (const log of running) {
-        const cutoff = cutoffFor(log.startTime, tz, hour);
+        const cutoff = cutoffFor(log.startTime, tz, timerHour);
         if (cutoff > now) continue;
         log.endTime = cutoff;
         log.durationMinutes = Math.max(0, Math.round((cutoff - log.startTime) / 60000));
-        log.note = [log.note, `(timer auto-stopped at ${label})`].filter(Boolean).join(" ");
-        log.autoStopped = true; log.needsReview = true; log.originalMinutes = log.durationMinutes; log.reviewReason = "was still running at the day's cut-off";
+        log.note = [log.note, `(timer auto-stopped at ${hourLabel(timerHour)})`].filter(Boolean).join(" ");
+        log.autoStopped = true; log.needsReview = true; log.originalMinutes = log.durationMinutes; log.reviewReason = `was still running at ${hourLabel(timerHour)}`;
         await log.save();
         const audit = await AuditEngagementModel.findById(log.auditId).select("clientName engagementName auditType auditCode").lean();
         entry(log.employeeId).timers.push({ start: log.startTime, end: cutoff, minutes: log.durationMinutes, audit });
@@ -150,6 +157,23 @@ export const startAutoCheckoutScheduler = (ensureDb = async () => {}) => {
             }
         }
     };
-    setTimeout(tick, 15000); // catch up shortly after start (e.g. server restarted after 8 PM)
-    return setInterval(tick, 60000);
+    // Forgotten audit timers stop at the timer stop hour (7 PM), an hour before the check-out run.
+    let lastTimerDay = null;
+    const timerTick = async () => {
+        const p = partsIn(new Date(), COMPANY_TZ());
+        const day = `${p.year}-${p.month}-${p.day}`;
+        if (p.hour < TIMER_STOP_HOUR() || lastTimerDay === day) return;
+        lastTimerDay = day;
+        try {
+            await ensureDb();
+            const { closeStaleTimers } = await import("./timerGuard.js");
+            const n = await closeStaleTimers();
+            if (n) console.log(`Audit timers: ${n} stopped automatically at ${hourLabel(TIMER_STOP_HOUR())}`);
+        } catch (err) {
+            console.error("Audit timer stop failed:", err.message);
+            lastTimerDay = null;
+        }
+    };
+    setTimeout(() => { timerTick(); tick(); }, 15000); // catch up shortly after start (e.g. server restarted after 8 PM)
+    return setInterval(() => { timerTick(); tick(); }, 60000);
 };

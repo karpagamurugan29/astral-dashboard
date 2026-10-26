@@ -8,6 +8,7 @@ import { ASSET_ROOT, ASSET_TYPES, AssetStatus, AssetIcon, assetTypeMeta, since }
 import './AssetList.css'
 import { useAccess } from '../../../hooks/useAccess'
 import { toast } from '../../../components/common/Toaster'
+import { confirmAction } from '../../../components/common/ConfirmDialog'
 
 /* -------------------------------------------------------------------------- */
 /*  Assets. Top levels (Admin / HR, or anyone given the Assets permission)    */
@@ -152,7 +153,7 @@ const AssetRegister = ({ startView }) => {
         dispatch({ type: type2, id, payload, onDone: (ok, msg) => { toast[ok ? 'success' : 'error'](msg); if (ok) { setDialog(null); after?.() } resolve(ok) } })
     })
     const setStatus = (a, status) => act(assetActions.UPDATE_ASSET, a._id, { status })
-    const remove = (a) => { if (window.confirm(`Remove ${a.assetName} (${a.assetTag}) from the register?`)) act(assetActions.DELETE_ASSET, a._id) }
+    const remove = async (a) => { if (await confirmAction({ title: `Remove ${a.assetName}?`, message: `${a.assetTag} will be taken off the asset register.`, confirmLabel: 'Remove asset', requireText: a.assetTag })) act(assetActions.DELETE_ASSET, a._id) }
 
     return (
         <PeopleShell title="Asset register" root={ASSET_ROOT} crumbs={[{ label: view === 'people' ? 'Assignments' : 'Register' }]}

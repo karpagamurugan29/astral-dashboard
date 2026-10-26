@@ -286,10 +286,10 @@ const seedMore = async (E, emps) => {
 
     // HR helpdesk
     const tickets = [
-        ["associate@astral.test", "Payslip for September not visible", "Payroll", "High", "Open", "I can see August but not September in My Payslips."],
-        ["consultant@astral.test", "Laptop battery drains fast at client site", "IT Support", "Medium", "In Progress", "Battery lasts about 2 hours; affects fieldwork at Sunrise Textiles."],
-        ["divya.nair@example.com", "Clarification on comp-off for Saturday audit", "Leave", "Low", "Resolved", "Worked on Saturday for the GST audit; how do I claim comp-off?"],
-        ["rahul.verma@example.com", "Wrong check-in time on 14 Oct", "Attendance", "Medium", "Closed", "Check-in shows 10:40 but I arrived at 9:35."],
+        ["associate@astral.test", "Payslip for September not visible", "Payroll and Salary", "High", "Open", "I can see August but not September in My Payslips."],
+        ["consultant@astral.test", "Laptop battery drains fast at client site", "IT and System Access", "Medium", "In Progress", "Battery lasts about 2 hours; affects fieldwork at Sunrise Textiles."],
+        ["divya.nair@example.com", "Clarification on comp-off for Saturday audit", "Leave and Holidays", "Low", "Resolved", "Worked on Saturday for the GST audit; how do I claim comp-off?"],
+        ["rahul.verma@example.com", "Wrong check-in time on 14 Oct", "Attendance and Timesheets", "Medium", "Closed", "Check-in shows 10:40 but I arrived at 9:35."],
     ];
     for (const [email, subject, category, priority, status, description] of tickets) {
         const e = E(email); if (!e) continue;

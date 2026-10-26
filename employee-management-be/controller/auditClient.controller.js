@@ -2,18 +2,15 @@ import AuditClientModel from "../models/auditClientModel.js";
 import AuditEngagementModel from "../models/auditEngagementModel.js";
 import AuditTimeLogModel from "../models/auditTimeLogModel.js";
 import { logAudit } from "../utils/audit.js";
-import { PERSON, MANAGERS, CLOSED, summarise, nextClientCode, linkLegacyAudits } from "../utils/auditShared.js";
-import { scopeOf, workFilter } from "../utils/hierarchy.js";
+import { PERSON, CLOSED, summarise, nextClientCode, linkLegacyAudits } from "../utils/auditShared.js";
+import { isAuditLeader, isFinance, visibleAuditFilter, canCreateAudits } from "../utils/auditAccess.js";
 
 const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-// Engagements the caller may see: all for Admin/HR, otherwise only the ones they're on.
-// HR and firm-wide seniors: every engagement; everyone else: ones they or their team work on.
-const visibleEngagementFilter = async (req, extra = {}) =>
-    MANAGERS.includes(req.user.role)
-        ? { isDeleted: false, ...extra }
-        : { isDeleted: false, ...extra, ...(await workFilter(req, "auditManager", "teamMembers")) };
-const seesAllClients = async (req) => MANAGERS.includes(req.user.role) || (await scopeOf(req)).firm;
+// Engagements the caller may see (utils/auditAccess.js): audit leadership and Accounts all; everyone
+// else the ones they or their team work on. HR sees client companies only through their own work.
+const visibleEngagementFilter = async (req, extra = {}) => ({ isDeleted: false, ...extra, ...(await visibleAuditFilter(req)) });
+const seesAllClients = async (req) => (await isAuditLeader(req)) || (await isFinance(req));
 
 const peopleOn = (a) => [a.auditManager, ...(a.teamMembers || [])].filter(Boolean).map((p) => String(p._id || p));
 
@@ -141,6 +138,7 @@ export const getClientById = async (req, res) => {
 
 export const createClient = async (req, res) => {
     try {
+        if (!(await canCreateAudits(req))) return res.status(403).json({ success: false, message: "Only managers and audit leadership can add client companies." });
         const { clientCode, ...rest } = req.body;
         const name = String(rest.name || "").trim();
         if (!name) {
@@ -169,6 +167,7 @@ export const createClient = async (req, res) => {
 
 export const updateClient = async (req, res) => {
     try {
+        if (!(await canCreateAudits(req))) return res.status(403).json({ success: false, message: "Only managers and audit leadership can change client companies." });
         const { id } = req.params;
         const update = { ...req.body };
         delete update.clientCode;
@@ -198,6 +197,7 @@ export const updateClient = async (req, res) => {
 
 export const deleteClient = async (req, res) => {
     try {
+        if (!(await isAuditLeader(req))) return res.status(403).json({ success: false, message: "Only audit leadership can archive a client company." });
         const { id } = req.params;
 
         const open = await AuditEngagementModel.countDocuments({ clientId: id, isDeleted: false, status: { $nin: CLOSED } });

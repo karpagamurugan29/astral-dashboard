@@ -9,6 +9,7 @@ import '../../../components/people/people.css'
 import '../../../components/projects/projects.css'
 import './TaskDetailModal.css'
 import { useAccess } from '../../../hooks/useAccess'
+import { confirmAction } from '../../../components/common/ConfirmDialog'
 
 // Kept as TaskDetailModal so existing callers don't change — it now renders as a side drawer.
 export const TaskDetailModal = ({ taskId, onClose, onDeleted }) => {
@@ -48,8 +49,8 @@ export const TaskDetailModal = ({ taskId, onClose, onDeleted }) => {
         dispatch({ type: taskActions.UPDATE_TASK_STATUS, id: taskId, status: s })
     }
 
-    const onDelete = () => {
-        if (window.confirm('Delete this task? This cannot be undone.')) {
+    const onDelete = async () => {
+        if (await confirmAction({ title: 'Delete this task?', message: 'Its comments and history go with it. This can\'t be undone.', confirmLabel: 'Delete task' })) {
             dispatch({ type: taskActions.DELETE_TASK, id: taskId })
             onDeleted?.()
             onClose()

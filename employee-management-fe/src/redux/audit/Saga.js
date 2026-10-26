@@ -37,6 +37,8 @@ const fetchAudits = function* () {
 const addAudit = function* (action) {
   try {
     const result = yield Post(`${API_URL}/audits`, action.payload);
+    // the create dialog stays open until this says it worked
+    if (action.onDone) action.onDone(!!result?.success, result?.message || "Unable to create audit");
     if (result?.success) {
       yield put({ type: actions.SET_AUDIT_ERROR, payload: "" });
       yield fetchAudits();
@@ -128,7 +130,7 @@ const startTimer = function* (action) {
   try {
     const location = yield call(getCurrentLocation);
     yield put({ type: actions.SET_AUDIT_TIMER_BUSY, payload: true });
-    const result = yield Post(`${API_URL}/audits/${action.id}/timer/start`, location);
+    const result = yield Post(`${API_URL}/audits/${action.id}/timer/start`, { ...location, step: action.step || "" });
     if (result?.success) yield put({ type: actions.SET_AUDIT_ERROR, payload: "" });
     else yield put({ type: actions.SET_AUDIT_ERROR, payload: result?.message || "Unable to start timer" });
     yield refreshAfterTimer(action.id);

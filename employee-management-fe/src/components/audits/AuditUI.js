@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { chatApi } from '../chat/chatApi'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
 import auditActions from '../../redux/audit/Actions'
@@ -8,7 +9,7 @@ import './audits.css'
 /*  Shared bits for the Audits list, Audit detail and the running-timer bar.  */
 /* -------------------------------------------------------------------------- */
 
-export const AUDITS_ROOT = { label: 'Audit projects', to: '/audits' }
+export const AUDITS_ROOT = { label: 'Audits', to: '/audits' }
 export const CLIENTS_ROOT = { label: 'Clients', to: '/audits/clients' }
 
 export const ENTITY_TYPES = ['Company', 'LLP', 'Partnership', 'Proprietorship', 'Trust', 'Society', 'Individual', 'Government', 'Other']
@@ -108,10 +109,43 @@ export const ActiveTimerBar = ({ hideFor }) => {
 }
 
 /* The big Start / Stop control on an audit, for the signed-in user. */
+/* ---------------- workflow steps for the timer ---------------- */
+const BILLING_KEYS = ['invoice', 'payment']
+// steps time can be logged against, grouped by stage
+export const workSteps = (audit) => (audit?.milestones || []).filter((m) => !BILLING_KEYS.includes(m.key))
+// the step a person most likely means: theirs in the current stage, else any open one in the current stage,
+// else theirs anywhere, else the first open one
+export const defaultStep = (audit, userId) => {
+    const steps = workSteps(audit)
+    const open = steps.filter((m) => !m.done)
+    const mine = (m) => String(m.assignee?._id || m.assignee || '') === String(userId || '')
+    return (open.find((m) => mine(m) && m.stage === audit.status) || open.find((m) => m.stage === audit.status) || open.find(mine) || open[0] || steps[0])?.key || ''
+}
+export const StepSelect = ({ audit, value, onChange, className = '', disabled }) => {
+    const steps = workSteps(audit)
+    const stages = [...new Set(steps.map((m) => m.stage))]
+    return (
+        <select className={`pp-select ${className}`} value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled} aria-label="Workflow step">
+            <option value="">General (no step)</option>
+            {stages.map((st) => <optgroup key={st} label={st}>{steps.filter((m) => m.stage === st).map((m) => <option key={m.key} value={m.key}>{m.done ? '✓ ' : ''}{m.label}</option>)}</optgroup>)}
+        </select>
+    )
+}
+// switch the running timer to another step (closes the session, opens the next)
+export const switchStep = async (dispatch, auditId, step) => {
+    const j = await chatApi('POST', `/audits/${auditId}/timer/switch`, { step })
+    dispatch({ type: auditActions.GET_ACTIVE_AUDIT_TIMER })
+    dispatch({ type: auditActions.GET_AUDIT_BY_ID, id: auditId })
+    return j
+}
+
 export const TimerPanel = ({ audit, isMember, todayMinutes = 0, myMinutes = 0 }) => {
     const dispatch = useDispatch()
     const { activeTimer, timerBusy } = useSelector((state) => state.auditReducer || {})
     const [note, setNote] = useState('')
+    const { isAuthenticated: me } = useSelector((state) => state.authReducer || {})
+    const [step, setStep] = useState(() => defaultStep(audit, me?._id))
+    const [switching, setSwitching] = useState(false)
     const runningHere = activeTimer && activeTimer.auditId?._id === audit._id
     const runningElsewhere = activeTimer && !runningHere
     const closed = CLOSED.includes(audit.status)
@@ -119,13 +153,15 @@ export const TimerPanel = ({ audit, isMember, todayMinutes = 0, myMinutes = 0 })
     const now = useTick(!!runningHere, 60000)
     const liveMinutes = runningHere ? (now - new Date(activeTimer.startTime)) / 60000 : 0
 
-    const start = () => dispatch({ type: auditActions.START_AUDIT_TIMER, id: audit._id })
+    const start = () => dispatch({ type: auditActions.START_AUDIT_TIMER, id: audit._id, step })
     const stop = () => { dispatch({ type: auditActions.STOP_AUDIT_TIMER, id: audit._id, note }); setNote('') }
+    const onSwitch = async (k) => { setSwitching(true); try { await switchStep(dispatch, audit._id, k) } catch (e) { window.alert(e.message) } finally { setSwitching(false) } }
+    const hasSteps = workSteps(audit).length > 0
 
     if (!isMember) {
         return (
             <div className="au-timer muted">
-                <i className="mdi mdi-timer-lock-outline au-timer-icon"></i>
+                <i className="mdi mdi-lock-clock au-timer-icon"></i>
                 <b>Time tracking</b>
                 <small>Only people assigned to this audit can start a timer.</small>
             </div>
@@ -139,6 +175,12 @@ export const TimerPanel = ({ audit, isMember, todayMinutes = 0, myMinutes = 0 })
             </div>
             <div className="au-timer-face">{runningHere ? <LiveClockText start={activeTimer.startTime} /> : '00:00:00'}</div>
             {runningHere && <div className="au-timer-since">Started at {fmtClockTime(activeTimer.startTime)}</div>}
+            {hasSteps && !closed && !runningElsewhere && (
+                <label className="au-step">
+                    <span>{runningHere ? 'Working on' : 'Step'}</span>
+                    <StepSelect audit={audit} value={runningHere ? activeTimer.milestoneKey || '' : step} onChange={runningHere ? onSwitch : setStep} disabled={switching || !!timerBusy} />
+                </label>
+            )}
 
             {runningHere ? (
                 <>
@@ -157,7 +199,7 @@ export const TimerPanel = ({ audit, isMember, todayMinutes = 0, myMinutes = 0 })
             )}
 
             {runningHere && liveMinutes > 8 * 60 && <div className="au-timer-note warn"><i className="mdi mdi-alert-outline"></i><span>Running for {fmtDuration(liveMinutes)}. Still working? Stop it when you finish — after 10 hours it stops by itself and goes to your manager for review.</span></div>}
-            {!closed && !runningElsewhere && <div className="au-geo-hint"><i className="mdi mdi-map-marker-outline"></i>Your location is recorded when you start and stop. Timers stop automatically when you check out, at 8 PM, or after 10 hours.</div>}
+            {!closed && !runningElsewhere && <div className="au-geo-hint"><i className="mdi mdi-map-marker-outline"></i>Your location is recorded when you start and stop. Timers stop automatically when you check out, at 7 PM, or after 10 hours.</div>}
 
             <div className="au-timer-stats">
                 <span><small>Today</small><b>{fmtDuration(todayMinutes + liveMinutes)}</b></span>

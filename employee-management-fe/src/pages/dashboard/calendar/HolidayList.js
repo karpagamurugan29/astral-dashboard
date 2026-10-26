@@ -8,6 +8,8 @@ import { ATTENDANCE_ROOT, MONTHS } from '../../../components/attendance/Attendan
 import { HOLIDAY_TYPES, holidayMeta, DAY, startOfDay, daysUntilLabel } from './calendarShared'
 import '../../../components/attendance/attendance.css'
 import './calendar.css'
+import { FormModal } from '../../../components/common/FormModal'
+import { confirmAction } from '../../../components/common/ConfirmDialog'
 
 
 const HolidaysScreen = ({ holidays, isAdmin, dispatch }) => {
@@ -48,9 +50,10 @@ const HolidaysScreen = ({ holidays, isAdmin, dispatch }) => {
         form.reset({ name: '', date: '', type: 'National' })
         setAdding(false)
     }
+    const openAdd = () => { form.reset({ name: '', date: '', type: 'National' }); setAdding(true) }
     const onCancel = () => { form.reset({ name: '', date: '', type: 'National' }); setAdding(false) }
-    const onRemove = (h) => {
-        if (window.confirm(`Remove "${h.name}" from the holiday calendar?`)) dispatch({ type: calendarActions.DELETE_HOLIDAY, id: h._id })
+    const onRemove = async (h) => {
+        if (await confirmAction({ title: `Remove “${h.name}”?`, message: 'It comes off everyone\'s holiday calendar.', confirmLabel: 'Remove holiday' })) dispatch({ type: calendarActions.DELETE_HOLIDAY, id: h._id })
     }
     const errs = form.formState.errors
     const pastCount = sorted.length - upcoming.length
@@ -94,11 +97,7 @@ const HolidaysScreen = ({ holidays, isAdmin, dispatch }) => {
             </div>
 
             {isAdmin && adding && (
-                <form className="pp-card wc-add" onSubmit={form.handleSubmit(onAdd)} noValidate>
-                    <div className="pp-card-head">
-                        <h3><i className="mdi mdi-plus-circle-outline me-2" style={{ color: '#e11d48' }}></i>New holiday</h3>
-                        <button type="button" className="pp-btn icon ghost" onClick={onCancel} aria-label="Close"><i className="mdi mdi-close"></i></button>
-                    </div>
+                <FormModal icon="mdi-plus-circle-outline" title={"New holiday"} onClose={onCancel} onSubmit={form.handleSubmit(onAdd)} submitLabel={"Add holiday"} submitIcon="mdi-check">
                     <div className="pp-card-body">
                         <div className="wc-form-grid holiday">
                             <div className="pp-field">
@@ -123,12 +122,8 @@ const HolidaysScreen = ({ holidays, isAdmin, dispatch }) => {
                                 </div>
                             </div>
                         </div>
-                        <div className="wc-form-foot">
-                            <button type="button" className="pp-btn" onClick={onCancel}>Cancel</button>
-                            <button type="submit" className="pp-btn primary"><i className="mdi mdi-check"></i> Add holiday</button>
-                        </div>
                     </div>
-                </form>
+                </FormModal>
             )}
 
             <div className="at-toolbar">
@@ -154,7 +149,7 @@ const HolidaysScreen = ({ holidays, isAdmin, dispatch }) => {
                 <div className="pp-card">
                     <EmptyState icon="mdi-calendar-star" title={sorted.length ? 'Nothing to show' : 'No holidays added yet'}
                         text={sorted.length ? 'No holidays match this filter.' : 'Add national, regional and optional holidays so everyone can plan ahead.'}
-                        action={isAdmin && !sorted.length && <button type="button" className="pp-btn primary" onClick={() => setAdding(true)}><i className="mdi mdi-plus"></i> Add holiday</button>} />
+                        action={isAdmin && !sorted.length && <button type="button" className="pp-btn primary" onClick={openAdd}><i className="mdi mdi-plus"></i> Add holiday</button>} />
                 </div>
             ) : (
                 <div className="wc-months">
@@ -191,7 +186,7 @@ const HolidaysScreen = ({ holidays, isAdmin, dispatch }) => {
             )}
 
             {isAdmin && !adding && sorted.length > 0 && (
-                <button type="button" className="wc-fab pp-btn primary" onClick={() => { setAdding(true); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>
+                <button type="button" className="wc-fab pp-btn primary" onClick={openAdd}>
                     <i className="mdi mdi-plus"></i> Add holiday
                 </button>
             )}

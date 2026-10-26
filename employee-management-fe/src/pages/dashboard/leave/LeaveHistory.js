@@ -8,6 +8,7 @@ import {
     dateRange, daysLabel, startOfDay, DateTile,
 } from '../../../components/leave/LeaveUI'
 import '../../../components/attendance/attendance.css'
+import { confirmAction } from '../../../components/common/ConfirmDialog'
 
 const STATUSES = ['Pending', 'Approved', 'Rejected', 'Cancelled']
 const DAY = 24 * 60 * 60 * 1000
@@ -24,8 +25,8 @@ export const LeaveHistory = () => {
         dispatch({ type: leaveActions.GET_LEAVE_HISTORY })
     }, [dispatch])
 
-    const onCancel = (lv) => {
-        if (window.confirm(`Cancel your ${lv.leaveType.toLowerCase()} for ${dateRange(lv.fromDate, lv.toDate)}?`)) {
+    const onCancel = async (lv) => {
+        if (await confirmAction({ title: 'Cancel this leave?', message: `Your ${lv.leaveType.toLowerCase()} for ${dateRange(lv.fromDate, lv.toDate)} will be withdrawn.`, confirmLabel: 'Cancel leave', cancelLabel: 'Keep it', tone: 'warn' })) {
             dispatch({ type: leaveActions.CANCEL_LEAVE, id: lv._id })
         }
     }

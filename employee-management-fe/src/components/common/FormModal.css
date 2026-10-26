@@ -1,0 +1,18 @@
+/* FormModal — extends the shared pw-dialog. Prefix: fm- */
+.fm-dialog.wide { width: min(860px, 100%); }
+.fm-dialog.xl { width: min(1040px, 100%); }
+.fm-dialog.sm { width: min(460px, 100%); }
+.fm-icon { flex: none; width: 38px; height: 38px; display: grid; place-items: center; border-radius: 11px; font-size: 20px; color: #1d4ed8; background: #eff6ff; }
+.fm-body { overflow-y: auto; }
+/* inline-form layouts inside a dialog: no card chrome, fields use the full width */
+.fm-body .pp-card-body { padding: 0; }
+.fm-body > .pp-field:first-child, .fm-body > div:first-child > .pp-field:first-child { margin-top: 0; }
+.fm-spacer { flex: 1; }
+body.fm-open { overflow: hidden; }
+@media (max-width: 767.98px) {
+    .fm-dialog .pw-dialog-foot { position: sticky; bottom: 0; }
+    .fm-dialog [class*="-grid"], .fm-dialog .pj-form-grid { grid-template-columns: 1fr !important; }
+    .fm-dialog [class*="span-"] { grid-column: auto !important; }
+}
+.fm-error { display: flex; align-items: center; gap: 6px; margin-bottom: 12px; padding: 9px 12px; border-radius: 10px; background: #fef2f2; border: 1px solid #fecaca; font-size: 13px; color: #b91c1c; }
+.fm-error i { font-size: 17px; }

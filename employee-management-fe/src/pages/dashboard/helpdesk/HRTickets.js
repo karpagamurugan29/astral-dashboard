@@ -1,140 +1,92 @@
-import React, { useEffect, useMemo, useState } from 'react'
-import { useDispatch, useSelector } from 'react-redux'
+import React, { useMemo, useState } from 'react'
+import { useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
-import ticketActions from '../../../redux/ticket/Actions'
-import { PeopleShell, Avatar, EmptyState, ErrorBanner, fullName, fmtDate } from '../../../components/people/PeopleUI'
-import { PriorityTag } from '../../../components/projects/ProjectUI'
-import {
-    HELPDESK_ROOT, TICKET_CATEGORIES, TICKET_STATUS, TicketStatus, CategoryBadge, ticketAge, ownerOf,
-} from '../../../components/helpdesk/HelpdeskUI'
-import '../../../components/attendance/attendance.css'
-import { useAccess } from '../../../hooks/useAccess'
+import { PeopleShell, EmptyState, ErrorBanner } from '../../../components/people/PeopleUI'
+import { toast } from '../../../components/common/Toaster'
+import { api, HELPDESK_ROOT, TICKET_STATUS, useTicketMeta, fmtMins } from '../../../components/helpdesk/HelpdeskUI'
+import { useTicketList, TicketTable, Pager } from './TicketTable'
 
-const PRIO_RANK = { High: 0, Medium: 1, Low: 2 }
-const DAY = 864e5
+/* HR tickets — the staff queue. HR / Admin see every ticket; managers and leads see the ones
+   assigned to them plus their team's (not confidential categories). The server decides. */
 
-// The next sensible moves for each status, as one-click buttons.
-const NEXT = {
-    Open: [{ to: 'In Progress', label: 'Start', icon: 'mdi-play-outline' }, { to: 'Resolved', label: 'Resolve', icon: 'mdi-check' }],
-    'In Progress': [{ to: 'Resolved', label: 'Resolve', icon: 'mdi-check' }],
-    Resolved: [{ to: 'Closed', label: 'Close', icon: 'mdi-lock-outline', ghost: true }, { to: 'Open', label: 'Reopen', icon: 'mdi-restore', ghost: true }],
-    Closed: [{ to: 'Open', label: 'Reopen', icon: 'mdi-restore', ghost: true }],
-}
+const TILES = [
+    ['unassigned', 'Unassigned', '#7c3aed', 'mdi-account-off-outline'],
+    ['Open', 'Open', TICKET_STATUS.Open.color, TICKET_STATUS.Open.icon],
+    ['Pending HR', 'Pending HR', TICKET_STATUS['Pending HR'].color, TICKET_STATUS['Pending HR'].icon],
+    ['Pending Employee', 'With employee', TICKET_STATUS['Pending Employee'].color, TICKET_STATUS['Pending Employee'].icon],
+    ['Escalated', 'Escalated', TICKET_STATUS.Escalated.color, TICKET_STATUS.Escalated.icon],
+    ['overdue', 'Overdue', '#b91c1c', 'mdi-alarm-light-outline'],
+    ['Resolved', 'Resolved', TICKET_STATUS.Resolved.color, TICKET_STATUS.Resolved.icon],
+]
+const BLANK = { status: 'active', q: '', category: '', priority: '', assignee: '', from: '', to: '', sla: '' }
 
 export const HRTickets = () => {
-    const dispatch = useDispatch()
-    const { list, listLoading, error } = useSelector((state) => state.ticketReducer || {})
+    const meta = useTicketMeta()
     const { isAuthenticated: user } = useSelector((state) => state.authReducer || {})
-    // Same rule as the sidebar's HR Helpdesk → HR Tickets entry.
-    const { can } = useAccess()
-    const canManage = can(['Admin', 'HR', 'Manager', 'Team Lead'], 'helpdesk')
-    const [statusFilter, setStatusFilter] = useState('active')
-    const [categoryFilter, setCategoryFilter] = useState('')
-    const [search, setSearch] = useState('')
+    const [f, setF] = useState(BLANK)
+    const [sort, setSort] = useState({ key: 'priority', dir: 'desc' })
+    const [page, setPage] = useState(1)
+    const filters = useMemo(() => ({ ...f, q: f.q.trim() }), [f])
+    const { d, error, reload } = useTicketList('queue', meta?.me?.queue ? filters : null, sort, page)
+    const set = (k) => (e) => { const v = e?.target ? e.target.value : e; setF((x) => ({ ...x, [k]: v })); setPage(1) }
+    const counts = d?.counts || {}
+    const tileOn = (k) => (k === 'unassigned' ? f.assignee === 'none' : k === 'overdue' ? f.sla === 'overdue' : f.status === k && !f.sla && f.assignee !== 'none')
+    const tile = (k) => {
+        if (tileOn(k)) { setF((x) => ({ ...x, status: 'active', assignee: '', sla: '' })); setPage(1); return }
+        if (k === 'unassigned') setF((x) => ({ ...x, status: 'active', assignee: 'none', sla: '' }))
+        else if (k === 'overdue') setF((x) => ({ ...x, status: 'active', sla: 'overdue', assignee: '' }))
+        else setF((x) => ({ ...x, status: k, sla: '', assignee: '' }))
+        setPage(1)
+    }
+    const assignMe = async (t) => {
+        try { await api('PUT', `/tickets/${t._id}/assign`, { assignedTo: user?._id }); toast.success(`${t.ticketNo} is assigned to you.`); reload() } catch (e) { toast.error(e.message) }
+    }
+    const dirty = JSON.stringify(f) !== JSON.stringify(BLANK)
 
-    useEffect(() => {
-        if (canManage) dispatch({ type: ticketActions.GET_TICKETS })
-    }, [dispatch, canManage])
-
-    const onMove = (t, status) => dispatch({ type: ticketActions.UPDATE_TICKET_STATUS, id: t._id, payload: { status } })
-
-    const others = useMemo(() => (list || []).filter((t) => ownerOf(t) !== user?._id), [list, user])
-    const isActive = (t) => ['Open', 'In Progress'].includes(t.status)
-
-    const rows = useMemo(() => {
-        const q = search.trim().toLowerCase()
-        return others
-            .filter((t) => (statusFilter === 'active' ? isActive(t) : !statusFilter || t.status === statusFilter))
-            .filter((t) => !categoryFilter || t.category === categoryFilter)
-            .filter((t) => !q || `${t.subject} ${t.description} ${fullName(t.employeeId)}`.toLowerCase().includes(q))
-            // Most urgent first: active before done, then priority, then oldest.
-            .sort((a, b) => (isActive(b) - isActive(a)) || (PRIO_RANK[a.priority] - PRIO_RANK[b.priority]) || (new Date(a.createdAt) - new Date(b.createdAt)))
-    }, [others, statusFilter, categoryFilter, search])
-
-    const open = others.filter((t) => t.status === 'Open').length
-    const progress = others.filter((t) => t.status === 'In Progress').length
-    const urgent = others.filter((t) => isActive(t) && t.priority === 'High').length
-    const resolvedWeek = others.filter((t) => t.resolvedAt && Date.now() - new Date(t.resolvedAt).getTime() < 7 * DAY).length
-
-    if (!canManage) {
+    if (meta && !meta.me.queue) {
         return (
             <PeopleShell title="HR tickets" root={HELPDESK_ROOT} crumbs={[{ label: 'HR tickets' }]} backTo="/helpdesk">
-                <div className="pp-card"><EmptyState icon="mdi-lock-outline" title="You don't have access" text="Only HR, managers and admins can work the ticket queue."
-                    action={<Link to="/helpdesk" className="pp-btn">Go to my tickets</Link>} /></div>
+                <div className="pp-card"><EmptyState icon="mdi-lock-outline" title="You don't have access" text="Only HR, managers and admins can work the ticket queue." action={<Link to="/helpdesk" className="pp-btn">Go to my tickets</Link>} /></div>
             </PeopleShell>
         )
     }
 
     return (
-        <PeopleShell title="HR tickets" root={HELPDESK_ROOT} crumbs={[{ label: 'HR tickets' }]} backTo="/helpdesk">
+        <PeopleShell title="HR tickets" root={HELPDESK_ROOT} crumbs={[{ label: 'HR tickets' }]} backTo="/helpdesk"
+            actions={<>{meta?.me?.settings && <Link to="/helpdesk/settings" className="pp-btn"><i className="mdi mdi-cog-outline"></i>Settings</Link>}<Link to="/helpdesk" className="pp-btn"><i className="mdi mdi-account-outline"></i>My tickets</Link></>}>
             <ErrorBanner error={error} />
-
-            <div className="at-tiles">
-                <button type="button" className={`at-tile ${statusFilter === 'Open' ? 'active' : ''}`} style={{ '--c': TICKET_STATUS.Open.color }} onClick={() => setStatusFilter(statusFilter === 'Open' ? 'active' : 'Open')}>
-                    <span className="at-tile-icon"><i className="mdi mdi-email-open-outline"></i></span><div><b>{open}</b><span>New / open</span></div>
-                </button>
-                <button type="button" className={`at-tile ${statusFilter === 'In Progress' ? 'active' : ''}`} style={{ '--c': TICKET_STATUS['In Progress'].color }} onClick={() => setStatusFilter(statusFilter === 'In Progress' ? 'active' : 'In Progress')}>
-                    <span className="at-tile-icon"><i className="mdi mdi-progress-wrench"></i></span><div><b>{progress}</b><span>In progress</span></div>
-                </button>
-                <div className="at-tile" style={{ '--c': urgent ? '#e11d48' : '#64748b' }}>
-                    <span className="at-tile-icon"><i className="mdi mdi-fire"></i></span><div><b>{urgent}</b><span>High priority waiting</span></div>
-                </div>
-                <div className="at-tile" style={{ '--c': '#059669' }}>
-                    <span className="at-tile-icon"><i className="mdi mdi-check-all"></i></span><div><b>{resolvedWeek}</b><span>Resolved this week</span></div>
-                </div>
+            <div className="hd-tiles queue">
+                {TILES.map(([k, l, c, ic]) => (
+                    <button key={k} type="button" className={`hd-tile ${tileOn(k) ? 'on' : ''} ${(k === 'overdue' || k === 'Escalated') && counts[k] ? 'alert' : ''}`} style={{ '--c': c }} onClick={() => tile(k)} aria-pressed={tileOn(k)}>
+                        <i className={`mdi ${ic}`}></i><b>{d ? counts[k] || 0 : '–'}</b><small>{l}</small>
+                    </button>
+                ))}
             </div>
-
-            <div className="hd-toolbar">
-                <div className="pp-search">
-                    <i className="mdi mdi-magnify"></i>
-                    <input type="search" className="pp-input" placeholder="Search subject or person…" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Search tickets" />
+            {d?.stats && (
+                <div className="hd-stats">
+                    <span><i className="mdi mdi-reply-outline"></i>Avg first response <b>{fmtMins(d.stats.avgResponseMins)}</b></span>
+                    <span><i className="mdi mdi-check-all"></i>Avg resolution <b>{fmtMins(d.stats.avgResolutionMins)}</b></span>
+                    <span><i className="mdi mdi-check-decagram-outline"></i>Resolved within SLA <b>{d.stats.slaMet === null ? '—' : `${d.stats.slaMet}%`}</b></span>
+                    <small>last 30 days · {counts.active || 0} active</small>
                 </div>
-                <div className="pp-seg" role="tablist" aria-label="Status">
-                    {[['active', 'Active'], ['Resolved', 'Resolved'], ['Closed', 'Closed'], ['', 'All']].map(([k, label]) => (
-                        <button key={label} type="button" className={statusFilter === k ? 'active' : ''} onClick={() => setStatusFilter(k)}>{label}</button>
-                    ))}
-                </div>
-                <div className="at-spacer"></div>
-                <select className="pp-select" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} aria-label="Topic">
-                    <option value="">All topics</option>
-                    {TICKET_CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.value}</option>)}
-                </select>
-            </div>
+            )}
 
-            <section className="pp-card">
-                {listLoading && !others.length ? (
-                    <div className="pp-card-body">{[0, 1, 2].map((i) => <div key={i} className="pp-skel" style={{ height: 56, marginBottom: 12 }}></div>)}</div>
-                ) : !rows.length ? (
-                    <EmptyState icon="mdi-check-all" title={statusFilter === 'active' ? 'Queue is clear' : 'Nothing here'} text={statusFilter === 'active' ? 'No open tickets right now — nice work.' : 'No tickets match these filters.'} />
-                ) : rows.map((t) => {
-                    const active = isActive(t)
-                    const ageDays = (Date.now() - new Date(t.createdAt).getTime()) / DAY
-                    return (
-                        <div key={t._id} className={`hd-row ${t.priority === 'High' && active ? 'high' : ''}`}>
-                            <CategoryBadge category={t.category} />
-                            <div className="hd-main">
-                                <div className="hd-subject">{t.subject}</div>
-                                <div className="hd-desc">{t.description}</div>
-                                <div className="hd-meta">
-                                    <span className="d-inline-flex align-items-center gap-1"><Avatar person={t.employeeId} size={20} />{fullName(t.employeeId)}</span>
-                                    <span>{t.category}</span>
-                                    <PriorityTag priority={t.priority} />
-                                    <span className={`hd-age ${active && ageDays >= 3 ? 'old' : ''}`}><i className="mdi mdi-clock-outline"></i>{active ? `waiting ${ticketAge(t.createdAt)}` : fmtDate(t.createdAt)}</span>
-                                </div>
-                            </div>
-                            <div className="hd-side">
-                                <TicketStatus status={t.status} />
-                                <div className="hd-actions">
-                                    {(NEXT[t.status] || []).map((n) => (
-                                        <button key={n.to} type="button" className={`hd-btn ${n.ghost ? 'ghost' : ''}`} style={{ '--c': TICKET_STATUS[n.to].color }} onClick={() => onMove(t, n.to)}>
-                                            <i className={`mdi ${n.icon}`}></i>{n.label}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    )
-                })}
+            <section className="pp-card hd-card">
+                <div className="hd-tools">
+                    <div className="pp-search"><i className="mdi mdi-magnify"></i><input type="search" className="pp-input" value={f.q} onChange={set('q')} placeholder="Ticket ID, subject or employee…" aria-label="Search" /></div>
+                    <select className="pp-select" value={f.status} onChange={set('status')} aria-label="Status"><option value="active">Active</option><option value="">Any status</option>{Object.keys(TICKET_STATUS).map((s) => <option key={s}>{s}</option>)}</select>
+                    <select className="pp-select" value={f.priority} onChange={set('priority')} aria-label="Priority"><option value="">Any priority</option>{(meta?.priorities || []).map((p) => <option key={p}>{p}</option>)}</select>
+                    <select className="pp-select" value={f.category} onChange={set('category')} aria-label="Category"><option value="">All categories</option>{(meta?.categories || []).map((c) => <option key={c.name}>{c.name}</option>)}</select>
+                    <select className="pp-select" value={f.assignee} onChange={set('assignee')} aria-label="Assigned to">
+                        <option value="">Anyone</option><option value="me">Assigned to me</option><option value="none">Unassigned</option>
+                        {(meta?.agents || []).map((a) => <option key={a._id} value={a._id}>{a.name}</option>)}
+                    </select>
+                    <span className="hd-dates"><input type="date" className="pp-input" value={f.from} max={f.to || undefined} onChange={set('from')} aria-label="Created from" /><span>–</span><input type="date" className="pp-input" value={f.to} min={f.from || undefined} onChange={set('to')} aria-label="Created to" /></span>
+                    {dirty && <button type="button" className="pp-btn sm" onClick={() => { setF(BLANK); setPage(1) }}><i className="mdi mdi-filter-remove-outline"></i>Clear</button>}
+                    {d && <Pager page={d.page} pages={d.pages} total={d.total} limit={d.limit} onPage={setPage} />}
+                </div>
+                <TicketTable queue rows={d?.data || []} meta={meta} sort={sort} setSort={(s) => { setSort(s); setPage(1) }} loading={!d} onAssignMe={meta?.me?.desk ? assignMe : null}
+                    empty={<EmptyState icon="mdi-check-all" title={f.status === 'active' && !dirty ? 'Queue is clear' : 'Nothing here'} text={f.status === 'active' && !dirty ? 'No active tickets right now.' : 'No tickets match these filters.'} />} />
             </section>
         </PeopleShell>
     )

@@ -172,6 +172,8 @@
 .pp-panel-head { min-height: 46px; padding: 10px 14px 0; }
 .pp-panel-titles h3, .pp-panel-titles p { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pp-panel-titles h3 { font-size: 13.5px; letter-spacing: -.005em; }
+/* three panels side by side: let long titles wrap rather than cut off */
+.db-activity .pp-panel-titles h3 { white-space: normal; }
 .pp-panel-icon { width: 28px; height: 28px; border-radius: 8px; font-size: 15px; }
 .pp-panel-body { padding: 10px 14px 12px; }
 .pdb .pp-link { display: inline-flex; align-items: center; gap: 1px; height: 26px; padding: 0 9px; border-radius: 99px; background: #f1f5f9; color: #334155; font-size: 12px; font-weight: 600; text-decoration: none; white-space: nowrap; transition: background .15s, color .15s; }

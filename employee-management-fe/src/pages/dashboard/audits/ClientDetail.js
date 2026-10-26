@@ -10,6 +10,7 @@ import '../../../components/attendance/attendance.css'
 import '../projects/ProjectsList.css'
 import '../projects/ProjectDetail.css'
 import { useAccess } from '../../../hooks/useAccess'
+import { confirmAction } from '../../../components/common/ConfirmDialog'
 
 export const ClientDetail = () => {
     const { id } = useParams()
@@ -53,13 +54,13 @@ export const ClientDetail = () => {
     const maxMinutes = Math.max(1, ...people.map((p) => p.totalMinutes))
 
     const newProject = () => navigate('/audits', { state: { newForClient: client._id } })
-    const onArchiveClient = () => {
-        if (window.confirm(`Archive ${client.name}? It will be hidden from the client list. Its audit projects and hours stay on record.`)) {
+    const onArchiveClient = async () => {
+        if (await confirmAction({ title: `Archive ${client.name}?`, message: 'It will be hidden from the client list. Its engagements, hours and invoices stay on record.', confirmLabel: 'Archive client', requireText: client.clientCode || client.name })) {
             dispatch({ type: auditActions.DELETE_AUDIT_CLIENT, id: client._id, onDone: () => navigate('/audits/clients') })
         }
     }
-    const onArchiveAudit = (a) => {
-        if (window.confirm(`Archive "${engagementTitle(a)}" (${a.auditCode})? Logged hours are kept.`)) {
+    const onArchiveAudit = async (a) => {
+        if (await confirmAction({ title: `Archive ${a.auditCode}?`, message: `“${engagementTitle(a)}” will be hidden from everyone. Logged hours are kept.`, confirmLabel: 'Archive engagement', requireText: a.auditCode })) {
             dispatch({ type: auditActions.DELETE_AUDIT, id: a._id })
         }
     }
@@ -81,7 +82,7 @@ export const ClientDetail = () => {
             backTo="/audits/clients"
             actions={canManage && <>
                 {!editing && <button type="button" className="pp-btn" onClick={() => setEditing(true)}><i className="mdi mdi-pencil-outline"></i> Edit</button>}
-                <button type="button" className="pp-btn primary" onClick={newProject}><i className="mdi mdi-plus"></i> New audit project</button>
+                <button type="button" className="pp-btn primary" onClick={newProject}><i className="mdi mdi-plus"></i> New engagement</button>
             </>}
         >
             <ErrorBanner error={error} />
@@ -142,7 +143,7 @@ export const ClientDetail = () => {
                             {!shown.length ? (
                                 <EmptyState icon="mdi-briefcase-plus-outline" title={engagements.length ? 'No projects with this status' : 'No audit projects yet'}
                                     text={canManage ? 'Create an audit project for this client and assign its team.' : 'Projects you are assigned to will show up here.'}
-                                    action={canManage && !engagements.length && <button type="button" className="pp-btn primary" onClick={newProject}><i className="mdi mdi-plus"></i> New audit project</button>} />
+                                    action={canManage && !engagements.length && <button type="button" className="pp-btn primary" onClick={newProject}><i className="mdi mdi-plus"></i> New engagement</button>} />
                             ) : (
                                 <div className="pl-grid">
                                     {shown.map((a) => <AuditCard key={a._id} audit={a} showClient={false} canManage={canManage} onArchive={onArchiveAudit} />)}

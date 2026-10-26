@@ -28,6 +28,8 @@ import { ExpenseApprovals } from './pages/dashboard/expense/ExpenseApprovals';
 import { AssetList, MyAssets } from './pages/dashboard/asset/AssetList';
 import { TicketList } from './pages/dashboard/helpdesk/TicketList';
 import { HRTickets } from './pages/dashboard/helpdesk/HRTickets';
+import { TicketDetail } from './pages/dashboard/helpdesk/TicketDetail';
+import { HelpdeskSettings } from './pages/dashboard/helpdesk/HelpdeskSettings';
 import { AnnouncementFeed } from './pages/dashboard/announcements/AnnouncementFeed';
 import { ShiftList } from './pages/dashboard/calendar/ShiftList';
 import { HolidayList } from './pages/dashboard/calendar/HolidayList';
@@ -47,6 +49,12 @@ import { ProjectDetail } from './pages/dashboard/projects/ProjectDetail';
 import { TasksBoard } from './pages/dashboard/projects/TasksBoard';
 import { AuditsList } from './pages/dashboard/audits/AuditsList';
 import { AuditDetail } from './pages/dashboard/audits/AuditDetail';
+import { MyWork } from './pages/dashboard/audits/MyWork';
+import { Timesheets } from './pages/dashboard/audits/Timesheets';
+import { WorkAllocation } from './pages/dashboard/audits/WorkAllocation';
+import { AuditDashboard } from './pages/dashboard/audits/AuditDashboard';
+import { AuditProjects, AuditProjectDetail } from './pages/dashboard/audits/AuditProjects';
+import { WorkflowTemplates, WorkflowTemplateEditor } from './pages/dashboard/audits/WorkflowTemplates';
 import { ClientsList } from './pages/dashboard/audits/ClientsList';
 import { ClientDetail } from './pages/dashboard/audits/ClientDetail';
 import { Billing } from './pages/dashboard/audits/Billing';
@@ -134,6 +142,8 @@ function App() {
             <Route path="/assets/mine" element={<MyAssets />} />
             <Route path="/helpdesk" element={<ScreenGuard screen="screen:helpdesk"><TicketList /></ScreenGuard>} />
             <Route path="/helpdesk/all" element={<HRTickets />} />
+            <Route path="/helpdesk/t/:id" element={<TicketDetail />} />
+            <Route path="/helpdesk/settings" element={<HelpdeskSettings />} />
             <Route path="/messages" element={<Chat />} />
             <Route path="/announcements" element={<ScreenGuard screen="screen:announcements"><AnnouncementFeed /></ScreenGuard>} />
 
@@ -145,6 +155,14 @@ function App() {
             <Route path="/audits/clients/:id" element={<ScreenGuard screen="screen:audits"><ClientDetail /></ScreenGuard>} />
             <Route path="/audits/billing" element={<Billing />} />
             <Route path="/audits/invoices/:id/print" element={<InvoicePrint />} />
+            <Route path="/my-work" element={<ScreenGuard screen="screen:audits"><MyWork /></ScreenGuard>} />
+            <Route path="/timesheets" element={<ScreenGuard screen="screen:audits"><Timesheets /></ScreenGuard>} />
+            <Route path="/audits/dashboard" element={<AuditDashboard />} />
+            <Route path="/audits/allocation" element={<WorkAllocation />} />
+            <Route path="/audits/projects" element={<ScreenGuard screen="screen:audits"><AuditProjects /></ScreenGuard>} />
+            <Route path="/audits/projects/:id" element={<ScreenGuard screen="screen:audits"><AuditProjectDetail /></ScreenGuard>} />
+            <Route path="/audits/workflows" element={<WorkflowTemplates />} />
+            <Route path="/audits/workflows/:id" element={<WorkflowTemplateEditor />} />
             <Route path="/audits/:id" element={<ScreenGuard screen="screen:audits"><AuditDetail /></ScreenGuard>} />
 
             <Route path="/reports/employees" element={<ReportBuilder />} />

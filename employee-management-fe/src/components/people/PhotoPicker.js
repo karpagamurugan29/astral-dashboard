@@ -3,6 +3,7 @@ import { Avatar } from './PeopleUI'
 import { chatApi as api } from '../chat/chatApi'
 import { squarePhoto, hasRealPhoto } from '../../utils/photo'
 import { toast } from '../common/Toaster'
+import { confirmAction } from '../common/ConfirmDialog'
 
 // Avatar with a camera button: pick a photo, it's cropped square and shrunk in the browser,
 // then uploaded. `endpoint` is /auth/profile/photo (yourself) or /employees/:id/photo (HR).
@@ -27,6 +28,7 @@ export const PhotoPicker = ({ person, endpoint, size = 88, onChange, canRemove =
         setBusy(false)
     }
     const remove = async () => {
+        if (!(await confirmAction({ title: 'Remove this photo?', message: 'Initials are shown instead.', confirmLabel: 'Remove photo' }))) return
         setBusy(true)
         try { const j = await api('DELETE', endpoint); setPreview(null); toast.success(j.message, { title: 'Photo removed' }); onChange?.('') } catch (err) { toast.error(err.message) }
         setBusy(false)

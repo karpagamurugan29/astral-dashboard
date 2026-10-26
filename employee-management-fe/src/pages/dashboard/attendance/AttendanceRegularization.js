@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useForm } from 'react-hook-form'
 import attendanceActions from '../../../redux/attendance/Actions'
@@ -6,6 +6,7 @@ import { PeopleShell, Avatar, EmptyState, ErrorBanner, fullName } from '../../..
 import { ATTENDANCE_ROOT, AttStatus, statusMeta, ymd } from '../../../components/attendance/AttendanceUI'
 import './AttendanceRegularization.css'
 import { useAccess } from '../../../hooks/useAccess'
+import { FormModal } from '../../../components/common/FormModal'
 
 const niceDate = (v) => {
     if (!v) return '—'
@@ -18,7 +19,10 @@ export const AttendanceRegularization = () => {
     const { myRegularizations, pendingRegularizations, error } = useSelector((state) => state.attendanceReducer || {})
     const { can } = useAccess()
     const canApprove = can(['Admin', 'HR', 'Manager', 'Team Lead'], 'attendance')
-    const { register, handleSubmit, reset, watch, formState: { errors } } = useForm()
+    const { register, handleSubmit, reset, watch, formState: { errors } } = useForm({ defaultValues: { attendanceDate: '', requestedCheckIn: '', requestedCheckOut: '', reason: '' } })
+    const [open, setOpen] = useState(false)
+    const openForm = () => { reset({ attendanceDate: '', requestedCheckIn: '', requestedCheckOut: '', reason: '' }); setOpen(true) }
+    const closeForm = () => { reset({ attendanceDate: '', requestedCheckIn: '', requestedCheckOut: '', reason: '' }); setOpen(false) }
 
     useEffect(() => {
         dispatch({ type: attendanceActions.GET_MY_REGULARIZATIONS })
@@ -30,6 +34,7 @@ export const AttendanceRegularization = () => {
     const onSubmit = (data) => {
         dispatch({ type: attendanceActions.REQUEST_REGULARIZATION, payload: data })
         reset({ attendanceDate: '', requestedCheckIn: '', requestedCheckOut: '', reason: '' })
+        setOpen(false)
     }
 
     const onDecide = (id, status) => dispatch({ type: attendanceActions.DECIDE_REGULARIZATION, id, status })
@@ -39,7 +44,8 @@ export const AttendanceRegularization = () => {
     const checkIn = watch('requestedCheckIn')
 
     return (
-        <PeopleShell title="Regularization" root={ATTENDANCE_ROOT} crumbs={[{ label: 'Regularization' }]}>
+        <PeopleShell title="Regularization" root={ATTENDANCE_ROOT} crumbs={[{ label: 'Regularization' }]}
+            actions={<button type="button" className="pp-btn primary" onClick={openForm}><i className="mdi mdi-file-document-edit-outline"></i> Request a correction</button>}>
             <ErrorBanner error={error} />
 
             {canApprove && (
@@ -74,9 +80,8 @@ export const AttendanceRegularization = () => {
                 </>
             )}
 
-            <div className="rg-layout">
-                <form className="pp-card" onSubmit={handleSubmit(onSubmit)} noValidate>
-                    <div className="pp-card-head"><h3><i className="mdi mdi-file-document-edit-outline me-2" style={{ color: '#0284c7' }}></i>Request a correction</h3></div>
+            {open && (
+                <FormModal icon="mdi-file-document-edit-outline" title="Request a correction" sub="Your manager reviews it" onClose={closeForm} onSubmit={handleSubmit(onSubmit)} submitLabel="Submit request" submitIcon="mdi-send-outline">
                     <div className="pp-card-body">
                         <div className="rg-tip">
                             <i className="mdi mdi-lightbulb-on-outline"></i>
@@ -105,17 +110,16 @@ export const AttendanceRegularization = () => {
                                 {errors.reason && <div className="pp-err">{errors.reason.message}</div>}
                             </div>
                         </div>
-                        <button type="submit" className="pp-btn primary w-100">
-                            <i className="mdi mdi-send-outline"></i> Submit request
-                        </button>
                     </div>
-                </form>
+                </FormModal>
+            )}
 
+            <div>
                 <section className="pp-card">
                     <div className="pp-card-head"><h3>My requests</h3><small>{mine.length} total</small></div>
                     <div className="pp-card-body">
                         {!mine.length ? (
-                            <EmptyState icon="mdi-clipboard-text-outline" title="No requests yet" text="Corrections you submit will show here with their status." />
+                            <EmptyState icon="mdi-clipboard-text-outline" title="No requests yet" text="Corrections you submit will show here with their status." action={<button type="button" className="pp-btn primary" onClick={openForm}><i className="mdi mdi-plus"></i> Request a correction</button>} />
                         ) : (
                             <ul className="rg-mine">
                                 {mine.map((r) => (

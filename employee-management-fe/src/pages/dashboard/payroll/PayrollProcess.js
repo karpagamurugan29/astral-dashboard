@@ -6,6 +6,7 @@ import { PeopleShell, Avatar, EmptyState, ErrorBanner, fullName, fmtDate } from 
 import { PAYROLL_ROOT, money, moneyShort, periodLabel, PayStatus, MonthTile, payStatusMeta } from '../../../components/payroll/PayrollUI'
 import '../../../components/attendance/attendance.css'
 import './PayrollProcess.css'
+import { confirmAction } from '../../../components/common/ConfirmDialog'
 
 const STAGES = ['Draft', 'Approved', 'Paid']
 
@@ -46,19 +47,19 @@ export const PayrollProcess = () => {
     const all = useMemo(() => [...(runs || [])].sort((a, b) => String(b.period).localeCompare(String(a.period))), [runs])
     const existing = all.find((r) => r.period === period)
 
-    const onGenerate = () => {
-        if (existing && !window.confirm(`${periodLabel(period)} already has a payroll run (${existing.status}). Generate again?`)) return
+    const onGenerate = async () => {
+        if (existing && !(await confirmAction({ title: `Generate ${periodLabel(period)} again?`, message: `It already has a payroll run (${existing.status}). Generating replaces the draft figures.`, confirmLabel: 'Generate again', tone: 'warn' }))) return
         dispatch({ type: payrollActions.GENERATE_PAYROLL, payload: { period } })
     }
 
-    const onApprove = (r) => {
-        if (window.confirm(`Approve payroll for ${periodLabel(r.period)}? ${r.employeeCount} payslips, net ${money(r.totalNet)}.`)) {
+    const onApprove = async (r) => {
+        if (await confirmAction({ title: `Approve payroll for ${periodLabel(r.period)}?`, message: `${r.employeeCount} payslips, net ${money(r.totalNet)}.`, confirmLabel: 'Approve payroll', tone: 'primary' })) {
             dispatch({ type: payrollActions.APPROVE_PAYROLL_RUN, id: r._id })
         }
     }
 
-    const onMarkPaid = (r) => {
-        if (window.confirm(`Mark ${periodLabel(r.period)} as paid? Only do this once salaries (${money(r.totalNet)}) have been transferred.`)) {
+    const onMarkPaid = async (r) => {
+        if (await confirmAction({ title: `Mark ${periodLabel(r.period)} as paid?`, message: `Only once salaries (${money(r.totalNet)}) have been transferred.`, confirmLabel: 'Mark paid', tone: 'warn' })) {
             dispatch({ type: payrollActions.MARK_PAYROLL_PAID, id: r._id })
         }
     }

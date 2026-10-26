@@ -10,6 +10,7 @@ import { toast } from '../../../components/common/Toaster'
 import { Modal } from '../projects/ProjectParts'
 import '../projects/MyTasks.css'
 import './Files.css'
+import { confirmAction } from '../../../components/common/ConfirmDialog'
 
 /* Files: keep work files, organise them in folders and share them — one to one with people,
    or one to many with a chat group. Shares follow the same rule as chat (your team and the
@@ -175,8 +176,8 @@ const FileDrawer = ({ id, me, folders, onClose, onChanged }) => {
                         {!d.trashedAt && <button type="button" className={`it-tool ${d.starred ? 'on' : ''}`} onClick={() => act('POST', `/files/${d._id}/star`)}><i className={`mdi ${d.starred ? 'mdi-star' : 'mdi-star-outline'}`}></i>{d.starred ? 'Starred' : 'Star'}</button>}
                         {!d.trashedAt && canEdit && <button type="button" className="it-tool" onClick={() => setRename(d.name)}><i className="mdi mdi-pencil-outline"></i>Rename</button>}
                         {!d.trashedAt && canEdit && <button type="button" className="it-tool" onClick={() => verInput.current?.click()}><i className="mdi mdi-file-replace-outline"></i>New version</button>}
-                        {owner && !d.trashedAt && <button type="button" className="it-tool danger" onClick={() => act('DELETE', `/files/${d._id}`, undefined, () => { onClose() })}><i className="mdi mdi-trash-can-outline"></i>Delete</button>}
-                        {owner && d.trashedAt && <><button type="button" className="it-tool close" onClick={() => act('POST', `/files/${d._id}/restore`)}><i className="mdi mdi-delete-restore"></i>Restore</button><button type="button" className="it-tool danger" onClick={() => window.confirm(`Delete “${d.name}” for good? This can't be undone.`) && act('DELETE', `/files/${d._id}?permanent=1`, undefined, () => onClose())}><i className="mdi mdi-delete-outline"></i>Delete forever</button></>}
+                        {owner && !d.trashedAt && <button type="button" className="it-tool danger" onClick={async () => (await confirmAction({ title: `Move “${d.name}” to Trash?`, message: 'People it is shared with lose access. You can restore it from Trash.', confirmLabel: 'Move to Trash', tone: 'warn' })) && act('DELETE', `/files/${d._id}`, undefined, () => { onClose() })}><i className="mdi mdi-trash-can-outline"></i>Delete</button>}
+                        {owner && d.trashedAt && <><button type="button" className="it-tool close" onClick={() => act('POST', `/files/${d._id}/restore`)}><i className="mdi mdi-delete-restore"></i>Restore</button><button type="button" className="it-tool danger" onClick={async () => (await confirmAction({ title: `Delete “${d.name}” for good?`, message: 'All its versions are removed. This can\'t be undone.', confirmLabel: 'Delete forever' })) && act('DELETE', `/files/${d._id}?permanent=1`, undefined, () => onClose())}><i className="mdi mdi-delete-outline"></i>Delete forever</button></>}
                         {!owner && <button type="button" className="it-tool" onClick={() => act('POST', `/files/${d._id}/unshare`, { employee: me }, () => onClose())}><i className="mdi mdi-close"></i>Remove from my list</button>}
                         <input ref={verInput} type="file" hidden onChange={newVersion} />
                     </div>
@@ -308,7 +309,7 @@ export const Files = () => {
                     {folderId && d?.folder && (
                         <div className="fs-folderbar" style={{ '--c': d.folder.color }}>
                             <i className="mdi mdi-folder"></i><b>{d.folder.name}</b><small>{d.folder.owner?._id === me ? 'Your folder' : `${fullName(d.folder.owner)}’s folder · you ${d.folder.access === 'edit' ? 'can edit' : 'can view'}`}</small>
-                            {d.folder.access === 'owner' && <><button type="button" className="pp-btn sm" onClick={() => setShareFolder(d.folder)}><i className="mdi mdi-share-variant"></i>Share folder</button><button type="button" className="pp-btn sm" onClick={() => window.confirm(`Move “${d.folder.name}” and its files to Trash?`) && folderAct('DELETE', `/files/folders/${d.folder._id}`).then(() => go('mine'))}><i className="mdi mdi-trash-can-outline"></i></button></>}
+                            {d.folder.access === 'owner' && <><button type="button" className="pp-btn sm" onClick={() => setShareFolder(d.folder)}><i className="mdi mdi-share-variant"></i>Share folder</button><button type="button" className="pp-btn sm" onClick={async () => (await confirmAction({ title: `Move “${d.folder.name}” to Trash?`, message: 'Its files go with it. You can restore it from Trash.', confirmLabel: 'Move to Trash', tone: 'warn' })) && folderAct('DELETE', `/files/folders/${d.folder._id}`).then(() => go('mine'))}><i className="mdi mdi-trash-can-outline"></i></button></>}
                         </div>
                     )}
                     {uploading && <div className="fs-upload"><i className="mdi mdi-cloud-upload-outline"></i><span>Uploading {uploading.names.length === 1 ? uploading.names[0] : `${uploading.names.length} files`}…</span><div><i style={{ width: `${uploading.pct}%` }}></i></div><b>{uploading.pct}%</b></div>}
@@ -328,7 +329,7 @@ export const Files = () => {
                                         <i className="mdi mdi-folder"></i>
                                         <span><b>{f.name}</b><small>{f.files} file{f.files === 1 ? '' : 's'}{f.owner?._id !== me ? ` · ${fullName(f.owner)}` : ''}</small></span>
                                         {(f.shares?.length || f.groups?.length) ? <i className="mdi mdi-account-multiple-plus-outline fs-fshared" title="Shared"></i> : null}
-                                        {f.trashedAt && <span className="fs-factions" onClick={(e) => e.stopPropagation()}><button type="button" onClick={() => folderAct('POST', `/files/folders/${f._id}/restore`)}><i className="mdi mdi-delete-restore"></i></button><button type="button" onClick={() => window.confirm(`Delete “${f.name}” and its files for good?`) && folderAct('DELETE', `/files/folders/${f._id}?permanent=1`)}><i className="mdi mdi-delete-outline"></i></button></span>}
+                                        {f.trashedAt && <span className="fs-factions" onClick={(e) => e.stopPropagation()}><button type="button" onClick={() => folderAct('POST', `/files/folders/${f._id}/restore`)}><i className="mdi mdi-delete-restore"></i></button><button type="button" onClick={async () => (await confirmAction({ title: `Delete “${f.name}” for good?`, message: 'The folder and all its files are removed. This can\'t be undone.', confirmLabel: 'Delete forever', requireText: f.name })) && folderAct('DELETE', `/files/folders/${f._id}?permanent=1`)}><i className="mdi mdi-delete-outline"></i></button></span>}
                                     </div>
                                 ))}</div>
                             )}

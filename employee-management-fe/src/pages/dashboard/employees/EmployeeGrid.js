@@ -5,6 +5,7 @@ import employeeActions from '../../../redux/employee/Actions'
 import { PeopleShell, Avatar, StatusPill, TypeTag, DeptTag, deptColor, EmptyState, ErrorBanner, fullName, fmtDate, tenure } from '../../../components/people/PeopleUI'
 import './EmployeeGrid.css'
 import { useAccess } from '../../../hooks/useAccess'
+import { confirmAction } from '../../../components/common/ConfirmDialog'
 
 const FORMER = ['Resigned', 'Terminated']
 const PAGE_SIZE = 12
@@ -87,8 +88,15 @@ export const EmployeeGrid = () => {
 
     const onEdit = (id) => navigate(`/employees/edit/${id}`)
 
-    const onRemove = (id, name) => {
-        if (window.confirm(`Remove ${name || 'this employee'} from the active roster? Their attendance, leave and payroll history is kept — this can be reversed by editing their status.`)) {
+    const onRemove = async (id, name) => {
+        const emp = (employeeList || []).find((e) => e._id === id)
+        if (await confirmAction({
+            title: `Remove ${name || 'this employee'}?`,
+            message: 'They are taken off the active roster and lose access.',
+            details: ['Attendance, leave, payroll and audit history are kept', 'This can be reversed by editing their status'],
+            confirmLabel: 'Remove employee',
+            requireText: emp?.employeeId || name,
+        })) {
             dispatch({ type: employeeActions.DELETE_EMPLOYEE, id })
         }
     }

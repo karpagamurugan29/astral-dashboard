@@ -19,6 +19,27 @@ const auditTimeLogSchema = new mongoose.Schema(
             index: true,
         },
 
+        // timer (start/stop) or manual entry
+        entryType: { type: String, enum: ["timer", "manual"], default: "timer" },
+        workDate: { type: String, default: "" }, // YYYY-MM-DD (company time)
+        breakMinutes: { type: Number, default: 0 },
+        // timesheet: Draft → Submitted → Approved / Rejected
+        status: { type: String, enum: ["Draft", "Submitted", "Approved", "Rejected"], default: "Draft", index: true },
+        submittedAt: { type: Date, default: null },
+        approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: "Employee", default: null },
+        approvedAt: { type: Date, default: null },
+        reviewComment: { type: String, default: "" },
+        // corrections to approved time are recorded, never silent
+        adjustments: [{
+            by: { type: mongoose.Schema.Types.ObjectId, ref: "Employee" }, at: { type: Date, default: Date.now },
+            fromMinutes: Number, toMinutes: Number, reason: String,
+            status: { type: String, enum: ["Requested", "Applied", "Declined"], default: "Applied" },
+            decidedBy: { type: mongoose.Schema.Types.ObjectId, ref: "Employee" }, decidedAt: Date,
+        }],
+        // the workflow step this session was spent on (label kept in case the step is later renamed or removed)
+        milestoneKey: { type: String, default: "", index: true },
+        milestoneLabel: { type: String, default: "" },
+
         startTime: {
             type: Date,
             required: true,

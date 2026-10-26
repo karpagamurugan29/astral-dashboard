@@ -8,6 +8,7 @@ import { logAudit } from "../utils/audit.js";
 import { DEFAULT_ONBOARDING_TASKS } from "../utils/checklists.js";
 import { defaultRoleFor, wouldLoop, invalidateHierarchy, scopeOf, circleOf } from "../utils/hierarchy.js";
 import { invalidateAccessCache } from "../utils/access.js";
+import { COMPANY_TZ } from "../utils/autoCheckout.js";
 
 
 export const AddEmployee = async (req, res) => {
@@ -267,3 +268,53 @@ export const GetEmployeeHistory = async (req, res) => {
         });
     }
 }
+
+/* ---------------- birthday line-up ---------------- */
+
+// GET /employees/birthdays?from=YYYY-MM-DD&to=YYYY-MM-DD (default: today → 3 months on)
+// Birthdays are matched on month and day, so a range across New Year works, and a range longer
+// than a year lists each occurrence. 29 Feb birthdays fall on 28 Feb in other years.
+// Same visibility as the employee directory. Birth years are never sent.
+export const birthdayLineUp = async (req, res) => {
+    try {
+        const tz = COMPANY_TZ();
+        const dayKey = (d) => new Date(d).toLocaleDateString("en-CA", { timeZone: tz });
+        const today = dayKey(new Date());
+        const isKey = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s || "") && !Number.isNaN(Date.parse(`${s}T00:00:00Z`));
+        const addMonths = (key, n) => {
+            const [y, m, d] = key.split("-").map(Number);
+            const last = new Date(Date.UTC(y, m - 1 + n + 1, 0)).getUTCDate();
+            return new Date(Date.UTC(y, m - 1 + n, Math.min(d, last))).toISOString().slice(0, 10);
+        };
+        const from = isKey(req.query.from) ? req.query.from : today;
+        const to = isKey(req.query.to) ? req.query.to : addMonths(from, 3);
+        if (to < from) return res.status(400).json({ success: false, message: "The end date must be on or after the start date." });
+        const span = (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 864e5;
+        if (span > 731) return res.status(400).json({ success: false, message: "Pick a range of up to two years." });
+
+        const circle = await circleOf(await scopeOf(req));
+        const filter = { status: "Active", dateOfBirth: { $ne: null } };
+        if (circle) filter._id = { $in: [...circle] };
+        const people = await employeeModel.find(filter).select("employeeId firstName lastName designation department profileImage dateOfBirth").lean();
+
+        const leap = (y) => (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+        const dayDiff = (a, b) => Math.round((Date.parse(`${a}T00:00:00Z`) - Date.parse(`${b}T00:00:00Z`)) / 864e5);
+        const fromYear = Number(from.slice(0, 4)), toYear = Number(to.slice(0, 4));
+        const data = [];
+        for (const p of people) {
+            const [, mm, dd] = dayKey(p.dateOfBirth).split("-");
+            for (let y = fromYear; y <= toYear; y++) {
+                const day = mm === "02" && dd === "29" && !leap(y) ? "28" : dd;
+                const date = `${y}-${mm}-${day}`;
+                if (date < from || date > to) continue;
+                const days = dayDiff(date, today);
+                const { dateOfBirth, ...employee } = p;
+                data.push({ employee, date, daysAway: days, when: days === 0 ? "today" : days > 0 ? "upcoming" : "past" });
+            }
+        }
+        data.sort((a, b) => a.date.localeCompare(b.date) || `${a.employee.firstName} ${a.employee.lastName}`.localeCompare(`${b.employee.firstName} ${b.employee.lastName}`));
+        return res.status(200).json({ success: true, from, to, today, data });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: err.message });
+    }
+};

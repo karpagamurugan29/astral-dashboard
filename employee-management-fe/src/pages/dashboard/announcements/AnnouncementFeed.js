@@ -7,6 +7,8 @@ import { AUDIENCES, audienceMeta, avatarColor, initials, authorName, relativeTim
 import { BackButton } from '../../../components/common/BackButton'
 import './AnnouncementFeed.css'
 import { useAccess } from '../../../hooks/useAccess'
+import { FormModal } from '../../../components/common/FormModal'
+import { confirmAction } from '../../../components/common/ConfirmDialog'
 
 const startOfToday = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime() }
 
@@ -70,13 +72,14 @@ export const AnnouncementFeed = () => {
         setComposerOpen(false)
     }
 
+    const openComposer = () => { reset({ title: '', content: '', audience: 'Everyone', pinned: false }); setComposerOpen(true) }
     const onCancel = () => {
         reset({ title: '', content: '', audience: 'Everyone', pinned: false })
         setComposerOpen(false)
     }
 
-    const onDelete = (id) => {
-        if (window.confirm('Remove this announcement?')) {
+    const onDelete = async (id) => {
+        if (await confirmAction({ title: 'Delete this announcement?', message: 'It disappears for everyone. This can\'t be undone.', confirmLabel: 'Delete' })) {
             dispatch({ type: announcementActions.DELETE_ANNOUNCEMENT, id })
         }
     }
@@ -138,8 +141,8 @@ export const AnnouncementFeed = () => {
                             <div className="an-stat"><b>{stats.total}</b><span>Total</span></div>
                             <div className="an-stat"><b>{stats.pinned}</b><span>Pinned</span></div>
                             <div className="an-stat"><b>{stats.week}</b><span>This week</span></div>
-                            {canPost && !composerOpen && (
-                                <button type="button" className="an-new" onClick={() => setComposerOpen(true)}>
+                            {canPost && (
+                                <button type="button" className="an-new" onClick={openComposer}>
                                     <i className="mdi mdi-plus"></i> New announcement
                                 </button>
                             )}
@@ -151,13 +154,8 @@ export const AnnouncementFeed = () => {
                     )}
 
                     {canPost && composerOpen && (
-                        <form className="an-composer" onSubmit={handleSubmit(onSubmit)} noValidate>
-                            <div className="an-composer-head">
-                                <h5>New announcement</h5>
-                                <button type="button" className="an-close" onClick={onCancel} aria-label="Close composer">
-                                    <i className="mdi mdi-close"></i>
-                                </button>
-                            </div>
+                        <FormModal size="wide" icon="mdi-bullhorn-outline" title="New announcement" sub="Everyone in the audience is notified" onClose={onCancel} onSubmit={handleSubmit(onSubmit)} submitLabel="Post" submitIcon="mdi-send-outline">
+                            <div className="an">
 
                             <div className="an-field">
                                 <label className="an-label" htmlFor="an-title">Title</label>
@@ -198,12 +196,9 @@ export const AnnouncementFeed = () => {
                                 <label className="an-pin">
                                     <input type="checkbox" {...register('pinned')} /> <i className="mdi mdi-pin-outline"></i> Pin to top
                                 </label>
-                                <div className="an-btns">
-                                    <button type="button" className="an-btn" onClick={onCancel}>Cancel</button>
-                                    <button type="submit" className="an-btn primary"><i className="mdi mdi-send-outline"></i> Post</button>
-                                </div>
                             </div>
-                        </form>
+                            </div>
+                        </FormModal>
                     )}
 
                     <div className="an-toolbar">
@@ -250,7 +245,7 @@ export const AnnouncementFeed = () => {
                                     : canPost ? 'Share your first update with the team.' : 'Company updates will show up here.'}
                             </p>
                             {!isFiltering && canPost && !composerOpen && (
-                                <button type="button" className="an-btn primary mt-3" onClick={() => setComposerOpen(true)}>
+                                <button type="button" className="an-btn primary mt-3" onClick={openComposer}>
                                     <i className="mdi mdi-plus"></i> New announcement
                                 </button>
                             )}

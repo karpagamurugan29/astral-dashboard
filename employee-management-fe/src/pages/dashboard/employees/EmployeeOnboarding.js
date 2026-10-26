@@ -6,6 +6,7 @@ import { PeopleShell, Avatar, EmptyState, ErrorBanner, fullName, fmtDate } from 
 import './Lifecycle.css'
 import { useAccess } from '../../../hooks/useAccess'
 import { toast } from '../../../components/common/Toaster'
+import { confirmAction } from '../../../components/common/ConfirmDialog'
 
 const DAY = 24 * 60 * 60 * 1000
 const daysSince = (date) => Math.max(0, Math.floor((Date.now() - new Date(date).getTime()) / DAY))
@@ -43,8 +44,8 @@ export const EmployeeOnboarding = () => {
     const say = (key) => (ok, text) => { setBusy((b) => ({ ...b, [key]: false })); toast[ok ? 'success' : 'error'](text) }
     const toggle = (emp, i, completed) => dispatch({ type: employeeActions.UPDATE_ONBOARDING_TASK, id: emp._id, taskIndex: i, completed })
     const welcome = (emp) => { setBusy((b) => ({ ...b, [`w${emp._id}`]: true })); dispatch({ type: employeeActions.SEND_ONBOARDING_WELCOME, id: emp._id, onDone: say(`w${emp._id}`) }) }
-    const close = (ids) => {
-        if (!window.confirm(ids.length === 1 ? 'Mark this person as already onboarded? They will leave this list.' : `Mark ${ids.length} people as already onboarded? They will leave this list.`)) return
+    const close = async (ids) => {
+        if (!(await confirmAction({ title: ids.length === 1 ? 'Mark as already onboarded?' : `Mark ${ids.length} people as already onboarded?`, message: 'They will leave this list.', confirmLabel: 'Mark onboarded', tone: 'primary' }))) return
         setBusy((b) => ({ ...b, close: true }))
         dispatch({ type: employeeActions.CLOSE_ONBOARDING, ids, onDone: (ok, text) => { say('close')(ok, text); if (ok) setSelected({}) } })
     }

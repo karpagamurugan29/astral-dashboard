@@ -13,6 +13,7 @@ import documentActions from '../../../redux/document/Actions'
 import { PendingDocs, DocList, DocUploadForm } from '../../../components/documents/EmployeeDocs'
 import { ROLE_FOR_DESIGNATION, levelRank } from '../../../components/org/OrgUI'
 import { PhotoPicker } from '../../../components/people/PhotoPicker'
+import { confirmAction } from '../../../components/common/ConfirmDialog'
 
 const ROLES = ['Employee', 'Team Lead', 'Manager', 'HR', 'Admin']
 
@@ -327,7 +328,7 @@ export const AddEditEmployee = () => {
                             {isEdit ? (
                                 <>
                                     <DocList docs={byEmployee?.id === id ? byEmployee.list : []} empty="No documents on this record yet."
-                                        canDelete={() => true} onDelete={(d) => { if (window.confirm(`Delete "${d.title}"?`)) dispatch({ type: documentActions.DELETE_DOCUMENT, id: d._id }) }} />
+                                        canDelete={() => true} onDelete={async (d) => { if (await confirmAction({ title: `Delete “${d.title}”?`, message: 'The file is removed from this record. This can\'t be undone.', confirmLabel: 'Delete document' })) dispatch({ type: documentActions.DELETE_DOCUMENT, id: d._id }) }} />
                                     <div className="mt-3">
                                         <DocUploadForm busy={uploading} onSubmit={(doc) => new Promise((resolve) => dispatch({ type: documentActions.UPLOAD_DOCUMENT, payload: { doc, employeeId: id }, onDone: resolve }))} />
                                     </div>

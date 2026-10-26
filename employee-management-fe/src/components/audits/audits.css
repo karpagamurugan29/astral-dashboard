@@ -147,3 +147,8 @@
     .cl-contact { min-width: 0; }
     .au-client-pick { flex-direction: column; }
 }
+
+/* workflow step picker on the timer */
+.au-step { display: flex; flex-direction: column; gap: 3px; margin: 8px 0 10px; text-align: left; }
+.au-step span { font-size: 10.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--pp-muted); }
+.au-step .pp-select { height: 36px; font-size: 13px; }

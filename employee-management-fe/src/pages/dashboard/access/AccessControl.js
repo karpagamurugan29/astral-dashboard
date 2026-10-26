@@ -5,6 +5,7 @@ import { PeopleShell, Avatar, EmptyState, ErrorBanner, fullName } from '../../..
 import { SENSITIVE_MODULES, keyMeta } from '../../../components/settings/modules'
 import '../../../components/settings/settings.css'
 import './AccessControl.css'
+import { confirmAction } from '../../../components/common/ConfirmDialog'
 
 const SETTINGS_ROOT = { label: 'Settings', to: '/settings/company' }
 const ROLES = ['HR', 'Manager', 'Team Lead', 'Employee']
@@ -17,9 +18,10 @@ const sectionsOf = (data) => [
     { title: 'Manage & approve', hint: 'Lets them add, change or approve', keys: data.modules },
 ]
 
-const confirmSensitive = (mods, who) => {
+// granting pay / access modules is sensitive: ask before saving (resolves true when nothing risky is added)
+const confirmSensitive = async (mods, who) => {
     const risky = mods.filter((m) => SENSITIVE_MODULES.includes(m))
-    return !risky.length || window.confirm(`${who} will be able to use ${risky.map(label).join(', ')} — this includes changing pay or access. Continue?`)
+    return !risky.length || confirmAction({ title: 'Grant sensitive access?', message: `${who} will be able to use these — including changing pay or access:`, details: risky.map(label), confirmLabel: 'Grant access', tone: 'warn' })
 }
 
 const ModuleIcon = ({ m }) => {
@@ -34,9 +36,9 @@ const RolesTab = ({ data, saving }) => {
     useEffect(() => { setDraft(Object.fromEntries(ROLES.map((r) => [r, data.roles[r] || []]))) }, [data])
     const changed = ROLES.filter((r) => !sameSet(draft[r], data.roles[r] || []))
     const toggle = (r, m) => setDraft((d) => ({ ...d, [r]: d[r]?.includes(m) ? d[r].filter((x) => x !== m) : [...(d[r] || []), m] }))
-    const save = () => {
+    const save = async () => {
         const added = changed.flatMap((r) => (draft[r] || []).filter((m) => !(data.roles[r] || []).includes(m)))
-        if (!confirmSensitive([...new Set(added)], 'These roles')) return
+        if (!(await confirmSensitive([...new Set(added)], 'These roles'))) return
         dispatch({ type: accessActions.SAVE_ROLE_ACCESS, roles: Object.fromEntries(changed.map((r) => [r, draft[r]])) })
     }
 
@@ -90,9 +92,9 @@ const GroupTab = ({ data, saving, kind }) => {
     const [draft, setDraft] = useState([])
     useEffect(() => { setDraft(dept?.allow || []) }, [dept])
     const dirty = dept && !sameSet(draft, dept.allow)
-    const save = () => {
+    const save = async () => {
         const added = draft.filter((m) => !dept.allow.includes(m))
-        if (!confirmSensitive(added, kind === 'department' ? `Everyone in ${dept.name}` : `Every ${dept.name}`)) return
+        if (!(await confirmSensitive(added, kind === 'department' ? `Everyone in ${dept.name}` : `Every ${dept.name}`))) return
         dispatch({ type: g.action, name: dept.name, allow: draft })
     }
 
@@ -169,9 +171,9 @@ const EmployeesTab = ({ data, saving }) => {
         setAllow((a) => (mode === 'allow' ? [...new Set([...a, m])] : a.filter((x) => x !== m)))
         setDeny((d) => (mode === 'block' ? [...new Set([...d, m])] : d.filter((x) => x !== m)))
     }
-    const save = () => {
+    const save = async () => {
         const added = allow.filter((m) => !person.allow.includes(m))
-        if (!confirmSensitive(added, fullName(person))) return
+        if (!(await confirmSensitive(added, fullName(person)))) return
         dispatch({ type: accessActions.SAVE_EMPLOYEE_ACCESS, id: person._id, allow, deny, label: fullName(person) })
     }
     const departments = [...new Set(data.employees.map((e) => e.department).filter(Boolean))].sort()

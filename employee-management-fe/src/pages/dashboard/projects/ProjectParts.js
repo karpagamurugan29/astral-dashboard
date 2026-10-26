@@ -6,6 +6,7 @@ import { Avatar, fullName } from '../../../components/people/PeopleUI'
 import { PRIORITY, TASK_COLUMNS, TASK_STATUS, PeoplePicker, DueTag } from '../../../components/projects/ProjectUI'
 import './ProjectWorkspace.css'
 import { Live } from '../../../components/common/Live'
+import { confirmAction } from '../../../components/common/ConfirmDialog'
 
 /* Shared pieces for the projects screens: API helper, formatters, project form, task modal, timer. */
 
@@ -125,7 +126,7 @@ export const TaskModal = ({ task, project, members, me, canManage, onClose, onSa
         try { const j = await api('POST', `/tasks/${task._id}/comments`, { message: comment }); setComments(j.data.comments || []); setComment(''); onSaved(j.data, false, true) } catch (e) { setErr(e.message) }
     }
     const remove = async () => {
-        if (!window.confirm(`Delete “${task.title}”?`)) return
+        if (!(await confirmAction({ title: `Delete “${task.title}”?`, message: 'Its comments and history go with it. This can\'t be undone.', confirmLabel: 'Delete task' }))) return
         try { await api('DELETE', `/tasks/${task._id}`); onDeleted(task._id) } catch (e) { setErr(e.message) }
     }
     const doneCount = t.checklist.filter((c) => c.done).length

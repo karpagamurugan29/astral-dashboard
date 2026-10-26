@@ -15,6 +15,10 @@
     ],
     "crons": [
         {
+            "path": "/api/cron/audit-timers",
+            "schedule": "30 13 * * *"
+        },
+        {
             "path": "/api/cron/auto-checkout",
             "schedule": "30 14 * * *"
         }

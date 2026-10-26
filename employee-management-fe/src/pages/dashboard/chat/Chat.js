@@ -6,6 +6,7 @@ import { useAccess } from '../../../hooks/useAccess'
 import { chatApi, listTime, dayLabel, lastSeenLabel, isOnline, personName, tickFor, setUnread, timeShort } from '../../../components/chat/chatApi'
 import { ConvAvatar, GroupAvatar, Ticks, RichText, AuthImage, FileCard, EmojiPanel, Lightbox, SenderName, ReplyQuote, MsgTime, QUICK_REACTIONS } from './ChatParts'
 import './Chat.css'
+import { confirmAction } from '../../../components/common/ConfirmDialog'
 
 /* -------------------------------------------------------------------------- */
 /*  Team chat, WhatsApp-style: chat list on the left, the conversation on the */
@@ -456,7 +457,7 @@ const Thread = ({ conv, title, me, meUser, people, presence, typing, thread, set
     }
     const remove = async (m, scope) => {
         setMenuFor(null)
-        if (!window.confirm(scope === 'everyone' ? 'Delete this message for everyone?' : 'Delete this message for you?')) return
+        if (!(await confirmAction({ title: scope === 'everyone' ? 'Delete for everyone?' : 'Delete for you?', message: scope === 'everyone' ? 'Everyone in the chat sees “message deleted”.' : 'Others keep their copy.', confirmLabel: 'Delete message' }))) return
         try {
             await chatApi('DELETE', `/chat/messages/${m._id}?scope=${scope}`)
             patchMsgs((ms) => (scope === 'everyone' ? ms.map((x) => (x._id === m._id ? { ...x, deleted: true, text: '', file: null, reactions: [] } : x)) : ms.filter((x) => x._id !== m._id)))
@@ -668,7 +669,7 @@ const InfoPanel = ({ conv, title, me, people, presence, contacts, onClose, onUpd
     const load = useCallback(() => chatApi('GET', `/chat/conversations/${conv._id}`).then((j) => setData(j.data)).catch(() => setData({ media: [], starred: [] })), [conv._id])
     useEffect(() => { load() }, [load, conv.updatedAt])
     const act = async (body, confirmText) => {
-        if (confirmText && !window.confirm(confirmText)) return
+        if (confirmText && !(await confirmAction({ title: confirmText, confirmLabel: 'Continue', tone: 'warn' }))) return
         try { await onUpdate(body); load() } catch (e) { window.alert(e.message) }
     }
     const members = isGroup ? [me, ...(conv.others || [])] : []
@@ -750,7 +751,7 @@ const InfoPanel = ({ conv, title, me, people, presence, contacts, onClose, onUpd
                     <button type="button" onClick={() => act({ clear: true }, 'Clear all messages in this chat for you? Others keep their copy.')}><i className="mdi mdi-broom"></i>Clear chat</button>
                     {isGroup && <button type="button" className="danger" onClick={() => act({ leave: true }, `Leave “${conv.name}”?`)}><i className="mdi mdi-exit-to-app"></i>Exit group</button>}
                     {isGroup && (conv.isAdmin || firmAdmin) && (
-                        <button type="button" className="danger" onClick={async () => { if (window.confirm(`Delete “${conv.name}” for everyone? All its messages and files will be removed. This can't be undone.`)) { try { await onDeleteGroup() } catch (e) { window.alert(e.message) } } }}><i className="mdi mdi-delete-outline"></i>Delete group</button>
+                        <button type="button" className="danger" onClick={async () => { if (await confirmAction({ title: `Delete “${conv.name}” for everyone?`, message: 'All its messages and files will be removed. This can\'t be undone.', confirmLabel: 'Delete group', requireText: conv.name })) { try { await onDeleteGroup() } catch (e) { window.alert(e.message) } } }}><i className="mdi mdi-delete-outline"></i>Delete group</button>
                     )}
                 </section>
             </div>
@@ -890,7 +891,7 @@ const ManageGroupsPanel = ({ contacts, onBack, onNew, onDeleted, onOpen }) => {
         try { const j = await chatApi('PUT', `/chat/admin/groups/${id}`, body); setGroups((gs) => gs.map((g) => (g._id === id ? j.data : g))) } catch (e) { window.alert(e.message) }
     }
     const remove = async (g) => {
-        if (!window.confirm(`Delete “${g.name}” for everyone? All its messages and files will be removed. This can't be undone.`)) return
+        if (!(await confirmAction({ title: `Delete “${g.name}” for everyone?`, message: 'All its messages and files will be removed. This can\'t be undone.', confirmLabel: 'Delete group', requireText: g.name }))) return
         try { await chatApi('DELETE', `/chat/conversations/${g._id}`); setGroups((gs) => gs.filter((x) => x._id !== g._id)); onDeleted(g._id) } catch (e) { window.alert(e.message) }
     }
     const list = (groups || []).filter((g) => !q || g.name.toLowerCase().includes(q.toLowerCase()) || g.participants.some((p) => personName(p).toLowerCase().includes(q.toLowerCase())))
@@ -941,7 +942,7 @@ const ManageGroupsPanel = ({ contacts, onBack, onNew, onDeleted, onOpen }) => {
                                                 {admin && <em>Admin</em>}
                                                 <span className="ch-member-act">
                                                     {!admin ? <button type="button" onClick={() => update(g._id, { makeAdmin: p._id })}>Make admin</button> : g.admins.length > 1 && <button type="button" onClick={() => update(g._id, { removeAdmin: p._id })}>Dismiss</button>}
-                                                    <button type="button" className="danger" onClick={() => { if (window.confirm(`Remove ${personName(p)} from “${g.name}”?`)) update(g._id, { removeId: p._id }) }}>Remove</button>
+                                                    <button type="button" className="danger" onClick={async () => { if (await confirmAction({ title: `Remove ${personName(p)} from “${g.name}”?`, confirmLabel: 'Remove' })) update(g._id, { removeId: p._id }) }}>Remove</button>
                                                 </span>
                                             </div>
                                         )

@@ -111,6 +111,10 @@ const CompanySettingsSchema = new mongoose.Schema(
             },
             terms: { type: String, default: "Payment due within the credit period. Please quote the invoice number with your payment. TDS, if deducted, must be deposited and the certificate shared.", trim: true },
         },
+        // HR helpdesk: categories, SLA targets, attachment and closure rules (defaults in utils/helpdesk.js)
+        helpdesk: { type: mongoose.Schema.Types.Mixed, default: undefined },
+        // standard audit workflow per audit type: { Statutory: [{ key, label, stage, estimatedHours }] }
+        auditWorkflows: { type: mongoose.Schema.Types.Mixed, default: undefined },
     },
     {
         timestamps: true,

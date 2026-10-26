@@ -10,6 +10,7 @@ import {
 import '../../../components/attendance/attendance.css'
 import '../../../components/payroll/payroll.css'
 import { useAccess } from '../../../hooks/useAccess'
+import { confirmAction } from '../../../components/common/ConfirmDialog'
 
 const DAY = 24 * 60 * 60 * 1000
 const fmt = (d) => new Date(d).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
@@ -36,8 +37,8 @@ export const ExpenseApprovals = () => {
         setRejecting(null)
         setReason('')
     }
-    const onReimburse = (ex) => {
-        if (window.confirm(`Mark ${money(ex.amount)} as reimbursed to ${fullName(ex.employeeId)}? Do this once the money has been paid.`)) {
+    const onReimburse = async (ex) => {
+        if (await confirmAction({ title: `Mark ${money(ex.amount)} as reimbursed?`, message: `To ${fullName(ex.employeeId)}. Do this only once the money has been paid.`, confirmLabel: 'Mark reimbursed', tone: 'primary' })) {
             dispatch({ type: expenseActions.UPDATE_EXPENSE_STATUS, id: ex._id, payload: { status: 'Reimbursed' } })
         }
     }

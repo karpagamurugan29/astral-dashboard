@@ -7,6 +7,8 @@ import { PeopleShell, StatusPill, EmptyState, ErrorBanner, deptColor } from '../
 import { AvatarStack } from '../../../components/projects/ProjectUI'
 import '../../../components/attendance/attendance.css'
 import '../../../components/settings/settings.css'
+import { FormModal } from '../../../components/common/FormModal'
+import { confirmAction } from '../../../components/common/ConfirmDialog'
 
 const SETTINGS_ROOT = { label: 'Settings', to: '/settings/company' }
 const BLANK = { name: '', address: '', city: '', country: '' }
@@ -39,16 +41,16 @@ export const BranchList = () => {
         setEditingId(b._id)
         reset({ name: b.name, address: b.address, city: b.city, country: b.country })
         setOpen(true)
-        window.scrollTo({ top: 0, behavior: 'smooth' })
     }
 
+    const onAdd = () => { setEditingId(null); reset(BLANK); setOpen(true) }
     const onCancel = () => { setEditingId(null); reset(BLANK); setOpen(false) }
 
     const membersOf = (b) => (employees || []).filter((e) => !FORMER.includes(e.status) && (e.branch?._id || e.branch) === b._id)
 
-    const onRemove = (b) => {
+    const onRemove = async (b) => {
         const n = membersOf(b).length
-        if (window.confirm(`Delete branch "${b.name}"?${n ? ` ${n} employee${n === 1 ? ' is' : 's are'} still linked to it.` : ''}`)) {
+        if (await confirmAction({ title: `Delete branch “${b.name}”?`, message: `This can't be undone.${n ? ` ${n} employee${n === 1 ? ' is' : 's are'} still linked to it.` : ''}`, confirmLabel: 'Delete branch', requireText: n ? b.name : '' })) {
             dispatch({ type: branchActions.DELETE_BRANCH, id: b._id })
         }
     }
@@ -60,7 +62,7 @@ export const BranchList = () => {
 
     return (
         <PeopleShell title="Branches" root={SETTINGS_ROOT} crumbs={[{ label: 'Branches' }]}
-            actions={isAdmin && !open && <button type="button" className="pp-btn primary" onClick={() => setOpen(true)}><i className="mdi mdi-plus"></i> Add branch</button>}>
+            actions={isAdmin && <button type="button" className="pp-btn primary" onClick={onAdd}><i className="mdi mdi-plus"></i> Add branch</button>}>
             <ErrorBanner error={error} />
 
             <div className="at-tiles">
@@ -71,11 +73,7 @@ export const BranchList = () => {
             </div>
 
             {isAdmin && open && (
-                <form className="pp-card st-panel" onSubmit={handleSubmit(onSubmit)} noValidate>
-                    <div className="pp-card-head">
-                        <h3><i className={`mdi ${editingId ? 'mdi-pencil-outline' : 'mdi-map-marker-plus-outline'} me-2`} style={{ color: '#0284c7' }}></i>{editingId ? 'Edit branch' : 'New branch'}</h3>
-                        <button type="button" className="pp-btn icon ghost" onClick={onCancel} aria-label="Close"><i className="mdi mdi-close"></i></button>
-                    </div>
+                <FormModal icon={editingId ? 'mdi-pencil-outline' : 'mdi-plus-circle-outline'} title={editingId ? 'Edit branch' : 'New branch'} onClose={onCancel} onSubmit={handleSubmit(onSubmit)} submitLabel={editingId ? 'Save changes' : 'Add branch'} submitIcon="mdi-check">
                     <div className="pp-card-body">
                         <div className="st-fields">
                             <div className="pp-field">
@@ -87,17 +85,13 @@ export const BranchList = () => {
                             <div className="pp-field"><label className="pp-label">City</label><input type="text" className="pp-input" {...register('city')} /></div>
                             <div className="pp-field"><label className="pp-label">Country</label><input type="text" className="pp-input" {...register('country')} /></div>
                         </div>
-                        <div className="st-foot">
-                            <button type="button" className="pp-btn" onClick={onCancel}>Cancel</button>
-                            <button type="submit" className="pp-btn primary"><i className="mdi mdi-check"></i> {editingId ? 'Save changes' : 'Add branch'}</button>
-                        </div>
                     </div>
-                </form>
+                </FormModal>
             )}
 
             {!all.length ? (
                 <div className="pp-card"><EmptyState icon="mdi-office-building-marker-outline" title="No branches yet" text="Add your offices and locations so people can be assigned to them."
-                    action={isAdmin && !open && <button type="button" className="pp-btn primary" onClick={() => setOpen(true)}><i className="mdi mdi-plus"></i> Add branch</button>} /></div>
+                    action={isAdmin && !open && <button type="button" className="pp-btn primary" onClick={onAdd}><i className="mdi mdi-plus"></i> Add branch</button>} /></div>
             ) : (
                 <div className="br-grid">
                     {all.map((b) => {

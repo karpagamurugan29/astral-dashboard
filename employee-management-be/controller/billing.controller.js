@@ -276,7 +276,7 @@ export const issueInvoice = async (req, res) => {
         await inv.save();
         if (logIds.length) await AuditTimeLogModel.updateMany({ _id: { $in: logIds } }, { $set: { billedInvoice: inv._id } });
         // the audit moves along: tick "Invoice raised" on its checklist
-        if (inv.auditId) await AuditEngagementModel.updateOne({ _id: inv.auditId, "milestones.key": "invoice" }, { $set: { "milestones.$.done": true, "milestones.$.doneAt": new Date(), "milestones.$.doneBy": req.user.id } });
+        if (inv.auditId) await AuditEngagementModel.updateOne({ _id: inv.auditId, "milestones.key": "invoice" }, { $set: { "milestones.$.done": true, "milestones.$.status": "Completed", "milestones.$.doneAt": new Date(), "milestones.$.doneBy": req.user.id } });
         const audit = inv.auditId ? await AuditEngagementModel.findById(inv.auditId).select("auditManager auditCode").lean() : null;
         if (audit?.auditManager && idStr(audit.auditManager) !== idStr(req.user.id)) notify(audit.auditManager, "Invoice issued", `${inv.invoiceNo} for ${inv.billTo.name} (${audit.auditCode}).`, "Audit", `/audits/${inv.auditId}`);
         logAudit(req, "invoice.issue", `Issued invoice ${inv.invoiceNo} to ${inv.billTo.name} for ₹${inv.total}`, { type: "Invoice", id: inv._id });
@@ -299,7 +299,7 @@ export const recordPayment = async (req, res) => {
         inv.status = settled(inv) >= inv.total - 1 ? "Paid" : "Partly paid";
         await inv.save();
         if (inv.status === "Paid" && inv.auditId) {
-            await AuditEngagementModel.updateOne({ _id: inv.auditId, "milestones.key": "payment" }, { $set: { "milestones.$.done": true, "milestones.$.doneAt": new Date(), "milestones.$.doneBy": req.user.id } });
+            await AuditEngagementModel.updateOne({ _id: inv.auditId, "milestones.key": "payment" }, { $set: { "milestones.$.done": true, "milestones.$.status": "Completed", "milestones.$.doneAt": new Date(), "milestones.$.doneBy": req.user.id } });
         }
         logAudit(req, "invoice.payment", `Recorded ₹${amount}${tds ? ` + TDS ₹${tds}` : ""} against ${inv.invoiceNo}`, { type: "Invoice", id: inv._id });
         return res.status(200).json({ success: true, message: inv.status === "Paid" ? `${inv.invoiceNo} is fully paid.` : `Payment recorded — ₹${r2(inv.total - settled(inv)).toLocaleString("en-IN")} still due.`, data: view(inv) });
@@ -334,27 +334,6 @@ export const MILESTONES = [
     ["invoice", "Invoice raised", "Billing"], ["payment", "Payment received", "Billing"], ["archive", "Working papers archived", "Billing"],
 ];
 export const defaultMilestones = () => MILESTONES.map(([key, label, stage]) => ({ key, label, stage, done: false }));
-
-// PUT /audits/:id/milestones/:key { done, note } — the audit manager, the team, or the firm's seniors
-export const setMilestone = async (req, res) => {
-    try {
-        if (!mongoose.isValidObjectId(req.params.id)) throw httpError(404, "Audit not found.");
-        const audit = await AuditEngagementModel.findOne({ _id: req.params.id, isDeleted: false });
-        if (!audit) throw httpError(404, "Audit not found.");
-        const scope = await scopeOf(req);
-        const onIt = [audit.auditManager, ...(audit.teamMembers || [])].some((m) => idStr(m) === scope.me || scope.team.has(idStr(m)));
-        if (!(scope.firm || onIt || ["Admin", "HR"].includes(req.user.role))) throw httpError(403, "Only the audit team or its seniors can update the checklist.");
-        if (!audit.milestones?.length) audit.milestones = defaultMilestones();
-        const m = audit.milestones.find((x) => x.key === req.params.key);
-        if (!m) throw httpError(404, "Checklist item not found.");
-        if (["invoice", "payment"].includes(m.key) && !(await canBill(req))) throw httpError(403, "Billing steps are ticked by Accounts when the invoice is issued and paid.");
-        m.done = !!req.body?.done; m.doneAt = m.done ? new Date() : null; m.doneBy = m.done ? req.user.id : null;
-        if (req.body?.note !== undefined) m.note = String(req.body.note).slice(0, 500);
-        await audit.save();
-        return res.status(200).json({ success: true, message: m.done ? `“${m.label}” done.` : `“${m.label}” reopened.`, data: audit.milestones });
-    } catch (err) { return fail(res, err); }
-};
-
 
 /* ---------------- charges declared on an engagement ---------------- */
 const CHARGE_TYPES = ["Fixed fee", "Hourly", "Monthly retainer", "Per visit", "Milestone", "Expenses"];
@@ -403,6 +382,9 @@ export const billableFor = async (audit, from, to) => {
         return { lines, warnings, amount: left };
     }
     const logs = await AuditTimeLogModel.find({ auditId: audit._id, startTime: { $gte: from, $lte: to }, endTime: { $ne: null } }).lean();
+    // only approved timesheet time is billed (older entries without a status count as approved)
+    const awaiting = logs.filter((l) => l.status && l.status !== "Approved" && !l.needsReview);
+    if (awaiting.length) warnings.push(`${awaiting.length} time entr${awaiting.length === 1 ? "y" : "ies"} (${Math.round(awaiting.reduce((t, l) => t + (l.durationMinutes || 0), 0) / 6) / 10}h) are still on unapproved timesheets and aren't billed yet.`);
     const pendingReview = logs.filter((l) => l.needsReview);
     if (pendingReview.length) warnings.push(`${pendingReview.length} time session${pendingReview.length === 1 ? "" : "s"} (${Math.round(pendingReview.reduce((t, l) => t + (l.durationMinutes || 0), 0) / 6) / 10}h) need a manager's review and aren't billed yet.`);
     for (const c of charges) {
@@ -417,7 +399,7 @@ export const billableFor = async (audit, from, to) => {
             if (months.length) lines.push({ description: `${c.label || "Monthly retainer"} — ${months.map(monthName).join(", ")}`, sac, kind: "Retainer", qty: months.length, rate: c.rate || 0, taxable: true, chargeId: c._id, chargeType: c.type, months });
         } else if (c.type === "Hourly") {
             // agreed hours are a cap: bill the oldest sessions up to what's left, never beyond
-            const ok = logs.filter((l) => !l.needsReview && l.billable !== false && !l.billedInvoice).sort((x, y) => new Date(x.startTime) - new Date(y.startTime));
+            const ok = logs.filter((l) => !l.needsReview && (!l.status || l.status === "Approved") && l.billable !== false && !l.billedInvoice).sort((x, y) => new Date(x.startTime) - new Date(y.startTime));
             const cap = Number(c.quantity) > 0 ? Math.max(0, Number(c.quantity) - billedFor(c._id).reduce((t, l) => t + (l.qty || 0), 0)) : Infinity;
             const take = []; let mins = 0;
             for (const l of ok) { if ((mins + (l.durationMinutes || 0)) / 60 > cap + 0.01) break; take.push(l); mins += l.durationMinutes || 0; }
@@ -483,25 +465,34 @@ export const reviewTimeLog = async (req, res) => {
         if (!log) throw httpError(404, "Session not found.");
         if (log.billedInvoice) throw httpError(409, "This session is already on an issued invoice.");
         if (!log.endTime) throw httpError(400, "The timer is still running.");
-        const audit = await AuditEngagementModel.findById(log.auditId).select("auditManager auditCode").lean();
+        const audit = await AuditEngagementModel.findById(log.auditId).select("auditManager auditCode teamMembers projectId").lean();
         const scope = await scopeOf(req);
-        const can = scope.firm || ["Admin", "HR"].includes(req.user.role) || String(audit?.auditManager) === scope.me || scope.team.has(String(log.employeeId));
+        const { auditAccess } = await import("../utils/auditAccess.js");
+        const acc = await auditAccess(req, audit);
+        // the engagement's manager, audit leadership, or the person's own seniors — not HR / Accounts
+        const can = acc.manage || scope.team.has(String(log.employeeId));
         if (!can) throw httpError(403, "Only the audit manager or the person's seniors can review this time.");
         if (String(log.employeeId) === scope.me && !scope.firm) throw httpError(403, "Someone above you needs to confirm your own time.");
         const action = req.body?.action;
+        const reason = String(req.body?.note || req.body?.reason || "").trim();
         if (action === "adjust") {
             const end = new Date(req.body?.endTime);
             if (isNaN(end) || end <= log.startTime) throw httpError(400, "The end time must be after the start.");
             if (end - log.startTime > 16 * 36e5) throw httpError(400, "A session can't be longer than 16 hours.");
+            // approved time is never changed silently
+            if (log.status === "Approved" && !reason) throw httpError(400, "This time is already approved — give a reason for the correction.");
             if (log.originalMinutes == null) log.originalMinutes = log.durationMinutes;
+            const toMinutes = Math.round((end - log.startTime) / 60000);
+            log.adjustments.push({ by: req.user.id, fromMinutes: log.durationMinutes, toMinutes, reason: reason || "Corrected on review", status: "Applied", decidedBy: req.user.id, decidedAt: new Date() });
             log.endTime = end;
-            log.durationMinutes = Math.round((end - log.startTime) / 60000);
+            log.durationMinutes = toMinutes;
             log.billable = true;
         } else if (action === "nonbillable") {
             log.billable = false;
         } else if (action === "approve") {
             log.billable = true;
         } else throw httpError(400, "Pick approve, adjust or non-billable.");
+        if (action !== "nonbillable" || log.status !== "Approved") { log.status = "Approved"; log.approvedBy = req.user.id; log.approvedAt = new Date(); }
         log.needsReview = false; log.reviewedBy = req.user.id; log.reviewedAt = new Date();
         if (req.body?.note) log.note = [log.note, `Review: ${String(req.body.note).slice(0, 200)}`].filter(Boolean).join(" · ");
         await log.save();

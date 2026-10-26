@@ -15,6 +15,7 @@ import { DashboardTimer } from '../../../components/dashboard/widgets/DashboardT
 import { BusinessPulse } from '../../../components/dashboard/widgets/BusinessPulse'
 import { TodayCheckins } from '../../../components/dashboard/widgets/TodayCheckins'
 import { MyAuditsWidget } from '../../../components/dashboard/widgets/MyAuditsWidget'
+import { BirthdayLineUp } from '../../../components/dashboard/widgets/BirthdayLineUp'
 import { KpiCard, Panel, MonthAttendance, Ring } from '../../../components/dashboard/widgets/PremiumUI'
 import { CheckInOptions, ModeTag, hoursLabel } from '../../../components/attendance/AttendanceUI'
 import { fmtDuration } from '../../../components/audits/AuditUI'
@@ -358,11 +359,11 @@ export const DashContent = () => {
                             )}
 
                             {/* ------------------------------ activity ------------------------------ */}
-                            <div className="row">
-                                <div className="col-xl-6">
+                            <div className="row db-activity">
+                                <div className="col-xl-4 col-md-6">
                                     <AnnouncementsWidget announcements={announcements} loading={announcementsLoading} />
                                 </div>
-                                <div className="col-xl-6">
+                                <div className="col-xl-4 col-md-6">
                                     <Panel icon={canApprove ? 'mdi-calendar-clock' : 'mdi-beach'} color={canApprove ? '#d97706' : '#0284c7'}
                                         title={canApprove ? 'Leave waiting for approval' : 'My leave'} subtitle={canApprove ? 'Requests from your team' : 'Balance and quick actions'}
                                         actions={<Link to={canApprove ? '/leave/approvals' : '/leave/apply'} className="pp-link">{canApprove ? 'Review all' : 'Apply leave'} <i className="mdi mdi-chevron-right"></i></Link>}>
@@ -385,6 +386,9 @@ export const DashContent = () => {
                                             )
                                         ) : myLeave}
                                     </Panel>
+                                </div>
+                                <div className="col-xl-4">
+                                    <BirthdayLineUp />
                                 </div>
                             </div>
                         </div>

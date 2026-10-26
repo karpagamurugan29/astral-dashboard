@@ -6,6 +6,8 @@ import employeeActions from '../../redux/employee/Actions'
 import departmentActions from '../../redux/department/Actions'
 import { PeopleShell, Avatar, StatusPill, DeptTag, EmptyState, ErrorBanner, deptColor, fullName } from './PeopleUI'
 import './OrgUnitList.css'
+import { FormModal } from '../common/FormModal'
+import { confirmAction } from '../common/ConfirmDialog'
 
 /* -------------------------------------------------------------------------- */
 /*  One screen, two configs: Departments and Designations share the same      */
@@ -49,15 +51,14 @@ export const OrgUnitList = ({ config }) => {
         setEditingId(item._id)
         reset(config.toForm(item))
         setFormOpen(true)
-        window.scrollTo({ top: 0, behavior: 'smooth' })
     }
 
     const onCancel = () => { setEditingId(null); reset(blank); setFormOpen(false) }
 
-    const onRemove = (item) => {
+    const onRemove = async (item) => {
         const count = membersOf(item).length
         const warn = count ? ` ${count} employee${count === 1 ? ' is' : 's are'} still assigned to it.` : ''
-        if (window.confirm(`Delete ${config.singular.toLowerCase()} "${item.name}"?${warn}`)) {
+        if (await confirmAction({ title: `Delete ${config.singular.toLowerCase()} “${item.name}”?`, message: `This can't be undone.${warn}`, confirmLabel: `Delete ${config.singular.toLowerCase()}` })) {
             dispatch({ type: config.actions.DELETE, id: item._id })
         }
     }
@@ -94,7 +95,7 @@ export const OrgUnitList = ({ config }) => {
             subtitle={config.subtitle}
             crumbs={[{ label: config.title }]}
             backTo="/employees"
-            actions={isAdmin && !formOpen && (
+            actions={isAdmin && (
                 <button type="button" className="pp-btn primary" onClick={onAdd}><i className="mdi mdi-plus"></i> Add {config.singular.toLowerCase()}</button>
             )}
         >
@@ -120,11 +121,8 @@ export const OrgUnitList = ({ config }) => {
             </section>
 
             {isAdmin && formOpen && (
-                <form className="pp-card ou-form" onSubmit={handleSubmit(onSubmit)} noValidate>
-                    <div className="pp-card-head">
-                        <h3><i className={`mdi ${editingId ? 'mdi-pencil-outline' : 'mdi-plus-circle-outline'}`}></i>{editingId ? `Edit ${config.singular.toLowerCase()}` : `New ${config.singular.toLowerCase()}`}</h3>
-                        <button type="button" className="pp-btn icon ghost" onClick={onCancel} aria-label="Close"><i className="mdi mdi-close"></i></button>
-                    </div>
+                <FormModal icon={editingId ? 'mdi-pencil-outline' : config.icon} title={editingId ? `Edit ${config.singular.toLowerCase()}` : `New ${config.singular.toLowerCase()}`}
+                    onClose={onCancel} onSubmit={handleSubmit(onSubmit)} submitLabel={editingId ? 'Save changes' : `Add ${config.singular.toLowerCase()}`}>
                     <div className="pp-card-body">
                         <div className="ou-form-fields">
                             <div className="pp-field">
@@ -151,12 +149,8 @@ export const OrgUnitList = ({ config }) => {
                                 <input type="text" placeholder="What does this cover?" className="pp-input" {...register('description')} />
                             </div>
                         </div>
-                        <div className="ou-form-foot">
-                            <button type="button" className="pp-btn" onClick={onCancel}>Cancel</button>
-                            <button type="submit" className="pp-btn primary"><i className="mdi mdi-check"></i> {editingId ? 'Save changes' : `Add ${config.singular.toLowerCase()}`}</button>
-                        </div>
                     </div>
-                </form>
+                </FormModal>
             )}
 
             <div className="ou-toolbar">

@@ -7,6 +7,7 @@ import { ATTENDANCE_ROOT, hoursLabel } from '../../../components/attendance/Atte
 import { shiftMeta, shiftSpan, fromMinutes, toMinutes, pct, TimelineBar } from './calendarShared'
 import '../../../components/attendance/attendance.css'
 import './calendar.css'
+import { FormModal } from '../../../components/common/FormModal'
 
 
 const ShiftsScreen = ({ shifts, isAdmin, dispatch }) => {
@@ -42,6 +43,7 @@ const ShiftsScreen = ({ shifts, isAdmin, dispatch }) => {
         form.reset({ name: '', startTime: '', endTime: '', graceMinutes: 10 })
         setAdding(false)
     }
+    const openAdd = () => { form.reset({ name: '', startTime: '', endTime: '', graceMinutes: 10 }); setAdding(true) }
     const onCancel = () => { form.reset({ name: '', startTime: '', endTime: '', graceMinutes: 10 }); setAdding(false) }
     const errs = form.formState.errors
 
@@ -67,11 +69,7 @@ const ShiftsScreen = ({ shifts, isAdmin, dispatch }) => {
             </div>
 
             {isAdmin && adding && (
-                <form className="pp-card wc-add" onSubmit={form.handleSubmit(onAdd)} noValidate>
-                    <div className="pp-card-head">
-                        <h3><i className="mdi mdi-plus-circle-outline me-2" style={{ color: '#0284c7' }}></i>New shift</h3>
-                        <button type="button" className="pp-btn icon ghost" onClick={onCancel} aria-label="Close"><i className="mdi mdi-close"></i></button>
-                    </div>
+                <FormModal icon="mdi-plus-circle-outline" title={"New shift"} onClose={onCancel} onSubmit={form.handleSubmit(onAdd)} submitLabel={"Add shift"} submitIcon="mdi-check">
                     <div className="pp-card-body">
                         <div className="wc-form-grid shift">
                             <div className="pp-field">
@@ -95,19 +93,15 @@ const ShiftsScreen = ({ shifts, isAdmin, dispatch }) => {
                                 <div className="pp-help">Arrivals within this window aren't marked late.</div>
                             </div>
                         </div>
-                        <div className="wc-form-foot">
-                            <button type="button" className="pp-btn" onClick={onCancel}>Cancel</button>
-                            <button type="submit" className="pp-btn primary"><i className="mdi mdi-check"></i> Add shift</button>
-                        </div>
                     </div>
-                </form>
+                </FormModal>
             )}
 
             {!list.length ? (
                 <div className="pp-card">
                     <EmptyState icon="mdi-clock-time-four-outline" title="No shifts defined yet"
                         text="Shifts set the expected start time and how much grace people get before they're marked late."
-                        action={isAdmin && !adding && <button type="button" className="pp-btn primary" onClick={() => setAdding(true)}><i className="mdi mdi-plus"></i> Add shift</button>} />
+                        action={isAdmin && !adding && <button type="button" className="pp-btn primary" onClick={openAdd}><i className="mdi mdi-plus"></i> Add shift</button>} />
                 </div>
             ) : (
                 <>
@@ -171,7 +165,7 @@ const ShiftsScreen = ({ shifts, isAdmin, dispatch }) => {
             )}
 
             {isAdmin && !adding && list.length > 0 && (
-                <button type="button" className="wc-fab pp-btn primary" onClick={() => { setAdding(true); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>
+                <button type="button" className="wc-fab pp-btn primary" onClick={openAdd}>
                     <i className="mdi mdi-plus"></i> Add shift
                 </button>
             )}

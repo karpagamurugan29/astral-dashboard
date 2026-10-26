@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useForm } from 'react-hook-form'
 import payrollActions from '../../../redux/payroll/Actions'
@@ -7,6 +7,8 @@ import { PAYROLL_ROOT, CURRENCY, money, moneyShort, PayStatus, payStatusMeta } f
 import '../../../components/attendance/attendance.css'
 import './LoansAdvances.css'
 import { useAccess } from '../../../hooks/useAccess'
+import { FormModal } from '../../../components/common/FormModal'
+import { confirmAction } from '../../../components/common/ConfirmDialog'
 
 const monthsToRepay = (amount, monthly) => (amount > 0 && monthly > 0 ? Math.ceil(amount / monthly) : 0)
 const lastDeductionMonth = (months) => {
@@ -54,7 +56,10 @@ export const LoansAdvances = () => {
     const { myLoans, allLoans, error } = useSelector((state) => state.payrollReducer || {})
     const { can } = useAccess()
     const canManage = can(['Admin', 'HR'], 'payroll')
-    const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm()
+    const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm({ defaultValues: { amount: '', monthlyDeduction: '', reason: '' } })
+    const [asking, setAsking] = useState(false)
+    const openAsk = () => { reset({ amount: '', monthlyDeduction: '', reason: '' }); setAsking(true) }
+    const closeAsk = () => { reset({ amount: '', monthlyDeduction: '', reason: '' }); setAsking(false) }
 
     useEffect(() => {
         dispatch({ type: payrollActions.GET_MY_LOANS })
@@ -66,14 +71,15 @@ export const LoansAdvances = () => {
     const onSubmit = (data) => {
         dispatch({ type: payrollActions.REQUEST_LOAN, payload: data })
         reset({ amount: '', monthlyDeduction: '', reason: '' })
+        setAsking(false)
     }
 
-    const onDecide = (l, status) => {
-        if (status === 'Rejected' && !window.confirm(`Reject ${fullName(l.employeeId)}'s request for ${money(l.amount)}?`)) return
+    const onDecide = async (l, status) => {
+        if (status === 'Rejected' && !(await confirmAction({ title: 'Reject this request?', message: `${fullName(l.employeeId)} asked for ${money(l.amount)}.`, confirmLabel: 'Reject' }))) return
         dispatch({ type: payrollActions.DECIDE_LOAN, id: l._id, status })
     }
-    const onDisburse = (l) => {
-        if (window.confirm(`Mark ${money(l.amount)} as paid out to ${fullName(l.employeeId)}? Monthly deductions of ${money(l.monthlyDeduction)} start from the next payroll.`)) {
+    const onDisburse = async (l) => {
+        if (await confirmAction({ title: `Mark ${money(l.amount)} as paid out?`, message: `To ${fullName(l.employeeId)}. Monthly deductions of ${money(l.monthlyDeduction)} start from the next payroll.`, confirmLabel: 'Mark paid out', tone: 'primary' })) {
             dispatch({ type: payrollActions.DISBURSE_LOAN, id: l._id })
         }
     }
@@ -186,10 +192,11 @@ export const LoansAdvances = () => {
             )}
 
             {/* ================= Me ================= */}
-            <h2 className="ln-section-title"><i className="mdi mdi-account-cash-outline" style={{ color: '#0284c7' }}></i>My advances</h2>
-            <div className="ln-layout">
-                <form className="pp-card" onSubmit={handleSubmit(onSubmit)} noValidate>
-                    <div className="pp-card-head"><h3><i className="mdi mdi-cash-plus me-2" style={{ color: '#059669' }}></i>Request a salary advance</h3></div>
+            <h2 className="ln-section-title"><i className="mdi mdi-account-cash-outline" style={{ color: '#0284c7' }}></i>My advances
+                <button type="button" className="pp-btn primary sm" style={{ marginLeft: 'auto' }} onClick={openAsk}><i className="mdi mdi-cash-plus"></i> Request an advance</button>
+            </h2>
+            {asking && (
+                <FormModal icon="mdi-cash-plus" title="Request a salary advance" sub="Repaid from your salary each month" onClose={closeAsk} onSubmit={handleSubmit(onSubmit)} submitLabel="Submit request" submitIcon="mdi-send-outline" busy={isSubmitting}>
                     <div className="pp-card-body">
                         <div className="ln-form-grid">
                             <div className="pp-field">
@@ -225,13 +232,13 @@ export const LoansAdvances = () => {
                             </div>
                         )}
 
-                        <button type="submit" className="pp-btn primary w-100" disabled={isSubmitting}><i className="mdi mdi-send-outline"></i> Submit request</button>
                     </div>
-                </form>
-
+                </FormModal>
+            )}
+            <div>
                 <section>
                     {!mine.length ? (
-                        <div className="pp-card"><EmptyState icon="mdi-cash-plus" title="No advances yet" text="Request a salary advance and track its repayment here." /></div>
+                        <div className="pp-card"><EmptyState icon="mdi-cash-plus" title="No advances yet" text="Request a salary advance and track its repayment here." action={<button type="button" className="pp-btn primary" onClick={openAsk}><i className="mdi mdi-plus"></i> Request an advance</button>} /></div>
                     ) : (
                         <div className="ln-cards">
                             {mine.map((l) => <LoanCard key={l._id} loan={l} />)}

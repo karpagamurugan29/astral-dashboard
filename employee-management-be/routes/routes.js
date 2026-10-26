@@ -1,6 +1,6 @@
 import express from "express";
 import { register, login, logout, forgotPassword, resetPassword, session, changePassword, updateProfile, } from "../controller/auth.controller.js";
-import { AddEmployee, ModifyEmployee, GetEmployeeById, GetAllEmployees, DeleteEmployee, UpdateEmployeeRole, GetEmployeeHistory, } from "../controller/employee.controller.js";
+import { AddEmployee, ModifyEmployee, GetEmployeeById, GetAllEmployees, DeleteEmployee, UpdateEmployeeRole, GetEmployeeHistory, birthdayLineUp } from "../controller/employee.controller.js";
 import authMiddleWare from "../middleware/auth.middleware.js";
 import authorize from "../middleware/permission.middleware.js";
 import { attendanceHistory, checkIn, checkOut, todayAttendance, teamAttendance, requestRegularization, getMyRegularizations, getPendingRegularizations, decideRegularization, subordinateAttendance, exportAttendance, teamAttendanceRange } from "../controller/attentance.controller.js";
@@ -9,7 +9,14 @@ import { getOnboardingList, updateOnboardingTask, sendWelcome, closeOnboarding, 
 import { createProject, updateProject, deleteProject, getProjectById, getAllProjects, addProjectMember, removeProjectMember } from "../controller/project.controller.js";
 import { getClients, getClientById, createClient, updateClient, deleteClient } from "../controller/auditClient.controller.js";
 import { getAuditInsights, getTodayCheckins, remindCheckin } from "../controller/auditInsights.controller.js";
-import { cronAutoCheckout, runAutoCheckoutNow } from "../controller/cron.controller.js";
+import { saveWorkflow, getWorkflowTemplate, setLogStep, switchTimerStep, migrateWorkflow } from "../controller/auditWorkflow.controller.js";
+import { taskAction, assignTask, tickChecklist, commentTask, resolveComment, uploadWorkpaper, downloadWorkpaper, tickTask } from "../controller/auditTask.controller.js";
+import { myTimesheet, addEntry, updateEntry, deleteEntry, submitWeek, approvals as timesheetApprovals, decide as decideTimesheet, pendingAdjustments, requestAdjustment, decideAdjustment } from "../controller/timesheet.controller.js";
+import { listTemplates, createTemplate, getTemplate, updateTemplate, newVersion, duplicateTemplate, activateTemplate, deactivateTemplate } from "../controller/workflowTemplate.controller.js";
+import { listProjects as listAuditProjects, createProject as createAuditProject, getProject as getAuditProject, updateProject as updateAuditProject, deleteProject as deleteAuditProject } from "../controller/auditProject.controller.js";
+import { myWork, allocation, dashboard as auditDashboard } from "../controller/auditWork.controller.js";
+
+import { cronAutoCheckout, cronAuditTimers, runAutoCheckoutNow } from "../controller/cron.controller.js";
 import { checkinLogReport, auditHoursReport, auditProjectsReport } from "../controller/workbenchReport.controller.js";
 import { getLocationLog } from "../controller/locationLog.controller.js";
 import { createAudit, updateAudit, deleteAudit, getAuditById, getAllAudits, addAuditMember, removeAuditMember, startAuditTimer, stopAuditTimer, getMyActiveAuditTimer } from "../controller/auditEngagement.controller.js";
@@ -17,7 +24,7 @@ import { getDepartments, createDepartment, updateDepartment, deleteDepartment } 
 import { getDesignations, createDesignation, updateDesignation, deleteDesignation } from "../controller/designation.controller.js";
 import { getExpenses, createExpense, updateExpenseStatus, deleteExpense, getReceipt } from "../controller/expense.controller.js";
 import { getAssets, myAssets, createAsset, updateAsset, assignAsset, returnAsset, deleteAsset } from "../controller/asset.controller.js";
-import { getTickets, createTicket, updateTicketStatus, addTicketComment } from "../controller/ticket.controller.js";
+import { getTickets, getTicketMeta, getTicket, createTicket, updateTicketStatus, assignTicket, triageTicket, addTicketComment, ticketFeedback, downloadTicketFile, getHelpdeskSettings, saveHelpdeskSettings } from "../controller/ticket.controller.js";
 import { getAnnouncements, createAnnouncement, deleteAnnouncement } from "../controller/announcement.controller.js";
 import { getBranches, createBranch, updateBranch, deleteBranch } from "../controller/branch.controller.js";
 import { getHolidays, createHoliday, updateHoliday, deleteHoliday, getShifts, createShift, updateShift, assignShift } from "../controller/calendar.controller.js";
@@ -33,7 +40,7 @@ import { listProjects, projectWorkspace, createProjectV2, updateProjectV2, start
 import { orgTree, setManager } from "../controller/org.controller.js";
 import { uploadMyPhoto, removeMyPhoto, uploadEmployeePhoto, servePhoto } from "../controller/photo.controller.js";
 import { listFiles, getFile, downloadFile, uploadFiles, uploadVersion, shareFile, unshareFile, updateFile, starFile, deleteFile, restoreFile, createFolder, updateFolder, deleteFolder, restoreFolder, shareFolder, shareTargets } from "../controller/files.controller.js";
-import { getBillingSettings, updateBillingSettings, auditEconomics, listInvoices, getInvoice, createInvoice, updateInvoice, issueInvoice, recordPayment, cancelInvoice, setMilestone, setCharges, prepareInvoice, reviewTimeLog } from "../controller/billing.controller.js";
+import { getBillingSettings, updateBillingSettings, auditEconomics, listInvoices, getInvoice, createInvoice, updateInvoice, issueInvoice, recordPayment, cancelInvoice, setCharges, prepareInvoice, reviewTimeLog } from "../controller/billing.controller.js";
 import multer from "multer";
 // documents go to MongoDB (GridFS), so keep them in memory rather than on disk
 const docUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
@@ -74,6 +81,7 @@ router.post("/logout", authMiddleWare, logout);
 
 // Employees
 router.get("/employees", authMiddleWare, GetAllEmployees);
+router.get("/employees/birthdays", authMiddleWare, birthdayLineUp);
 router.post("/employees/:id/photo", authMiddleWare, adminHR("employees"), docUpload.single("photo"), uploadEmployeePhoto);
 router.get("/employees/:id", authMiddleWare, GetEmployeeById);
 router.post("/employees", authMiddleWare, adminHR("employees"), AddEmployee);
@@ -119,6 +127,8 @@ router.get("/attendance/team-range", authMiddleWare, adminHRManager("attendance"
 router.get("/location-log", authMiddleWare, adminHRManager("attendance"), getLocationLog);
 // 8 PM auto check-out: Vercel Cron → /cron/auto-checkout (secret); Admin can also run it now.
 router.get("/cron/auto-checkout", cronAutoCheckout);
+// 7 PM: forgotten audit timers (also stopped by the local scheduler and lazily on every read)
+router.get("/cron/audit-timers", cronAuditTimers);
 router.post("/attendance/auto-checkout/run", authMiddleWare, adminOnly("attendance"), runAutoCheckoutNow);
 
 // Attendance regularization — "pending" registered before the ":id" catch-all
@@ -148,7 +158,7 @@ router.put("/leave/cancel/:id", authMiddleWare, cancelLeave);
 
 
 // Projects
-router.get("/projects", authMiddleWare, listProjects);
+router.get("/projects", authMiddleWare, listAuditProjects);
 router.get("/projects/:id", authMiddleWare, getProjectById);
 router.get("/projects/:id/workspace", authMiddleWare, projectWorkspace);
 router.post("/projects/:id/timer/start", authMiddleWare, startProjectTimer);
@@ -171,9 +181,59 @@ router.delete("/audit-clients/:id", authMiddleWare, adminHRManager("projects"), 
 router.get("/audits", authMiddleWare, getAllAudits);
 router.get("/audits/timer/active", authMiddleWare, getMyActiveAuditTimer);
 router.get("/audits/:id/economics", authMiddleWare, auditEconomics);
-router.put("/audits/:id/milestones/:key", authMiddleWare, setMilestone);
+// tasks: the old one-click tick maps onto the task lifecycle
+router.put("/audits/:id/milestones/:key", authMiddleWare, tickTask);
+const workpaperUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024, files: 10 } });
+router.post("/audits/:id/tasks/:key/action", authMiddleWare, taskAction);
+router.put("/audits/:id/tasks/:key/assign", authMiddleWare, assignTask);
+router.put("/audits/:id/tasks/:key/checklist/:index", authMiddleWare, tickChecklist);
+router.post("/audits/:id/tasks/:key/comments", authMiddleWare, commentTask);
+router.put("/audits/:id/tasks/:key/comments/:cid/resolve", authMiddleWare, resolveComment);
+router.post("/audits/:id/tasks/:key/files", authMiddleWare, workpaperUpload.array("files", 10), uploadWorkpaper);
+router.get("/audits/:id/tasks/:key/files/:fileId", authMiddleWare, downloadWorkpaper);
+router.get("/audits/:id/workflow/migrate", authMiddleWare, migrateWorkflow);
+router.post("/audits/:id/workflow/migrate", authMiddleWare, migrateWorkflow);
+
+// timesheets (audit time): my week, manual entries, submit, approvals, corrections
+router.get("/timesheets/me", authMiddleWare, myTimesheet);
+router.post("/timesheets/entries", authMiddleWare, addEntry);
+router.put("/timesheets/entries/:id", authMiddleWare, updateEntry);
+router.delete("/timesheets/entries/:id", authMiddleWare, deleteEntry);
+router.post("/timesheets/submit", authMiddleWare, submitWeek);
+router.get("/timesheets/approvals", authMiddleWare, timesheetApprovals);
+router.post("/timesheets/decide", authMiddleWare, decideTimesheet);
+router.get("/timesheets/adjustments", authMiddleWare, pendingAdjustments);
+router.post("/timesheets/entries/:id/adjustments", authMiddleWare, requestAdjustment);
+router.post("/timesheets/entries/:id/adjustments/:aid", authMiddleWare, decideAdjustment);
+
+// workflow template library
+router.get("/workflow-templates", authMiddleWare, listTemplates);
+router.post("/workflow-templates", authMiddleWare, createTemplate);
+router.get("/workflow-templates/:id", authMiddleWare, getTemplate);
+router.put("/workflow-templates/:id", authMiddleWare, updateTemplate);
+router.post("/workflow-templates/:id/version", authMiddleWare, newVersion);
+router.post("/workflow-templates/:id/duplicate", authMiddleWare, duplicateTemplate);
+router.post("/workflow-templates/:id/activate", authMiddleWare, activateTemplate);
+router.post("/workflow-templates/:id/deactivate", authMiddleWare, deactivateTemplate);
+
+// audit projects (Company → Project → Engagement)
+router.get("/audit-projects", authMiddleWare, listAuditProjects);
+router.post("/audit-projects", authMiddleWare, createAuditProject);
+router.get("/audit-projects/:id", authMiddleWare, getAuditProject);
+router.put("/audit-projects/:id", authMiddleWare, updateAuditProject);
+router.delete("/audit-projects/:id", authMiddleWare, deleteAuditProject);
+
+// My Work, work allocation, management dashboard
+router.get("/audit-work/me", authMiddleWare, myWork);
+router.get("/audit-work/allocation", authMiddleWare, allocation);
+router.get("/audit-work/dashboard", authMiddleWare, auditDashboard);
 router.put("/audits/:id/charges", authMiddleWare, setCharges);
 router.put("/audits/timelogs/:id/review", authMiddleWare, reviewTimeLog);
+// workflow: seniors configure steps; time is logged against a step
+router.get("/audits/workflow-template", authMiddleWare, getWorkflowTemplate);
+router.put("/audits/:id/workflow", authMiddleWare, saveWorkflow);
+router.put("/audits/timelogs/:id/step", authMiddleWare, setLogStep);
+router.post("/audits/:id/timer/switch", authMiddleWare, switchTimerStep);
 
 // Files: keep, organise and share (one to one, or to a chat group)
 const fileUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024, files: 10 } });
@@ -284,10 +344,20 @@ router.put("/assets/:id/return", authMiddleWare, adminHR("assets"), returnAsset)
 router.delete("/assets/:id", authMiddleWare, adminHR("assets"), deleteAsset);
 
 // Helpdesk Tickets
+// Who may do what is decided per ticket in utils/helpdesk.js (owner / HR desk / assignee / team lead).
+const ticketUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024, files: 10 } });
 router.get("/tickets", authMiddleWare, getTickets);
-router.post("/tickets", authMiddleWare, createTicket);
-router.put("/tickets/:id/status", authMiddleWare, adminHRManager("helpdesk"), updateTicketStatus);
-router.post("/tickets/:id/comments", authMiddleWare, addTicketComment);
+router.get("/tickets/meta", authMiddleWare, getTicketMeta);
+router.post("/tickets", authMiddleWare, ticketUpload.array("files", 10), createTicket);
+router.get("/tickets/:id", authMiddleWare, getTicket);
+router.put("/tickets/:id", authMiddleWare, triageTicket);
+router.put("/tickets/:id/status", authMiddleWare, updateTicketStatus);
+router.put("/tickets/:id/assign", authMiddleWare, assignTicket);
+router.post("/tickets/:id/comments", authMiddleWare, ticketUpload.array("files", 10), addTicketComment);
+router.post("/tickets/:id/feedback", authMiddleWare, ticketFeedback);
+router.get("/tickets/:id/files/:fileId", authMiddleWare, downloadTicketFile);
+router.get("/helpdesk/settings", authMiddleWare, getHelpdeskSettings);
+router.put("/helpdesk/settings", authMiddleWare, saveHelpdeskSettings);
 
 // Announcements
 router.get("/announcements", authMiddleWare, getAnnouncements);

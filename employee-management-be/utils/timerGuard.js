@@ -1,11 +1,11 @@
 import AuditTimeLogModel from "../models/auditTimeLogModel.js";
 import AuditEngagementModel from "../models/auditEngagementModel.js";
-import { cutoffFor, COMPANY_TZ, CUTOFF_HOUR } from "./autoCheckout.js";
+import { cutoffFor, COMPANY_TZ, TIMER_STOP_HOUR } from "./autoCheckout.js";
 import { notify } from "./notify.js";
 
 /* Forgotten audit timers must never inflate a bill.
-   - A timer stops by itself at the earlier of: MAX hours after it started, or the day's cut-off
-     (8 PM by default). Such sessions are marked autoStopped + needsReview.
+   - A timer stops by itself at the earlier of: MAX hours after it started, or the timer stop hour
+     (7 PM by default, AUDIT_TIMER_STOP_HOUR). Such sessions are marked autoStopped + needsReview.
    - Checking out of attendance stops any running timer at the same moment.
    - Any session longer than REVIEW_OVER hours (even stopped by hand) is flagged for review.
    - Flagged sessions are left out of bills until a manager approves or corrects them.
@@ -28,7 +28,7 @@ export const closeStaleTimers = async (filter = {}) => {
     let closed = 0;
     for (const log of running) {
         const start = new Date(log.startTime).getTime();
-        const cutoff = cutoffFor(log.startTime, COMPANY_TZ(), CUTOFF_HOUR()).getTime();
+        const cutoff = cutoffFor(log.startTime, COMPANY_TZ(), TIMER_STOP_HOUR()).getTime();
         const stopAt = Math.min(start + maxMs, cutoff);
         if (stopAt > now) continue;
         const byCap = start + maxMs <= cutoff;
@@ -37,7 +37,8 @@ export const closeStaleTimers = async (filter = {}) => {
         log.originalMinutes = log.durationMinutes;
         log.autoStopped = true;
         log.needsReview = true;
-        log.reviewReason = byCap ? `ran ${MAX_SESSION_HOURS()} hours without being stopped` : "was still running at the day's cut-off";
+        const h = TIMER_STOP_HOUR();
+        log.reviewReason = byCap ? `ran ${MAX_SESSION_HOURS()} hours without being stopped` : `was still running at ${h % 12 || 12} ${h < 12 ? "AM" : "PM"}`;
         log.note = [log.note, "(stopped automatically)"].filter(Boolean).join(" ");
         await log.save();
         await tell(log, log.reviewReason);

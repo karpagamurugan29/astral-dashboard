@@ -1,0 +1,21 @@
+/* Confirmation dialog (confirmAction). Prefix: cf- */
+.cf-overlay { position: fixed; inset: 0; z-index: 2100; display: grid; place-items: center; padding: 16px; background: rgba(15, 23, 42, .5); backdrop-filter: blur(2px); animation: cfFade .12s ease-out; }
+.cf-dialog { width: min(420px, 100%); padding: 22px 22px 18px; border-radius: 20px; background: #fff; text-align: center; box-shadow: 0 30px 70px -20px rgba(15, 23, 42, .5); animation: cfPop .16s ease-out; }
+.cf-icon { display: inline-grid; place-items: center; width: 52px; height: 52px; margin-bottom: 10px; border-radius: 50%; font-size: 26px; color: #dc2626; background: #fee2e2; }
+.cf-dialog.warn .cf-icon { color: #d97706; background: #fef3c7; }
+.cf-dialog.primary .cf-icon { color: #1d4ed8; background: #dbeafe; }
+.cf-dialog h3 { margin: 0 0 6px; font-size: 17px; font-weight: 800; color: #0f172a; }
+.cf-dialog p { margin: 0 0 10px; font-size: 13.5px; line-height: 1.5; color: #475569; white-space: pre-line; }
+.cf-details { margin: 0 0 12px; padding: 10px 14px; list-style: none; border-radius: 12px; background: #f8fafc; text-align: left; font-size: 12.5px; color: #334155; }
+.cf-details li { padding: 2px 0 2px 16px; position: relative; }
+.cf-details li::before { content: '•'; position: absolute; left: 4px; color: #94a3b8; }
+.cf-type { display: flex; flex-direction: column; gap: 5px; margin: 0 0 12px; text-align: left; font-size: 12.5px; color: #475569; }
+.cf-type b { color: #0f172a; font-family: ui-monospace, Menlo, monospace; }
+.cf-actions { display: flex; gap: 8px; }
+.cf-actions .pp-btn { flex: 1; justify-content: center; height: 40px; }
+.cf-go { color: #fff !important; border-color: transparent !important; background: #dc2626 !important; }
+.cf-go.warn { background: #d97706 !important; }
+.cf-go.primary { background: #1d4ed8 !important; }
+.cf-go:disabled { opacity: .45; cursor: not-allowed; }
+@keyframes cfFade { from { opacity: 0; } }
+@keyframes cfPop { from { transform: scale(.96); opacity: .6; } }

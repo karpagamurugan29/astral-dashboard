@@ -239,7 +239,7 @@ const seedRun = async () => {
     ]) if (E(m)) req += await mk(Expense, { employeeId: E(m)._id, description: `${TAG} ${desc}` }, { employeeId: E(m)._id, category: cat, amount: amt, expenseDate: at(-3, 12), description: `${TAG} ${desc}`, status });
     for (const [m, reason] of [["gokul.raj@astral.test", "Forgot to check out after the stock count"], ["rohit.das@astral.test", "Phone switched off at client site — checked in late"]])
         if (E(m)) req += await mk(Regularization, { employeeId: E(m)._id, reason: `${TAG} ${reason}` }, { employeeId: E(m)._id, attendanceDate: istDate(at(-2, 12)), requestedCheckIn: "09:30", requestedCheckOut: "18:30", reason: `${TAG} ${reason}`, status: "Pending" });
-    for (const [m, subject, cat, pr, st] of [["keerthana.venkat@astral.test", "Payslip shows wrong PF amount", "Payroll", "High", "Open"], ["sanjay.thomas@astral.test", "Laptop battery drains fast", "IT Support", "Medium", "In Progress"], ["divakar.subramani@astral.test", "Leave balance not updated after comp-off", "Leave", "Low", "Resolved"]])
+    for (const [m, subject, cat, pr, st] of [["keerthana.venkat@astral.test", "Payslip shows wrong PF amount", "Payroll and Salary", "High", "Open"], ["sanjay.thomas@astral.test", "Laptop battery drains fast", "IT and System Access", "Medium", "In Progress"], ["divakar.subramani@astral.test", "Leave balance not updated after comp-off", "Leave and Holidays", "Low", "Resolved"]])
         if (E(m)) req += await mk(Ticket, { employeeId: E(m)._id, subject: `${TAG} ${subject}` }, { employeeId: E(m)._id, subject: `${TAG} ${subject}`, category: cat, description: `${TAG} ${subject}. Please check.`, priority: pr, status: st });
     out.requests = req;
 

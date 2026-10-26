@@ -9,6 +9,7 @@ import leaveModel from "../models/leaveModel.js";
 import regularizationModel from "../models/regularizationModel.js";
 import expenseModel from "../models/expenseModel.js";
 import { scopeOf, workFilter } from "../utils/hierarchy.js";
+import { visibleAuditFilter } from "../utils/auditAccess.js";
 // People a senior keeps an eye on: everyone (HR / firm-wide seniors) or their whole team below them.
 const teamQuery = async (req) => { const s = await scopeOf(req); return s.people ? { status: "Active", _id: { $ne: req.user.id } } : { status: "Active", _id: { $in: [...s.team] } }; };
 
@@ -62,7 +63,8 @@ export const getAuditInsights = async (req, res) => {
         const weekStart = (() => { const d = new Date(today); const dow = (d.getDay() + 6) % 7; return today - dow * DAY; })(); // Monday
 
         const viewer = await scopeOf(req);
-        const scope = { isDeleted: false, ...(await workFilter(req, "auditManager", "teamMembers")) };
+        // same engagement visibility as the audit screens (HR sees audit data only for work they are on)
+        const scope = { isDeleted: false, ...(await visibleAuditFilter(req)) };
 
         const audits = await AuditEngagementModel.find(scope)
             .select("auditCode clientName clientId engagementName auditType financialYear status endDate estimatedHours auditManager teamMembers")

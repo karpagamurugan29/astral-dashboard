@@ -10,6 +10,7 @@ import { PeopleShell, Avatar, StatusPill, ErrorBanner, fullName, fmtDate, tenure
 import './EmployeeProfile.css'
 import { useAccess } from '../../../hooks/useAccess'
 import { DocList, DocUploadForm } from '../../../components/documents/EmployeeDocs'
+import { confirmAction } from '../../../components/common/ConfirmDialog'
 
 const TASK_TONE = { 'To Do': '#64748b', 'In Progress': '#0ea5e9', 'In Review': '#f59e0b', Blocked: '#f43f5e', Done: '#10b981' }
 const LEAVE_TONE = { Approved: '#10b981', Pending: '#f59e0b', Rejected: '#f43f5e', Cancelled: '#64748b' }
@@ -61,7 +62,7 @@ export const EmployeeProfile = () => {
     const isMe = user?._id === id
     const canAddDoc = isMe || !!docMeta?.canUploadForOthers
     const canDeleteDoc = (d) => !!docMeta?.canUploadForOthers || (isMe && (d.uploadedBy?._id || d.uploadedBy) === user?._id)
-    const deleteDoc = (d) => { if (window.confirm(`Delete "${d.title}"? This can't be undone.`)) dispatch({ type: documentActions.DELETE_DOCUMENT, id: d._id }) }
+    const deleteDoc = async (d) => { if (await confirmAction({ title: `Delete “${d.title}”?`, message: 'The file is removed from this record. This can\'t be undone.', confirmLabel: 'Delete document' })) dispatch({ type: documentActions.DELETE_DOCUMENT, id: d._id }) }
     const uploadDoc = (doc) => new Promise((resolve) => dispatch({ type: documentActions.UPLOAD_DOCUMENT, payload: { doc, employeeId: id }, onDone: (ok) => { resolve(ok); if (ok) setDocForm(false) } }))
     const employeeProjects = projects?.filter((p) => p.teamMembers?.some((m) => m._id === id) || p.projectManager?._id === id) || []
     const employeeTasks = tasks?.filter((t) => t.assignedTo?._id === id) || []

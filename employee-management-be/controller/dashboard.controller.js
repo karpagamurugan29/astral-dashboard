@@ -4,6 +4,7 @@ import attendanceModel from "../models/attendanceModel.js";
 import leaveModel from "../models/leaveModel.js";
 import expenseModel from "../models/expenseModel.js";
 import ticketModel from "../models/ticketModel.js";
+import { ACTIVE as ACTIVE_TICKETS } from "../utils/helpdesk.js";
 import taskModel from "../models/taskModel.js";
 import ProjectModel from "../models/ProjectModel.js";
 import { scopeOf, workFilter, visibleIds } from "../utils/hierarchy.js";
@@ -44,7 +45,7 @@ export const getDashboardSummary = async (req, res) => {
                 toDate: { $gte: new Date(today) },
             }),
             leaveModel.countDocuments({ ...who, status: "Pending" }),
-            ticketModel.countDocuments({ ...who, status: { $in: ["Open", "In Progress"] } }),
+            ticketModel.countDocuments({ ...who, status: { $in: ACTIVE_TICKETS } }),
             expenseModel.countDocuments({ ...who, status: "Pending" }),
             employeeModel.countDocuments({ ...emp, joiningDate: { $gte: monthStart } }),
         ]);

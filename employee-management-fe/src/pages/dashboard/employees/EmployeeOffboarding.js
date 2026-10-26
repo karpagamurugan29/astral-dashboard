@@ -6,6 +6,8 @@ import employeeActions from '../../../redux/employee/Actions'
 import { PeopleShell, Avatar, EmptyState, ErrorBanner, ProgressRing, fullName, fmtDate } from '../../../components/people/PeopleUI'
 import './Lifecycle.css'
 import { useAccess } from '../../../hooks/useAccess'
+import { FormModal } from '../../../components/common/FormModal'
+import { confirmAction } from '../../../components/common/ConfirmDialog'
 
 const DAY = 24 * 60 * 60 * 1000
 
@@ -47,6 +49,7 @@ export const EmployeeOffboarding = () => {
         setStarting(false)
     }
 
+    const openStart = () => { reset({ employeeId: '', exitDate: '', reason: '' }); setStarting(true) }
     const onCancelStart = () => {
         reset({ employeeId: '', exitDate: '', reason: '' })
         setStarting(false)
@@ -56,8 +59,8 @@ export const EmployeeOffboarding = () => {
         dispatch({ type: employeeActions.UPDATE_OFFBOARDING_TASK, id: employeeId, taskIndex, completed })
     }
 
-    const onComplete = (employeeId, name) => {
-        if (window.confirm(`Mark ${name}'s offboarding as complete? Their status will be set to Resigned.`)) {
+    const onComplete = async (employeeId, name) => {
+        if (await confirmAction({ title: `Complete ${name}'s offboarding?`, message: 'Their status will be set to Resigned and their access ends.', confirmLabel: 'Complete offboarding', tone: 'warn' })) {
             dispatch({ type: employeeActions.COMPLETE_OFFBOARDING, id: employeeId })
         }
     }
@@ -86,7 +89,7 @@ export const EmployeeOffboarding = () => {
             subtitle="Handle exits smoothly — handovers, asset returns and final settlement in one checklist."
             crumbs={[{ label: 'Offboarding' }]}
             actions={canManage && !starting && (
-                <button type="button" className="pp-btn primary" onClick={() => setStarting(true)}>
+                <button type="button" className="pp-btn primary" onClick={openStart}>
                     <i className="mdi mdi-account-arrow-right-outline"></i> Start offboarding
                 </button>
             )}
@@ -98,11 +101,7 @@ export const EmployeeOffboarding = () => {
             ) : (
                 <>
                     {starting && (
-                        <form className="pp-card lc-start" onSubmit={handleSubmit(onStart)} noValidate>
-                            <div className="pp-card-head">
-                                <h3>Start offboarding</h3>
-                                <button type="button" className="pp-btn icon ghost" onClick={onCancelStart} aria-label="Close"><i className="mdi mdi-close"></i></button>
-                            </div>
+                        <FormModal icon="mdi-plus-circle-outline" title={"Start offboarding"} onClose={onCancelStart} onSubmit={handleSubmit(onStart)} submitLabel={"Start offboarding"} submitIcon="mdi-check">
                             <div className="pp-card-body">
                                 <div className="lc-start-note">
                                     <i className="mdi mdi-information-outline"></i>
@@ -127,12 +126,8 @@ export const EmployeeOffboarding = () => {
                                         <input type="text" placeholder="e.g. Resignation — moving cities" className="pp-input" {...register('reason')} />
                                     </div>
                                 </div>
-                                <div className="lc-start-foot">
-                                    <button type="button" className="pp-btn" onClick={onCancelStart}>Cancel</button>
-                                    <button type="submit" className="pp-btn primary"><i className="mdi mdi-check"></i> Start offboarding</button>
-                                </div>
                             </div>
-                        </form>
+                        </FormModal>
                     )}
 
                     {!people.length ? (
@@ -141,7 +136,7 @@ export const EmployeeOffboarding = () => {
                                 icon="mdi-door-open"
                                 title="No exits in progress"
                                 text="When someone is leaving, start their offboarding to track handover and clearance."
-                                action={!starting && <button type="button" className="pp-btn" onClick={() => setStarting(true)}>Start offboarding</button>}
+                                action={!starting && <button type="button" className="pp-btn" onClick={openStart}>Start offboarding</button>}
                             />
                         </div>
                     ) : (

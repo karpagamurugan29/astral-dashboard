@@ -1,3 +1,4 @@
+import { chatApi } from '../../../components/chat/chatApi'
 import React, { useEffect, useMemo, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useForm } from 'react-hook-form'
@@ -12,12 +13,14 @@ import {
 } from '../../../components/audits/AuditUI'
 import { AuditCard, isOnAudit } from '../../../components/audits/AuditCard'
 import { ClientForm } from '../../../components/audits/ClientForm'
+import { FormModal } from '../../../components/common/FormModal'
 import '../../../components/attendance/attendance.css'
 import '../projects/ProjectsList.css'
 import { useAccess } from '../../../hooks/useAccess'
+import { confirmAction } from '../../../components/common/ConfirmDialog'
 
 const FORMER = ['Resigned', 'Terminated']
-const BLANK = { clientId: '', engagementName: '', auditCode: '', auditType: 'Statutory', financialYear: currentFY(), auditManager: '', priority: 'Medium', startDate: '', endDate: '', estimatedHours: '', fee: '', description: '' }
+const BLANK = { clientId: '', projectId: '', workflowTemplateId: '', engagementName: '', auditCode: '', auditType: 'Statutory', financialYear: currentFY(), auditManager: '', priority: 'Medium', startDate: '', endDate: '', estimatedHours: '', fee: '', description: '' }
 
 const SORTS = {
     deadline: { label: 'Deadline', fn: (a, b) => new Date(a.endDate || 8.64e15) - new Date(b.endDate || 8.64e15) },
@@ -48,6 +51,14 @@ export const AuditsList = () => {
     const [mineOnly, setMineOnly] = useState(false)
     const [groupByClient, setGroupByClient] = useState(false)
     const [sort, setSort] = useState('deadline')
+    // projects and active workflow templates for the create form
+    const [projects, setProjects] = useState([])
+    const [templates, setTemplates] = useState([])
+    useEffect(() => {
+        if (!creating) return
+        chatApi('GET', '/audit-projects').then((j) => setProjects(j.data || [])).catch(() => {})
+        chatApi('GET', '/workflow-templates').then((j) => setTemplates((j.data || []).filter((f) => f.active).map((f) => f.active))).catch(() => {})
+    }, [creating])
 
     useEffect(() => {
         dispatch({ type: auditActions.GET_AUDITS })
@@ -63,18 +74,27 @@ export const AuditsList = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
+    const [saving, setSaving] = useState(false)
+    const [saveError, setSaveError] = useState('')
     const onSubmit = (data) => {
         const num = (v) => (v === '' ? undefined : Number(v))
-        dispatch({ type: auditActions.ADD_AUDIT, payload: { ...data, teamMembers: team, estimatedHours: num(data.estimatedHours), fee: num(data.fee) } })
-        reset(BLANK)
-        setTeam([])
-        setCreating(false)
+        setSaving(true); setSaveError('')
+        dispatch({
+            type: auditActions.ADD_AUDIT,
+            payload: { ...data, teamMembers: team, estimatedHours: num(data.estimatedHours), fee: num(data.fee) },
+            // close (and clear) only once it saved; on an error keep what was typed
+            onDone: (ok, message) => {
+                setSaving(false)
+                if (ok) { reset(BLANK); setTeam([]); setCreating(false) } else setSaveError(message)
+            },
+        })
     }
 
+    const openCreate = () => { reset(BLANK); setTeam([]); setAddingClient(false); setSaveError(''); setCreating(true) }
     const onCancel = () => { reset(BLANK); setTeam([]); setCreating(false); setAddingClient(false) }
 
-    const onArchive = (a) => {
-        if (window.confirm(`Archive "${engagementTitle(a)}" for ${a.clientName} (${a.auditCode})? Logged hours are kept, but it will be hidden from everyone.`)) {
+    const onArchive = async (a) => {
+        if (await confirmAction({ title: `Archive ${a.auditCode}?`, message: `“${engagementTitle(a)}” for ${a.clientName} will be hidden from everyone. Logged hours, tasks and invoices are kept.`, confirmLabel: 'Archive engagement', requireText: a.auditCode })) {
             dispatch({ type: auditActions.DELETE_AUDIT, id: a._id })
         }
     }
@@ -131,7 +151,7 @@ export const AuditsList = () => {
             crumbs={[{ label: 'All audit projects' }]}
             actions={<>
                 <Link to="/audits/clients" className="pp-btn"><i className="mdi mdi-domain"></i> Clients</Link>
-                {canManage && !creating && <button type="button" className="pp-btn primary" onClick={() => setCreating(true)}><i className="mdi mdi-plus"></i> New audit project</button>}
+                {canManage && <button type="button" className="pp-btn primary" onClick={openCreate}><i className="mdi mdi-plus"></i> New engagement</button>}
             </>}
         >
             <ErrorBanner error={error} />
@@ -156,17 +176,10 @@ export const AuditsList = () => {
                 </div>
             </div>
 
-            {canManage && creating && addingClient && (
-                <ClientForm onCancel={() => setAddingClient(false)} onDone={(c) => { setAddingClient(false); setPendingClient(c._id) }} />
-            )}
-
             {canManage && creating && (
-                <form className="pp-card pj-panel" onSubmit={handleSubmit(onSubmit)} noValidate>
-                    <div className="pp-card-head">
-                        <h3><i className="mdi mdi-briefcase-plus-outline me-2" style={{ color: '#0284c7' }}></i>New audit project</h3>
-                        <button type="button" className="pp-btn icon ghost" onClick={onCancel} aria-label="Close"><i className="mdi mdi-close"></i></button>
-                    </div>
+                <FormModal size="xl" icon="mdi-briefcase-plus-outline" title="New engagement" sub="Its workflow tasks are generated from the chosen template" onClose={onCancel} onSubmit={handleSubmit(onSubmit)} submitLabel="Create engagement" busy={saving}>
                     <div className="pp-card-body">
+                        {saveError && <div className="fm-error" role="alert"><i className="mdi mdi-alert-circle-outline"></i>{saveError}</div>}
                         <div className="pj-form-grid">
                             <div className="pp-field span-2">
                                 <label className="pp-label">Client<span className="req">*</span></label>
@@ -180,11 +193,11 @@ export const AuditsList = () => {
                                 {errors.clientId && <div className="pp-err">{errors.clientId.message}</div>}
                             </div>
                             <div className="pp-field span-2">
-                                <label className="pp-label">Project name</label>
+                                <label className="pp-label">Engagement name</label>
                                 <input type="text" placeholder="e.g. Statutory audit FY 2026-27 (leave blank to auto-name)" className="pp-input" {...register('engagementName')} />
                             </div>
                             <div className="pp-field">
-                                <label className="pp-label">Project code<span className="req">*</span></label>
+                                <label className="pp-label">Engagement code<span className="req">*</span></label>
                                 <input type="text" placeholder="e.g. SA-2026-014" className={`pp-input ${errors.auditCode ? 'is-invalid' : ''}`} {...register('auditCode', { required: 'Required' })} />
                                 {errors.auditCode && <div className="pp-err">{errors.auditCode.message}</div>}
                             </div>
@@ -197,6 +210,20 @@ export const AuditsList = () => {
                             <div className="pp-field">
                                 <label className="pp-label">Financial year</label>
                                 <input type="text" placeholder="2026-27" className="pp-input" {...register('financialYear')} />
+                            </div>
+                            <div className="pp-field">
+                                <label className="pp-label">Project <small style={{ fontWeight: 400, color: 'var(--pp-muted)' }}>optional</small></label>
+                                <select className="pp-select" {...register('projectId')}>
+                                    <option value="">No project</option>
+                                    {projects.filter((p) => (p.clientId?._id || p.clientId) === watch('clientId')).map((p) => <option key={p._id} value={p._id}>{p.name} ({p.projectCode})</option>)}
+                                </select>
+                            </div>
+                            <div className="pp-field">
+                                <label className="pp-label">Workflow</label>
+                                <select className="pp-select" {...register('workflowTemplateId')}>
+                                    <option value="">Automatic — best match for the project / company / type</option>
+                                    {templates.map((t) => <option key={t._id} value={t._id}>{t.name} v{t.version}{t.auditType ? ` · ${t.auditType}` : ''}</option>)}
+                                </select>
                             </div>
                             <div className="pp-field">
                                 <label className="pp-label">Audit manager<span className="req">*</span></label>
@@ -239,12 +266,12 @@ export const AuditsList = () => {
                                 <textarea rows={2} placeholder="Scope of the audit, location, key areas…" className="pp-input" {...register('description')}></textarea>
                             </div>
                         </div>
-                        <div className="pj-form-foot">
-                            <button type="button" className="pp-btn" onClick={onCancel}>Cancel</button>
-                            <button type="submit" className="pp-btn primary"><i className="mdi mdi-check"></i> Create audit project</button>
-                        </div>
                     </div>
-                </form>
+                </FormModal>
+            )}
+            {/* opened from inside the engagement dialog, so it renders after it (on top) */}
+            {canManage && creating && addingClient && (
+                <ClientForm onCancel={() => setAddingClient(false)} onDone={(c) => { setAddingClient(false); setPendingClient(c._id) }} />
             )}
 
             <div className="pl-toolbar">
@@ -282,7 +309,7 @@ export const AuditsList = () => {
                 <div className="pp-card">
                     <EmptyState icon="mdi-briefcase-search-outline" title={all.length ? 'No audit projects match' : 'No audit projects yet'}
                         text={all.length ? 'Try a different search, client or status.' : canManage ? 'Pick a client, create an audit project, assign the team, and they can start logging time.' : 'Audit projects you are assigned to will show up here.'}
-                        action={canManage && !all.length && <button type="button" className="pp-btn primary" onClick={() => setCreating(true)}><i className="mdi mdi-plus"></i> New audit project</button>} />
+                        action={canManage && !all.length && <button type="button" className="pp-btn primary" onClick={openCreate}><i className="mdi mdi-plus"></i> New engagement</button>} />
                 </div>
             ) : groups ? (
                 groups.map((g) => (

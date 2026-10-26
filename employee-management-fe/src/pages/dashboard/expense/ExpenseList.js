@@ -11,6 +11,8 @@ import {
 import '../../../components/attendance/attendance.css'
 import '../../../components/payroll/payroll.css'
 import './ExpenseList.css'
+import { FormModal } from '../../../components/common/FormModal'
+import { confirmAction } from '../../../components/common/ConfirmDialog'
 
 const BLANK = { category: '', amount: '', expenseDate: '', description: '', receiptFile: null }
 const monthKey = (d) => { const x = new Date(d); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}` }
@@ -37,8 +39,10 @@ export const ExpenseList = () => {
         setOpen(false)
     }
 
-    const onDelete = (ex) => {
-        if (window.confirm(`Delete your ${ex.category.toLowerCase()} claim of ${money(ex.amount)}?`)) {
+    const onNew = () => { reset(BLANK); setOpen(true) }
+    const onClose = () => { reset(BLANK); setOpen(false) }
+    const onDelete = async (ex) => {
+        if (await confirmAction({ title: 'Delete this claim?', message: `Your ${ex.category.toLowerCase()} claim of ${money(ex.amount)}. This can't be undone.`, confirmLabel: 'Delete claim' })) {
             dispatch({ type: expenseActions.DELETE_EXPENSE, id: ex._id })
         }
     }
@@ -80,7 +84,7 @@ export const ExpenseList = () => {
             title="My expenses"
             root={EXPENSE_ROOT}
             crumbs={[{ label: 'My expenses' }]}
-            actions={!open && <button type="button" className="pp-btn primary" onClick={() => setOpen(true)}><i className="mdi mdi-plus"></i> New claim</button>}
+            actions={<button type="button" className="pp-btn primary" onClick={onNew}><i className="mdi mdi-plus"></i> New claim</button>}
         >
             <ErrorBanner error={error} />
 
@@ -104,11 +108,7 @@ export const ExpenseList = () => {
             </div>
 
             {open && (
-                <form className="pp-card ec-panel" onSubmit={handleSubmit(onSubmit)} noValidate>
-                    <div className="pp-card-head">
-                        <h3><i className="mdi mdi-receipt me-2" style={{ color: '#0284c7' }}></i>New expense claim</h3>
-                        <button type="button" className="pp-btn icon ghost" onClick={() => { reset(BLANK); setOpen(false) }} aria-label="Close"><i className="mdi mdi-close"></i></button>
-                    </div>
+                <FormModal icon="mdi-receipt" title={"New expense claim"} onClose={onClose} onSubmit={handleSubmit(onSubmit)} submitLabel={"Submit claim"} submitIcon="mdi-send-outline" size="wide">
                     <div className="pp-card-body">
                         <div className="ec-grid">
                             <div>
@@ -164,12 +164,8 @@ export const ExpenseList = () => {
                                 </label>
                             </div>
                         </div>
-                        <div className="ec-foot">
-                            <button type="button" className="pp-btn" onClick={() => { reset(BLANK); setOpen(false) }}>Cancel</button>
-                            <button type="submit" className="pp-btn primary"><i className="mdi mdi-send-outline"></i> Submit claim</button>
-                        </div>
                     </div>
-                </form>
+                </FormModal>
             )}
 
             <section className="pp-card">
@@ -193,7 +189,7 @@ export const ExpenseList = () => {
                 ) : !rows.length ? (
                     <EmptyState icon="mdi-receipt" title={mine.length ? 'Nothing matches' : 'No expense claims yet'}
                         text={mine.length ? 'Try a different status or category.' : 'Spent money on work? Submit a claim with the bill and get reimbursed.'}
-                        action={!mine.length && !open && <button type="button" className="pp-btn primary" onClick={() => setOpen(true)}><i className="mdi mdi-plus"></i> New claim</button>} />
+                        action={!mine.length && !open && <button type="button" className="pp-btn primary" onClick={onNew}><i className="mdi mdi-plus"></i> New claim</button>} />
                 ) : groups.map(([k, items]) => (
                     <div key={k}>
                         <div className="ex-month"><span>{monthName(k)}</span><b>{money(sum(items.filter((e) => e.status !== 'Rejected')))}</b></div>

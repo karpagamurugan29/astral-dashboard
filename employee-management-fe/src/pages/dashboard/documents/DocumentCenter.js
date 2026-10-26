@@ -6,6 +6,8 @@ import employeeActions from '../../../redux/employee/Actions'
 import { PeopleShell, Avatar, ErrorBanner, fullName } from '../../../components/people/PeopleUI'
 import { DocUploadForm, DocList, DOC_CATEGORIES } from '../../../components/documents/EmployeeDocs'
 import { useAccess } from '../../../hooks/useAccess'
+import { FormModal } from '../../../components/common/FormModal'
+import { confirmAction } from '../../../components/common/ConfirmDialog'
 
 // Employee documents, filed by employee ID. Everyone sees their own files and company-wide
 // policies; managers also see the people in their reporting line; HR / Admin / Directors /
@@ -64,11 +66,11 @@ export const DocumentCenter = () => {
         dispatch({ type: documentActions.UPLOAD_DOCUMENT, payload: { doc, employeeId: forOthers ? owner : undefined }, onDone: (ok) => { resolve(ok); if (ok) setShowForm(false) } })
     })
     const canDelete = (d) => forOthers || (d.employeeId?._id === me && (d.uploadedBy?._id || d.uploadedBy) === me)
-    const onDelete = (d) => { if (window.confirm(`Delete "${d.title}"? This can't be undone.`)) dispatch({ type: documentActions.DELETE_DOCUMENT, id: d._id }) }
+    const onDelete = async (d) => { if (await confirmAction({ title: `Delete “${d.title}”?`, message: 'The file is removed from the employee\'s record. This can\'t be undone.', confirmLabel: 'Delete document' })) dispatch({ type: documentActions.DELETE_DOCUMENT, id: d._id }) }
 
     return (
         <PeopleShell title="Documents" crumbs={[{ label: 'Documents' }]}
-            actions={<button type="button" className="pp-btn primary" onClick={() => setShowForm((s) => !s)}><i className={`mdi ${showForm ? 'mdi-close' : 'mdi-plus'}`}></i>{showForm ? 'Close' : 'Add document'}</button>}>
+            actions={<button type="button" className="pp-btn primary" onClick={() => { setOwner(''); setShowForm(true) }}><i className="mdi mdi-plus"></i>Add document</button>}>
             <ErrorBanner error={error} />
             <div className="dc-page">
                 <div className="dc-scope">
@@ -86,12 +88,11 @@ export const DocumentCenter = () => {
                 </div>
 
                 {showForm && (
-                    <section className="pp-card">
-                        <div className="pp-card-head"><div><h3>Add a document</h3><p>{forOthers ? 'Pick the employee by ID — the file is saved to their record.' : 'Saved to your own record.'}</p></div></div>
-                        <div className="pp-card-body">
-                            <DocUploadForm owners={forOthers ? owners : null} ownerId={owner} onOwnerChange={setOwner} onSubmit={upload} busy={uploading} />
-                        </div>
-                    </section>
+                    // the upload form brings its own Upload button; it remounts on every open, so it starts empty
+                    <FormModal size="wide" icon="mdi-file-upload-outline" title="Add a document" sub={forOthers ? 'Pick the employee by ID — the file is saved to their record.' : 'Saved to your own record.'}
+                        onClose={() => setShowForm(false)} onSubmit={(e) => e.preventDefault()} hideSubmit>
+                        <DocUploadForm owners={forOthers ? owners : null} ownerId={owner} onOwnerChange={setOwner} onSubmit={upload} busy={uploading} />
+                    </FormModal>
                 )}
 
                 <section className="pp-card">

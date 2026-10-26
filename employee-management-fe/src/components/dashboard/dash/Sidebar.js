@@ -20,7 +20,10 @@ import { useSelector } from 'react-redux';
 // item.team — a team screen: shown to anyone who leads a team (any designation), HR and the
 // firm-wide seniors; item.finance also opens it to Accounts. ('@team' / '@finance' are added to
 // `granted` from the reporting-tree scope in the Sidebar below.)
+// item.auditLead — audit management screens: Admin, Managers and the firm-wide roles (incl. HR /
+// Accounts heads); item.finance also opens it to Accounts staff.
 const roleOk = (menuItem, userRole, granted) => {
+    if (menuItem.auditLead) return userRole === 'Admin' || userRole === 'Manager' || !!granted?.includes('@firm') || (!!menuItem.finance && !!granted?.includes('@finance'));
     if (menuItem.money) return userRole === 'Admin' || userRole === 'HR' || !!granted?.includes('@money');
     if (menuItem.team) return userRole === 'Admin' || !!granted?.includes('@team') || (!!menuItem.finance && !!granted?.includes('@finance'));
     return !menuItem.roles || menuItem.roles.includes(userRole) || (!!menuItem.module && !!granted?.includes(menuItem.module));
@@ -163,6 +166,7 @@ export const Sidebar = () => {
         ...((team ? team.leads || team.people : ADMIN_HR_MANAGER.includes(userRole)) ? ['@team'] : []),
         ...(team?.finance ? ['@finance'] : []),
         ...(team?.firm || team?.finance ? ['@money'] : []),
+        ...(team?.firm ? ['@firm'] : []),
     ], [grantedModules, team, userRole]);
 
     // Grouped by purpose. Inside each module the person's own items come first,
@@ -224,6 +228,7 @@ export const Sidebar = () => {
             children: [
                 { name: "helpdesk-my", label: "My Tickets", link: "/helpdesk", screen: "screen:helpdesk" },
                 { name: "helpdesk-all", label: "HR Tickets", link: "/helpdesk/all", roles: ADMIN_HR_MANAGER, module: "helpdesk" },
+                { name: "helpdesk-settings", label: "Helpdesk Settings", link: "/helpdesk/settings", roles: ADMIN_HR, module: "helpdesk" },
             ],
         },
 
@@ -233,8 +238,14 @@ export const Sidebar = () => {
             label: "Audits",
             icon: "briefcase",
             children: [
+                { name: "audits-dashboard", label: "Audit Dashboard", link: "/audits/dashboard", auditLead: true, finance: true },
+                { name: "audits-mywork", label: "My Work", link: "/my-work", screen: "screen:audits" },
+                { name: "audits-timesheets", label: "Timesheets", link: "/timesheets", screen: "screen:audits" },
+                { name: "audits-projects", label: "Engagements", link: "/audits", screen: "screen:audits" },
+                { name: "audits-groups", label: "Projects", link: "/audits/projects", screen: "screen:audits" },
                 { name: "audits-clients", label: "Clients", link: "/audits/clients", screen: "screen:audits" },
-                { name: "audits-projects", label: "Audit Projects", link: "/audits", screen: "screen:audits" },
+                { name: "audits-allocation", label: "Work Allocation", link: "/audits/allocation", auditLead: true },
+                { name: "audits-workflows", label: "Workflow Templates", link: "/audits/workflows", auditLead: true },
                 { name: "audits-billing", label: "Billing & Invoices", link: "/audits/billing", money: true },
             ],
         },

@@ -8,6 +8,8 @@ import { fileURLToPath } from "url";
 import connectDB from "./config/db.js";
 import router from "./routes/routes.js";
 import { startAutoCheckoutScheduler } from "./utils/autoCheckout.js";
+import { startHelpdeskScheduler } from "./utils/helpdesk.js";
+import { startAuditJobs } from "./utils/auditJobs.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -80,6 +82,18 @@ if (process.env.NODE_ENV !== "production") {
     // 8 PM auto check-out. On Vercel there is no long-running process: vercel.json's cron calls
     // /api/cron/auto-checkout instead.
     startAutoCheckoutScheduler(() => {
+        if (!dbReady) dbReady = connectDB();
+        return dbReady;
+    });
+
+    // Audit task / timesheet reminders and escalation
+    startAuditJobs(() => {
+        if (!dbReady) dbReady = connectDB();
+        return dbReady;
+    });
+
+    // Helpdesk SLA reminders, escalation and auto-close (lazily on ticket reads on Vercel).
+    startHelpdeskScheduler(() => {
         if (!dbReady) dbReady = connectDB();
         return dbReady;
     });
