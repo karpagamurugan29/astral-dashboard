@@ -41,13 +41,14 @@ export const HeadcountByDepartment = ({ headcount }) => {
         },
         series: [{
             type: 'bar',
-            barWidth: 14,
+            barWidth: 12,
             showBackground: true,
-            backgroundStyle: { color: 'rgba(148, 163, 184, .12)', borderRadius: 8 },
+            backgroundStyle: { color: 'rgba(148, 163, 184, .12)', borderRadius: 99 },
             data: sorted.map((h) => ({
                 value: h.count,
                 itemStyle: {
-                    borderRadius: 8,
+                    borderRadius: 99,
+                    shadowBlur: 6, shadowColor: 'rgba(2, 132, 199, .2)',
                     // the largest department gets the full brand gradient, the rest a softer tint
                     color: h.count === maxCount
                         ? barGradient('#0284c7', '#0ea5e9')
@@ -72,10 +73,13 @@ export const HeadcountByDepartment = ({ headcount }) => {
 
     return (
         <ChartWidget
-            title="Headcount by Department"
-            icon="users"
+            title="Headcount by department"
+            subtitle={total ? `${total} people · ${sorted.length} department${sorted.length === 1 ? '' : 's'}` : undefined}
+            icon="mdi-account-group-outline"
             accent="#0ea5e9"
-            height={320}
+            emptyText="No departments yet"
+            emptyIcon="mdi-account-group-outline"
+            height={Math.min(320, Math.max(140, 24 + sorted.length * 42))}
             rows={[...sorted].reverse().map((h) => [h.department, h.count, `${total ? Math.round((h.count / total) * 100) : 0}%`])}
             columns={['Department', 'Employees', 'Share']}
             graph={<ReactECharts option={option} style={{ height: '100%', width: '100%' }} notMerge={true} />}

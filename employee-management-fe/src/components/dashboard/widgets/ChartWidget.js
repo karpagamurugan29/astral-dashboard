@@ -84,35 +84,41 @@ export const DataTable = ({ columns, rows, accent, barColumn, maxHeight }) => {
     )
 }
 
-export const ChartWidget = ({ title, subtitle, icon, accent = '#0ea5e9', graph, columns, rows, empty, height = 300, barColumn }) => {
+// Older callers pass feather icon names; draw them with MDI so they render without feather.replace().
+const FEATHER_MDI = { 'bar-chart-2': 'mdi-chart-bar', briefcase: 'mdi-briefcase-outline', users: 'mdi-account-group-outline', clock: 'mdi-clock-time-four-outline', 'pie-chart': 'mdi-chart-donut', 'trending-up': 'mdi-trending-up', activity: 'mdi-pulse', calendar: 'mdi-calendar-blank-outline' }
+
+export const ChartWidget = ({ title, subtitle, icon, accent = '#0ea5e9', graph, columns, rows, empty, height = 300, barColumn, emptyText = 'No data yet', emptyHint, emptyIcon = 'mdi-chart-box-outline', extra }) => {
     const [mode, setMode] = useState('graph')
     const isEmpty = empty || !rows || rows.length === 0
+    const mdi = icon?.startsWith('mdi-') ? icon : FEATHER_MDI[icon]
 
     return (
-        <div className="card card-h-100 chart-widget">
+        <div className="card card-h-100 chart-widget" style={{ "--pc": accent }}>
             <div className="card-body">
                 <div className="cw-head">
-                    <span className="chart-widget-icon" style={{ background: `${accent}1a`, color: accent }}>
-                        <i data-feather={icon}></i>
+                    <span className="chart-widget-icon" style={{ background: `${accent}1a`, color: accent, '--c': accent }}>
+                        {mdi ? <i className={`mdi ${mdi}`}></i> : <i data-feather={icon}></i>}
                     </span>
                     <div className="cw-titles">
                         <h5 className="card-title mb-0">{title}</h5>
                         {subtitle && <small>{subtitle}</small>}
                     </div>
-                    <div className="cw-switch" role="tablist" aria-label={`${title} view`}>
+                    {extra}
+                    {!isEmpty && <div className="cw-switch" role="tablist" aria-label={`${title} view`}>
                         <button type="button" role="tab" aria-selected={mode === 'graph'} className={mode === 'graph' ? 'on' : ''} onClick={() => setMode('graph')}>
                             <i className="mdi mdi-chart-bar"></i><span>Graph</span>
                         </button>
                         <button type="button" role="tab" aria-selected={mode === 'data'} className={mode === 'data' ? 'on' : ''} onClick={() => setMode('data')}>
                             <i className="mdi mdi-table"></i><span>Data</span>
                         </button>
-                    </div>
+                    </div>}
                 </div>
 
                 {isEmpty ? (
-                    <div className="chart-widget-empty" style={{ height: Math.min(height, 160) }}>
-                        <i className="mdi mdi-chart-box-outline"></i>
-                        <span>No data yet</span>
+                    <div className="chart-widget-empty pd-empty" style={{ '--c': accent }}>
+                        <span className="pd-empty-icon"><i className={`mdi ${emptyIcon}`}></i></span>
+                        <b>{emptyText}</b>
+                        {emptyHint && <small>{emptyHint}</small>}
                     </div>
                 ) : mode === 'graph' ? (
                     <div className="chart-widget-graph" style={{ height }}>{graph}</div>

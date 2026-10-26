@@ -1,11 +1,13 @@
 import React, { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import ReactECharts from 'echarts-for-react'
+import * as echarts from 'echarts'
 import { ChartWidget } from './ChartWidget'
 import { Avatar, fullName } from '../../people/PeopleUI'
 import { AUDIT_STATUS, auditStatusMeta, engagementTitle, fmtDuration, useTick, clock } from '../../audits/AuditUI'
 import './AuditWidgets.css'
 import { Live } from '../../common/Live'
+import { Panel, EmptyState, LivePill } from './PremiumUI'
 
 /* -------------------------------------------------------------------------- */
 /*  Audit widgets for the dashboard. One brand hue for magnitude (single-     */
@@ -14,7 +16,6 @@ import { Live } from '../../common/Live'
 /* -------------------------------------------------------------------------- */
 
 const HUE = '#0284c7'        // magnitude
-const HUE_SOFT = '#7cc3ea'   // the same hue, quieter — earlier days / not today
 const OTHER = '#cbd5e1'      // folded "Other" bucket
 const INK = '#334155'
 const MUTED = '#94a3b8'
@@ -26,6 +27,14 @@ const tooltipBase = {
     padding: [8, 12],
     textStyle: { color: '#fff', fontSize: 12 },
 }
+
+// Vertical / horizontal gradients give bars depth without adding colours.
+const vGrad = (top, bottom) => new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: top }, { offset: 1, color: bottom }])
+const hGrad = (from, to) => new echarts.graphic.LinearGradient(0, 0, 1, 0, [{ offset: 0, color: from }, { offset: 1, color: to }])
+const BAR = () => vGrad('#38bdf8', '#0284c7')
+const BAR_SOFT = () => vGrad('#bae6fd', '#7dd3fc')
+const BAR_TODAY = () => vGrad('#a78bfa', '#6d28d9')
+const isWeekend = (key) => { const d = localDate(key).getDay(); return d === 0 || d === 6 }
 
 const hours = (min) => Math.round((min / 60) * 10) / 10
 const localDate = (s) => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d) }
@@ -59,8 +68,9 @@ export const AuditHoursTrend = ({ daily = [], scope }) => {
                 formatter: (v) => {
                     const dt = localDate(v)
                     // every other day on narrow charts keeps labels from colliding; today always shows
-                    return `${dt.toLocaleDateString(undefined, { weekday: 'narrow' })}\n${dt.getDate()}`
+                    return v === todayKey ? `{today|${dt.toLocaleDateString(undefined, { weekday: 'narrow' })}\n${dt.getDate()}}` : `${dt.toLocaleDateString(undefined, { weekday: 'narrow' })}\n${dt.getDate()}`
                 },
+                rich: { today: { color: '#6d28d9', fontWeight: 800, fontSize: 11, lineHeight: 14, align: 'center' } },
             },
         },
         yAxis: {
@@ -72,12 +82,14 @@ export const AuditHoursTrend = ({ daily = [], scope }) => {
         },
         series: [{
             type: 'bar',
-            barMaxWidth: 22,
+            barMaxWidth: 26,
             data: daily.map((d) => ({
                 value: hours(d.minutes),
-                itemStyle: { color: d.date === todayKey ? HUE : HUE_SOFT, borderRadius: [4, 4, 0, 0] },
+                itemStyle: { color: d.date === todayKey ? BAR_TODAY() : isWeekend(d.date) ? BAR_SOFT() : BAR(), borderRadius: [6, 6, 2, 2], shadowColor: d.date === todayKey ? 'rgba(109, 40, 217, .35)' : 'rgba(2, 132, 199, .18)', shadowBlur: 8, shadowOffsetY: 3 },
             })),
-            emphasis: { itemStyle: { color: '#075985' } },
+            showBackground: true,
+            backgroundStyle: { color: 'rgba(148, 163, 184, .07)', borderRadius: [6, 6, 2, 2] },
+            emphasis: { itemStyle: { color: vGrad('#0ea5e9', '#075985') } },
             markLine: avgH ? {
                 silent: true,
                 symbol: 'none',
@@ -93,7 +105,11 @@ export const AuditHoursTrend = ({ daily = [], scope }) => {
     return (
         <ChartWidget
             title={scope === 'firm' ? 'Audit hours · last 14 days' : 'My audits · last 14 days'}
-            icon="bar-chart-2"
+            subtitle={totalMin ? `${fmtDuration(totalMin)} logged · avg ${avgH}h per working day` : undefined}
+            emptyText="No audit time logged in the last 14 days"
+            emptyHint="Start a timer on an audit and your hours chart builds up here."
+            emptyIcon="mdi-chart-bar"
+            icon="mdi-chart-bar"
             accent={HUE}
             height={290}
             empty={!totalMin}
@@ -110,6 +126,7 @@ export const HoursByClient = ({ byClient = [] }) => {
     // echarts draws category axes bottom-up; "Other clients" stays last (bottom), the rest largest on top
     const rowsDesc = byClient
     const sorted = useMemo(() => [...rowsDesc].reverse(), [rowsDesc])
+    const height = Math.min(290, Math.max(150, 30 + byClient.length * 40))
 
     const option = useMemo(() => ({
         tooltip: {
@@ -134,8 +151,8 @@ export const HoursByClient = ({ byClient = [] }) => {
             type: 'bar',
             barWidth: 14,
             showBackground: true,
-            backgroundStyle: { color: 'rgba(148, 163, 184, .12)', borderRadius: 4 },
-            data: sorted.map((r) => ({ value: hours(r.minutes), itemStyle: { color: r.client === 'Other clients' ? OTHER : HUE, borderRadius: [0, 4, 4, 0] } })),
+            backgroundStyle: { color: 'rgba(148, 163, 184, .12)', borderRadius: 99 },
+            data: sorted.map((r, i) => ({ value: hours(r.minutes), itemStyle: { color: r.client === 'Other clients' ? OTHER : i === sorted.length - 1 ? hGrad('#38bdf8', '#0369a1') : hGrad('#bae6fd', '#38bdf8'), borderRadius: 99 } })),
             label: {
                 show: true, position: 'right', distance: 8, color: INK, fontSize: 12, fontWeight: 600,
                 formatter: (p) => `${p.value}h  {share|${total ? Math.round((sorted[p.dataIndex].minutes / total) * 100) : 0}%}`,
@@ -148,9 +165,12 @@ export const HoursByClient = ({ byClient = [] }) => {
     return (
         <ChartWidget
             title="Hours by client · 30d"
-            icon="briefcase"
+            subtitle={total ? `${fmtDuration(total)} across ${byClient.length} client${byClient.length === 1 ? '' : 's'}` : undefined}
+            emptyText="No client hours in the last 30 days"
+            emptyIcon="mdi-briefcase-outline"
+            icon="mdi-briefcase-outline"
             accent={HUE}
-            height={290}
+            height={height}
             empty={!total}
             columns={['Client', 'Hours', 'Share']}
             rows={rowsDesc.map((r) => [r.client, fmtDuration(r.minutes), `${total ? Math.round((r.minutes / total) * 100) : 0}%`])}
@@ -189,7 +209,9 @@ export const TeamWeek = ({ byPerson = [], weekStart }) => {
         series: [{
             type: 'bar',
             barWidth: 12,
-            data: sorted.map((r) => ({ value: hours(r.minutes), itemStyle: { color: HUE, borderRadius: [0, 4, 4, 0] } })),
+            data: sorted.map((r) => { const h = hours(r.minutes); return { value: h, itemStyle: { color: h > WEEK_TARGET_H ? hGrad('#fda4af', '#e11d48') : h >= WEEK_TARGET_H * 0.75 ? hGrad('#6ee7b7', '#059669') : hGrad('#bae6fd', '#0284c7'), borderRadius: 99 } } }),
+            showBackground: true,
+            backgroundStyle: { color: 'rgba(148, 163, 184, .1)', borderRadius: 99 },
             label: { show: true, position: 'right', distance: 6, color: INK, fontSize: 11.5, fontWeight: 600, formatter: (p) => `${p.value}h` },
             markLine: {
                 silent: true,
@@ -205,9 +227,13 @@ export const TeamWeek = ({ byPerson = [], weekStart }) => {
     return (
         <ChartWidget
             title="Team hours · this week"
-            icon="users"
+            subtitle={byPerson.length ? `${byPerson.length} people · target ${WEEK_TARGET_H}h each` : undefined}
+            emptyText="No audit hours logged this week"
+            emptyHint="Hours appear as the team runs their audit timers."
+            emptyIcon="mdi-account-group-outline"
+            icon="mdi-account-group-outline"
             accent={HUE}
-            height={290}
+            height={Math.min(290, Math.max(150, 40 + byPerson.length * 34))}
             empty={!byPerson.length}
             columns={['Person', since ? `Hours since ${since}` : 'Hours this week', `% of ${WEEK_TARGET_H}h`]}
             rows={byPerson.map((r) => [fullName(r.employee), fmtDuration(r.minutes), `${Math.round((r.minutes / 60 / WEEK_TARGET_H) * 100)}%`])}
@@ -222,16 +248,14 @@ const dueText = (d) => d < 0 ? { text: `${-d}d overdue`, tone: 'late', icon: 'md
         : d <= 7 ? { text: `${d}d left`, tone: 'soon', icon: 'mdi-timer-sand' }
             : { text: `${d}d left`, tone: 'ok', icon: 'mdi-flag-outline' }
 
-export const DeadlinesWidget = ({ deadlines = [] }) => (
-    <div className="card card-h-100 aw-card">
-        <div className="card-body">
-            <div className="aw-head">
-                <span className="chart-widget-icon" style={{ background: '#e11d481a', color: '#e11d48' }}><i className="mdi mdi-flag-checkered"></i></span>
-                <h5 className="card-title mb-0">Upcoming deadlines</h5>
-                <Link to="/audits" className="aw-more">All <i className="mdi mdi-chevron-right"></i></Link>
-            </div>
+export const DeadlinesWidget = ({ deadlines = [] }) => {
+    const late = deadlines.filter((d) => d.daysLeft < 0).length
+    return (
+        <Panel icon="mdi-flag-checkered" color="#e11d48" title="Upcoming deadlines" badge={deadlines.length || null}
+            subtitle={late ? `${late} overdue · next 3 weeks` : 'Next 3 weeks'}
+            actions={<Link to="/audits" className="pp-link">All <i className="mdi mdi-chevron-right"></i></Link>}>
             {!deadlines.length ? (
-                <div className="aw-empty"><i className="mdi mdi-calendar-check-outline"></i><span>Nothing due in the next 3 weeks</span></div>
+                <EmptyState icon="mdi-calendar-check-outline" tone="#16a34a" title="Nothing due in the next 3 weeks" hint="You're ahead of every deadline." />
             ) : (
                 <ul className="aw-list">
                     {deadlines.map((a) => {
@@ -241,7 +265,7 @@ export const DeadlinesWidget = ({ deadlines = [] }) => (
                         const m = auditStatusMeta(a.status)
                         return (
                             <li key={a._id}>
-                                <Link to={`/audits/${a._id}`} className="aw-deadline">
+                                <Link to={`/audits/${a._id}`} className={`aw-deadline t-${due.tone}`}>
                                     <span className="aw-dl-main">
                                         <small>{a.clientName}</small>
                                         <b>{engagementTitle(a)}</b>
@@ -258,43 +282,36 @@ export const DeadlinesWidget = ({ deadlines = [] }) => (
                     })}
                 </ul>
             )}
-        </div>
-    </div>
-)
-
-/* ---------------- Working right now (live) ---------------- */
-export const WorkingNowWidget = ({ activeNow = [] }) => {
-    return (
-        <div className="card card-h-100 aw-card">
-            <div className="card-body">
-                <div className="aw-head">
-                    <span className="chart-widget-icon" style={{ background: '#16a34a1a', color: '#16a34a' }}><i className="mdi mdi-account-clock-outline"></i></span>
-                    <h5 className="card-title mb-0">Working right now</h5>
-                    {activeNow.length > 0 && <span className="aw-live"><span className="au-pulse"></span>{activeNow.length} live</span>}
-                </div>
-                {!activeNow.length ? (
-                    <div className="aw-empty"><i className="mdi mdi-timer-off-outline"></i><span>No audit timers running</span></div>
-                ) : (
-                    <ul className="aw-list">
-                        {activeNow.map((r) => (
-                            <li key={`${r.employee._id}-${r.auditId}`}>
-                                <Link to={`/audits/${r.auditId}`} className="aw-person">
-                                    <Avatar person={r.employee} size={34} />
-                                    <span className="aw-person-main">
-                                        <b>{fullName(r.employee)}</b>
-                                        <small>{r.clientName} · {engagementTitle(r)}</small>
-                                        {r.address && <small className="aw-place"><i className="mdi mdi-map-marker-outline"></i>{r.address}</small>}
-                                    </span>
-                                    <span className="aw-clock"><Live>{(n) => clock(r.startTime, n)}</Live></span>
-                                </Link>
-                            </li>
-                        ))}
-                    </ul>
-                )}
-            </div>
-        </div>
+        </Panel>
     )
 }
+
+/* ---------------- Working right now (live) ---------------- */
+export const WorkingNowWidget = ({ activeNow = [] }) => (
+    <Panel icon="mdi-account-clock-outline" color="#16a34a" title="Working right now"
+        subtitle={activeNow.length ? 'Live audit timers across the team' : 'Live audit timers'}
+        actions={activeNow.length > 0 ? <LivePill>{activeNow.length} live</LivePill> : null}>
+        {!activeNow.length ? (
+            <EmptyState icon="mdi-timer-off-outline" tone="#16a34a" title="No audit timers running" hint="When someone starts a timer they'll appear here with a live clock." />
+        ) : (
+            <ul className="aw-list">
+                {activeNow.map((r) => (
+                    <li key={`${r.employee._id}-${r.auditId}`}>
+                        <Link to={`/audits/${r.auditId}`} className="aw-person">
+                            <span className="aw-av-live"><Avatar person={r.employee} size={34} /></span>
+                            <span className="aw-person-main">
+                                <b>{fullName(r.employee)}</b>
+                                <small>{r.clientName} · {engagementTitle(r)}</small>
+                                {r.address && <small className="aw-place"><i className="mdi mdi-map-marker-outline"></i>{r.address}</small>}
+                            </span>
+                            <span className="aw-clock"><Live>{(n) => clock(r.startTime, n)}</Live></span>
+                        </Link>
+                    </li>
+                ))}
+            </ul>
+        )}
+    </Panel>
+)
 
 /* ---------------- My week (stat tiles: a headline number is not a chart) ---------------- */
 export const MyAuditStrip = ({ me, statusCounts = {} }) => {
@@ -332,36 +349,33 @@ export const AttentionWidget = ({ attention }) => {
     const waiting = items.reduce((s, i) => s + (i.n || 0), 0)
     const missing = attention.notCheckedIn || { count: 0, people: [] }
     return (
-        <div className="card aw-card aw-attention">
-            <div className="card-body">
-                <div className="aw-head">
-                    <span className="chart-widget-icon" style={{ background: '#d977061a', color: '#d97706' }}><i className="mdi mdi-bell-alert-outline"></i></span>
-                    <h5 className="card-title mb-0">Needs your attention</h5>
-                    <span className={`aw-att-total ${waiting ? 'on' : ''}`}>{waiting ? <><i className="mdi mdi-alert-circle-outline"></i>{waiting} waiting</> : <><i className="mdi mdi-check-circle-outline"></i>All clear</>}</span>
-                </div>
+        <Panel icon="mdi-bell-alert-outline" color="#d97706" title="Needs your attention" className="aw-attention"
+            subtitle={waiting ? 'Decisions waiting on you — tap a tile to act' : 'Nothing waiting on you right now'}
+            actions={<span className={`aw-att-total ${waiting ? 'on' : ''}`}>{waiting ? <><i className="mdi mdi-alert-circle-outline"></i>{waiting} waiting</> : <><i className="mdi mdi-check-circle-outline"></i>All clear</>}</span>}>
                 <div className="aw-att-grid">
                     {items.map((i) => (
-                        <Link key={i.label} to={i.to} className={`aw-att ${i.n ? (i.critical ? 'critical' : 'warn') : ''}`}>
+                        <Link key={i.label} to={i.to} className={`aw-att ${i.n ? (i.critical ? 'critical' : 'warn') : 'ok'}`}>
                             <i className={`mdi ${i.icon}`}></i>
                             <b>{i.n || 0}</b>
                             <span>{i.label}</span>
+                            <em className="mdi mdi-arrow-right"></em>
                         </Link>
                     ))}
-                    <Link to="/attendance/team" className={`aw-att ${missing.count ? 'warn' : ''}`}>
+                    <Link to="/attendance/team" className={`aw-att ${missing.count ? 'warn' : 'ok'}`}>
                         <i className="mdi mdi-account-question-outline"></i>
                         <b>{missing.count}<small> / {attention.teamSize}</small></b>
                         <span>Not checked in yet</span>
+                        <em className="mdi mdi-arrow-right"></em>
                     </Link>
                 </div>
                 {missing.count > 0 && (
                     <div className="aw-missing">
                         <small>Not checked in or on leave today:</small>
                         {missing.people.map((p) => <span key={p._id} className="aw-chip"><Avatar person={p} size={20} />{fullName(p)}</span>)}
-                        {missing.count > missing.people.length && <span className="aw-chip more">+{missing.count - missing.people.length} more</span>}
+                        {missing.count > missing.people.length && <Link to="/attendance/team" className="aw-chip more">+{missing.count - missing.people.length} more</Link>}
                     </div>
                 )}
-            </div>
-        </div>
+        </Panel>
     )
 }
 
@@ -424,7 +438,7 @@ export const AuditTimelineToday = ({ sessions = [], dayStart, scope }) => {
                 const w = Math.max(3, b[0] - a[0])
                 const item = sessions[params.dataIndex]
                 const color = item.end ? HUE : RUNNING
-                const children = [{ type: 'rect', shape: { x: a[0], y: a[1] - h / 2, width: w, height: h, r: 4 }, style: { fill: color } }]
+                const children = [{ type: 'rect', shape: { x: a[0], y: a[1] - h / 2, width: w, height: h, r: h / 2 }, style: { fill: item.end ? hGrad('#38bdf8', '#0284c7') : hGrad('#4ade80', color), shadowBlur: 6, shadowColor: item.end ? 'rgba(2,132,199,.25)' : 'rgba(22,163,74,.35)' } }]
                 if (w > 70) children.push({ type: 'text', style: { x: a[0] + 6, y: a[1], text: item.clientName, fill: '#fff', fontSize: 11, fontWeight: 600, verticalAlign: 'middle', width: w - 12, overflow: 'truncate' } })
                 return { type: 'group', children }
             },
@@ -440,7 +454,12 @@ export const AuditTimelineToday = ({ sessions = [], dayStart, scope }) => {
     return (
         <ChartWidget
             title={scope === 'mine' ? 'My audit sessions today' : 'Audit sessions today'}
-            icon="clock"
+            subtitle={sessions.length ? `${sessions.length} session${sessions.length === 1 ? '' : 's'} · ${people.length} ${people.length === 1 ? 'person' : 'people'}` : undefined}
+            extra={sessions.some((x) => !x.end) ? <LivePill>{sessions.filter((x) => !x.end).length} running</LivePill> : null}
+            emptyText={scope === 'mine' ? 'No audit sessions yet today' : 'No one has started an audit timer today'}
+            emptyHint={scope === 'mine' ? 'Press Start on an audit to begin tracking — each session lands on this timeline.' : 'Sessions show here on a live timeline as people start their timers.'}
+            emptyIcon="mdi-timeline-clock-outline"
+            icon="mdi-timeline-clock-outline"
             accent={HUE}
             height={height}
             empty={!sessions.length}

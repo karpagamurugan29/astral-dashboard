@@ -1,7 +1,7 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
 import ReactECharts from 'echarts-for-react'
-import { Panel, Ring } from './PremiumUI'
+import { Panel, Ring, EmptyState } from './PremiumUI'
 import { Avatar, fullName } from '../../people/PeopleUI'
 import { money, moneyShort } from '../../payroll/PayrollUI'
 import { engagementTitle } from '../../audits/AuditUI'
@@ -179,12 +179,46 @@ const MyExpenses = ({ e }) => {
                         </li>
                     ))}
                 </ul>
-            ) : <p className="bp-ok muted"><i className="mdi mdi-receipt"></i>No claims yet. Spent money on client work? Add a claim with the bill.</p>}
+            ) : (
+                <div className="bp-claim-empty">
+                    <EmptyState icon="mdi-receipt" tone="#ea580c" title="No claims yet" hint="Spent money on client work? Add a claim with the bill and track it here." />
+                    <div className="bp-claim-quick">
+                        {[['Travel', 'mdi-car-outline'], ['Food', 'mdi-silverware-fork-knife'], ['Hotel', 'mdi-bed-outline'], ['Other', 'mdi-dots-horizontal-circle-outline']].map(([c, ic]) => (
+                            <Link key={c} to="/expenses"><i className={`mdi ${ic}`}></i>{c}</Link>
+                        ))}
+                    </div>
+                </div>
+            )}
         </Panel>
     )
 }
 
-const MyWeek = ({ me }) => {
+// Mon → Sun of the current week from the 14-day audit series: one bar per day, today outlined.
+const WeekStrip = ({ daily = [] }) => {
+    const byDate = new Map(daily.map((d) => [d.date, d.minutes]))
+    const today = new Date()
+    const monday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - ((today.getDay() + 6) % 7))
+    const key = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    const days = Array.from({ length: 7 }, (_, i) => { const d = new Date(monday); d.setDate(monday.getDate() + i); return { d, k: key(d), min: byDate.get(key(d)) || 0 } })
+    const max = Math.max(8 * 60, ...days.map((x) => x.min))
+    return (
+        <div className="bp-week">
+            {days.map(({ d, k, min }) => {
+                const future = k > key(today)
+                const weekend = d.getDay() === 0 || d.getDay() === 6
+                return (
+                    <div key={k} className={`bp-day ${k === key(today) ? 'today' : ''} ${future ? 'future' : ''} ${weekend ? 'weekend' : ''}`} title={`${d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'short' })} · ${Math.round((min / 60) * 10) / 10}h on audits`}>
+                        <small>{min ? `${Math.round((min / 60) * 10) / 10}h` : future ? '' : '–'}</small>
+                        <span className="bp-day-bar"><i style={{ height: `${(min / max) * 100}%` }}></i></span>
+                        <b>{d.toLocaleDateString(undefined, { weekday: 'narrow' })}</b>
+                    </div>
+                )
+            })}
+        </div>
+    )
+}
+
+const MyWeek = ({ me, daily }) => {
     const u = me?.utilisation
     if (!u) return null
     return (
@@ -197,18 +231,21 @@ const MyWeek = ({ me }) => {
                     <div><small>Available</small><b>{u.capacityHours}h</b></div>
                     <div><small>Audits worked on</small><b>{u.audits}</b></div>
                 </div>
+            </div>
+            <WeekStrip daily={daily} />
+            <div className="bp-me-row">
                 <p className="bp-me-tip">{u.utilisation >= 70 ? 'Great week — most of your time is going into audit work.' : u.auditHours === 0 ? 'No audit time yet this week. Start the timer on an audit from “My audits” when you begin work.' : 'Remember to run the audit timer whenever you work on a client job.'}</p>
             </div>
         </Panel>
     )
 }
 
-export const BusinessPulse = ({ data }) => {
+export const BusinessPulse = ({ data, daily }) => {
     if (!data || data.error) return null
     const t = data.team
     if (!t) return (
         <div className="bp-staff">
-            <MyWeek me={data.me} />
+            <MyWeek me={data.me} daily={daily} />
             <MyExpenses e={data.me?.expenses} />
         </div>
     )

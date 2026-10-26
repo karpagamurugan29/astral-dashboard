@@ -35,7 +35,6 @@ export const AuthShell = ({ side, children }) => {
         <div className="lg-page">
             <div className="lg-bg" aria-hidden="true"><i></i><i></i></div>
             <div className="lg-frame">
-                <span className="lg-accent" aria-hidden="true"><i></i><i></i><i></i></span>
                 <aside className="lg-brand">
                     <div className="lg-brand-top">
                         <Brand />

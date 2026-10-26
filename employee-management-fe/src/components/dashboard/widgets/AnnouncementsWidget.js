@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { audienceMeta, avatarColor, initials, authorName, relativeTime, sortAnnouncements, DAY } from './announcementUtils'
+import { Panel, EmptyState } from './PremiumUI'
 import './AnnouncementsWidget.css'
 
 // Compact announcement feed for the dashboard: pinned first, newest next, with a
@@ -10,24 +11,14 @@ export const AnnouncementsWidget = ({ announcements, loading, limit = 5 }) => {
     const total = announcements?.length || 0
 
     return (
-        <div className="card card-h-100 aw">
-            <div className="aw-head">
-                <span className="aw-icon"><i className="mdi mdi-bullhorn-outline"></i></span>
-                <div className="aw-head-text">
-                    <h5>Announcements</h5>
-                    <span>{total ? `${total} posted · latest first` : 'Company updates'}</span>
-                </div>
-                <Link to="/announcements" className="aw-all">View all <i className="mdi mdi-chevron-right"></i></Link>
-            </div>
-
+        <Panel icon="mdi-bullhorn-outline" color="#0284c7" title="Announcements" badge={total || null} className="aw"
+            subtitle={total ? 'Pinned first, then newest' : 'Company updates'}
+            actions={<Link to="/announcements" className="pp-link">View all <i className="mdi mdi-chevron-right"></i></Link>}>
             <div className="aw-body">
                 {loading && !total ? (
                     [0, 1, 2].map((i) => <div className="aw-skel" key={i}></div>)
                 ) : !items.length ? (
-                    <div className="aw-empty">
-                        <i className="mdi mdi-bullhorn-outline"></i>
-                        <p>Nothing posted yet.</p>
-                    </div>
+                    <EmptyState icon="mdi-bullhorn-outline" tone="#0284c7" title="Nothing posted yet" hint="Company news and notices will show up here." />
                 ) : (
                     <ul className="aw-list">
                         {items.map((a) => {
@@ -61,6 +52,6 @@ export const AnnouncementsWidget = ({ announcements, loading, limit = 5 }) => {
                     </ul>
                 )}
             </div>
-        </div>
+        </Panel>
     )
 }

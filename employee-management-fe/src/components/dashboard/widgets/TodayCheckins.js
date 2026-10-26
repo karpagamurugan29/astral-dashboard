@@ -6,6 +6,7 @@ import { Avatar, fullName } from '../../people/PeopleUI'
 import { ModeTag } from '../../attendance/AttendanceUI'
 import { mapsLink } from '../../../utils/geo'
 import { useTick } from '../../audits/AuditUI'
+import { Panel, EmptyState, LivePill } from './PremiumUI'
 import { LocationMap } from '../../../pages/dashboard/locationLog/LocationMap'
 import '../../../pages/dashboard/locationLog/LocationLog.css'
 
@@ -75,23 +76,14 @@ export const TodayCheckins = ({ data }) => {
     // Never leave a hole in the layout: show loading, or what went wrong with a retry.
     if (!data || data.error) {
         return (
-            <div className="card aw-card tc-card">
-                <div className="card-body">
-                    <div className="aw-head">
-                        <span className="chart-widget-icon" style={{ background: '#16a34a1a', color: '#16a34a' }}><i className="mdi mdi-account-check-outline"></i></span>
-                        <h5 className="card-title mb-0">Who's in today</h5>
-                    </div>
+            <Panel icon="mdi-account-check-outline" color="#16a34a" title="Who's in today" className="tc-card">
                     {!data ? (
                         <div className="tc-skel">{[0, 1, 2, 3].map((i) => <span key={i}></span>)}</div>
                     ) : (
-                        <div className="aw-empty">
-                            <i className="mdi mdi-cloud-alert-outline"></i>
-                            <span>{data.error}</span>
-                            <button type="button" className="pdb-btn" onClick={() => dispatch({ type: dashboardActions.GET_TODAY_CHECKINS })}><i className="mdi mdi-refresh"></i>Retry</button>
-                        </div>
+                        <EmptyState icon="mdi-cloud-alert-outline" tone="#e11d48" title="Couldn't load check-ins" hint={data.error}
+                            action={<button type="button" className="pdb-btn" onClick={() => dispatch({ type: dashboardActions.GET_TODAY_CHECKINS })}><i className="mdi mdi-refresh"></i>Retry</button>} />
                     )}
-                </div>
-            </div>
+            </Panel>
         )
     }
     const notInList = data.notIn || []
@@ -99,13 +91,9 @@ export const TodayCheckins = ({ data }) => {
     const toRemind = missing.filter((n) => !n.onLeave && !reminded[n.employee._id]).map((n) => n.employee._id)
 
     return (
-        <div className="card aw-card tc-card">
-            <div className="card-body">
-                <div className="aw-head">
-                    <span className="chart-widget-icon" style={{ background: '#16a34a1a', color: '#16a34a' }}><i className="mdi mdi-account-check-outline"></i></span>
-                    <h5 className="card-title mb-0">Who's in today</h5>
-                    <Link to="/location-log" className="aw-more">Location Log <i className="mdi mdi-chevron-right"></i></Link>
-                </div>
+        <Panel icon="mdi-account-check-outline" color="#16a34a" title="Who's in today" className="tc-card"
+            subtitle={`${data.rows.length} of ${data.teamSize || data.rows.length + notInList.length} checked in · ${data.inNow} in now`}
+            actions={<>{data.inNow > 0 && <LivePill>{data.inNow} in</LivePill>}<Link to="/location-log" className="pp-link">Location log <i className="mdi mdi-chevron-right"></i></Link></>}>
                 <div className="tc-tabs" role="tablist">
                     {[['all', 'Checked in today', data.rows.length], ['in', 'In now', data.inNow], ['out', 'Checked out', data.checkedOut], ['missing', 'Not in yet', notInList.length]].map(([k, label, n]) => (
                         <button key={k} type="button" role="tab" aria-selected={filter === k} className={`tc-tab ${filter === k ? 'on' : ''} ${k}`} onClick={() => setFilter(k)}>
@@ -121,7 +109,7 @@ export const TodayCheckins = ({ data }) => {
 
                 {filter === 'missing' ? (
                     !missing.length ? (
-                        <div className="aw-empty"><i className="mdi mdi-party-popper"></i><span>{notInList.length ? 'This person has checked in' : 'Everyone has checked in today'}</span></div>
+                        <EmptyState icon="mdi-party-popper" tone="#16a34a" title={notInList.length ? 'This person has checked in' : 'Everyone has checked in today'} />
                     ) : (
                         <>
                             <div className="tc-miss-bar">
@@ -162,7 +150,7 @@ export const TodayCheckins = ({ data }) => {
                         </>
                     )
                 ) : !rows.length ? (
-                    <div className="aw-empty"><i className="mdi mdi-account-clock-outline"></i><span>{data.rows.length ? 'Nobody in this group' : 'No one has checked in yet today'}</span></div>
+                    <EmptyState icon="mdi-account-clock-outline" tone="#16a34a" title={data.rows.length ? 'Nobody in this group' : 'No one has checked in yet today'} hint={data.rows.length ? 'Try another tab or person.' : 'Check-ins appear here live as people arrive.'} />
                 ) : (
                     <ul className="tc-list">
                         {rows.map((r) => (
@@ -199,8 +187,7 @@ export const TodayCheckins = ({ data }) => {
                         ))}
                     </ul>
                 )}
-            </div>
             {mapRow && <PlaceModal row={mapRow} onClose={() => setMapRow(null)} />}
-        </div>
+        </Panel>
     )
 }
