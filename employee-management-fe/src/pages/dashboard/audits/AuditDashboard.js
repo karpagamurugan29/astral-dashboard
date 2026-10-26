@@ -34,7 +34,7 @@ export const AuditDashboard = () => {
 
     return (
         <PeopleShell title="Audit dashboard" root={{ label: 'Audits', to: '/audits' }} crumbs={[{ label: 'Dashboard' }]} backTo="/audits"
-            actions={<><Link to="/audits/allocation" className="pp-btn"><i className="mdi mdi-account-switch-outline"></i>Work allocation</Link><Link to="/timesheets?tab=approvals" className="pp-btn"><i className="mdi mdi-timetable"></i>Timesheet approvals</Link></>}>
+            actions={<><Link to="/audits/allocation" className="pp-btn"><i className="mdi mdi-account-switch-outline"></i>Team workload</Link><Link to="/timesheets?tab=approvals" className="pp-btn"><i className="mdi mdi-timetable"></i>Timesheet approvals</Link></>}>
             <div className="ao">
                 <ErrorBanner error={error} />
                 <div className="ao-filters">

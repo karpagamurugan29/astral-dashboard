@@ -65,7 +65,10 @@ export const listTemplates = async (req, res) => {
         const families = new Map();
         all.forEach((t) => {
             if (!families.has(t.family)) families.set(t.family, []);
-            families.get(t.family).push({ ...t, taskCount: t.tasks.length, hours: t.tasks.reduce((h, x) => h + (x.estimatedHours || 0), 0), engagements: used.get(String(t._id)) || 0, tasks: undefined });
+            // steps per stage, in the checklist's stage order, so the list can show the flow at a glance
+            const order = [...(t.stages || []), ...t.tasks.map((x) => x.stage)].filter((v, i, a) => v && a.indexOf(v) === i);
+            const stageSummary = order.map((st) => { const ts = t.tasks.filter((x) => x.stage === st); return { stage: st, tasks: ts.length, hours: ts.reduce((h, x) => h + (x.estimatedHours || 0), 0) }; }).filter((x) => x.tasks);
+            families.get(t.family).push({ ...t, taskCount: t.tasks.length, hours: t.tasks.reduce((h, x) => h + (x.estimatedHours || 0), 0), stageSummary, engagements: used.get(String(t._id)) || 0, tasks: undefined });
         });
         return res.status(200).json({ success: true, data: [...families.entries()].map(([family, versions]) => ({ family, active: versions.find((v) => v.status === "Active") || null, latest: versions[0], versions })), canEdit: await isAuditLeader(req) });
     } catch (err) { return fail(res, err); }

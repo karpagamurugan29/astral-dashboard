@@ -31,7 +31,6 @@ const SENIOR = ['Admin', 'HR', 'Manager', 'Team Lead']
 const formatTime = (value) => (value ? new Date(value).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '--:--')
 const greeting = (h) => (h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening')
 const initials = (first, last) => `${first?.[0] || ''}${last?.[0] || ''}`.toUpperCase() || '?'
-const hrs = (min) => Math.round(((min || 0) / 60) * 10) / 10
 const share = (part, whole) => (whole ? Math.min(100, (part / whole) * 100) : 0)
 
 const LEAVE_STATUS = { Pending: ['#b45309', '#fef3c7', 'mdi-timer-sand'], Approved: ['#047857', '#d1fae5', 'mdi-check-circle-outline'], Rejected: ['#be123c', '#ffe4e6', 'mdi-close-circle-outline'], Cancelled: ['#64748b', '#f1f5f9', 'mdi-cancel'] }

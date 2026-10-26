@@ -110,7 +110,7 @@ const managedAudits = async (req, extra = {}) => {
 // GET /audit-work/allocation?clientId&projectId&auditId&days=14
 export const allocation = async (req, res) => {
     try {
-        if (!(await canCreateAudits(req))) throw httpError(403, "Work allocation is for managers and audit leadership.");
+        if (!(await canCreateAudits(req))) throw httpError(403, "Team workload is for managers and audit leadership.");
         const extra = {};
         ["clientId", "projectId"].forEach((k) => { if (mongoose.isValidObjectId(req.query[k])) extra[k] = req.query[k]; });
         if (mongoose.isValidObjectId(req.query.auditId)) extra._id = req.query.auditId;

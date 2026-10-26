@@ -183,7 +183,7 @@ export const WorkflowEditor = ({ audit, people, hoursByStep = {}, canStandard, o
     return (
         <Modal wide title="Configure workflow" sub={`${audit.clientName} · ${audit.auditCode}${audit.workflowTemplate?.name ? ` — from “${audit.workflowTemplate.name}” v${audit.workflowTemplate.version}` : ''}`} icon={<span className="wf-ic"><i className="mdi mdi-sitemap"></i></span>} onClose={onClose}
             footer={<>
-                <button type="button" className="pp-btn ghost" onClick={loadStandard}><i className="mdi mdi-file-replace-outline"></i>Load template</button>
+                <button type="button" className="pp-btn ghost" onClick={loadStandard}><i className="mdi mdi-file-replace-outline"></i>Load checklist</button>
                 {canStandard && <label className="wf-std"><input type="checkbox" checked={standard} onChange={(e) => setStandard(e.target.checked)} />Publish as the standard for <b>{audit.auditType}</b> audits</label>}
                 <span className="wf-spacer"></span>
                 <button type="button" className="pp-btn" onClick={onClose}>Cancel</button>

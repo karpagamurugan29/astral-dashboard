@@ -219,9 +219,9 @@ export const AuditsList = () => {
                                 </select>
                             </div>
                             <div className="pp-field">
-                                <label className="pp-label">Workflow</label>
+                                <label className="pp-label">Audit checklist (steps)</label>
                                 <select className="pp-select" {...register('workflowTemplateId')}>
-                                    <option value="">Automatic — best match for the project / company / type</option>
+                                    <option value="">Automatic — best checklist for this project / company / type</option>
                                     {templates.map((t) => <option key={t._id} value={t._id}>{t.name} v{t.version}{t.auditType ? ` · ${t.auditType}` : ''}</option>)}
                                 </select>
                             </div>
