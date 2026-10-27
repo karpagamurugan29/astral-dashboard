@@ -13,15 +13,20 @@ export const CATEGORIES = [
     { value: 'Travel', icon: 'mdi-airplane', color: '#0284c7' },
     { value: 'Food', icon: 'mdi-food', color: '#ea580c' },
     { value: 'Accommodation', icon: 'mdi-bed-outline', color: '#7c3aed' },
+    { value: 'Transportation', icon: 'mdi-car-outline', color: '#2563eb' },
     { value: 'Office Supplies', icon: 'mdi-paperclip', color: '#0d9488' },
+    { value: 'Software', icon: 'mdi-laptop', color: '#4f46e5' },
     { value: 'Client Entertainment', icon: 'mdi-glass-cocktail', color: '#db2777' },
     { value: 'Other', icon: 'mdi-dots-horizontal-circle-outline', color: '#64748b' },
 ]
 export const categoryMeta = (c) => CATEGORIES.find((x) => x.value === c) || CATEGORIES[CATEGORIES.length - 1]
 
 const STATUS = {
+    Draft: { color: '#64748b', icon: 'mdi-pencil-outline' },
     Pending: { color: '#d97706', icon: 'mdi-timer-sand' },
+    'Changes Requested': { color: '#ea580c', icon: 'mdi-pencil-circle-outline' },
     Approved: { color: '#0284c7', icon: 'mdi-check-circle-outline' },
+    Processing: { color: '#7c3aed', icon: 'mdi-progress-clock' },
     Rejected: { color: '#e11d48', icon: 'mdi-close-circle-outline' },
     Reimbursed: { color: '#059669', icon: 'mdi-cash-check' },
 }

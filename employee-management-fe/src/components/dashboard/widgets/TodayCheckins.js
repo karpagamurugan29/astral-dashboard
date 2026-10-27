@@ -20,7 +20,7 @@ const ago = (d, now) => {
 }
 
 const Place = ({ place }) => place ? (
-    <a className="tc-place" href={mapsLink(place.latitude, place.longitude)} target="_blank" rel="noreferrer" title="Open in Google Maps">
+    <a className="tc-place" href={mapsLink(place.latitude, place.longitude)} target="_blank" rel="noreferrer" title={`${place.address || 'Location'} · open in Google Maps`}>
         <i className="mdi mdi-map-marker-outline"></i>{place.address || `${place.latitude.toFixed(4)}, ${place.longitude.toFixed(4)}`}
     </a>
 ) : <span className="tc-place none"><i className="mdi mdi-map-marker-off-outline"></i>No location</span>
@@ -94,12 +94,14 @@ export const TodayCheckins = ({ data }) => {
         <Panel icon="mdi-account-check-outline" color="#16a34a" title="Who's in today" className="tc-card"
             subtitle={`${data.rows.length} of ${data.teamSize || data.rows.length + notInList.length} checked in · ${data.inNow} in now`}
             actions={<>{data.inNow > 0 && <LivePill>{data.inNow} in</LivePill>}<Link to="/location-log" className="pp-link">Location log <i className="mdi mdi-chevron-right"></i></Link></>}>
-                <div className="tc-tabs" role="tablist">
+                <div className="tc-tabs">
+                    <div className="tc-chips" role="tablist">
                     {[['all', 'Checked in today', data.rows.length], ['in', 'In now', data.inNow], ['out', 'Checked out', data.checkedOut], ['missing', 'Not in yet', notInList.length]].map(([k, label, n]) => (
                         <button key={k} type="button" role="tab" aria-selected={filter === k} className={`tc-tab ${filter === k ? 'on' : ''} ${k}`} onClick={() => setFilter(k)}>
                             {k === 'in' && <span className="au-pulse"></span>}{label} <b>{n}</b>
                         </button>
                     ))}
+                    </div>
                     <select className="tc-person" value={person} onChange={(e) => setPerson(e.target.value)} aria-label="Show one person">
                         <option value="">All employees</option>
                         {everyone.map((e) => <option key={e._id} value={e._id}>{fullName(e)}</option>)}

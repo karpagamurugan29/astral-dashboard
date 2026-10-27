@@ -225,21 +225,21 @@ export const DashContent = () => {
     // Everyone's own leave: a meter per type (days left of the year's allowance) and the actions people use most.
     const myLeave = (
         <>
-            <div className="lv-meters">
+            <div className="dlv-meters">
                 {LEAVE_TYPES.map(([k, label, c, icon]) => {
                     const b = balance?.[k]
                     const tot = b?.total || b?.balance || 0
                     return (
-                        <div key={k} className="lv-meter" style={{ '--c': c }}>
-                            <div className="lv-top"><span className="lv-ic"><i className={`mdi ${icon}`}></i></span><span>{label}</span></div>
+                        <div key={k} className="dlv-meter" style={{ '--c': c }}>
+                            <div className="dlv-top"><span className="dlv-ic"><i className={`mdi ${icon}`}></i></span><span>{label}</span></div>
                             <b><CountUp value={b?.balance ?? 0} /><small>/{tot || '—'}</small></b>
-                            <span className="lv-track"><i style={{ width: `${tot ? share(b?.balance || 0, tot) : 0}%` }}></i></span>
+                            <span className="dlv-track"><i style={{ width: `${tot ? share(b?.balance || 0, tot) : 0}%` }}></i></span>
                             <small>{b ? `${b.used || 0} used` : 'Not set up'}</small>
                         </div>
                     )
                 })}
             </div>
-            <div className="lv-recent">
+            <div className="dlv-recent">
                 <h4>My recent requests</h4>
                 {(myLeaves || []).length ? (
                     <ul>
@@ -247,15 +247,15 @@ export const DashContent = () => {
                             const [fg, bg, ic] = LEAVE_STATUS[lv.status] || LEAVE_STATUS.Cancelled
                             return (
                                 <li key={lv._id}>
-                                    <span className="lv-date"><b>{lv.fromDate ? new Date(lv.fromDate).getDate() : '–'}</b>{lv.fromDate ? new Date(lv.fromDate).toLocaleDateString(undefined, { month: 'short' }) : ''}</span>
-                                    <span className="lv-what"><b>{lv.leaveType}</b><small>{lv.totalDays} day{Number(lv.totalDays) === 1 ? '' : 's'}{lv.toDate && lv.fromDate && shortDate(lv.toDate) !== shortDate(lv.fromDate) ? ` · ${shortDate(lv.fromDate)} – ${shortDate(lv.toDate)}` : ''}</small></span>
-                                    <span className="lv-status" style={{ color: fg, background: bg }}><i className={`mdi ${ic}`}></i>{lv.status}</span>
+                                    <span className="dlv-date"><b>{lv.fromDate ? new Date(lv.fromDate).getDate() : '–'}</b>{lv.fromDate ? new Date(lv.fromDate).toLocaleDateString(undefined, { month: 'short' }) : ''}</span>
+                                    <span className="dlv-what"><b>{lv.leaveType}</b><small>{lv.totalDays} day{Number(lv.totalDays) === 1 ? '' : 's'}{lv.toDate && lv.fromDate && shortDate(lv.toDate) !== shortDate(lv.fromDate) ? ` · ${shortDate(lv.fromDate)} – ${shortDate(lv.toDate)}` : ''}</small></span>
+                                    <span className="dlv-status" style={{ color: fg, background: bg }}><i className={`mdi ${ic}`}></i>{lv.status}</span>
                                 </li>
                             )
                         })}
                     </ul>
                 ) : (
-                    <p className="lv-none"><i className="mdi mdi-beach"></i>No leave requests yet — your balance is all yours.</p>
+                    <p className="dlv-none"><i className="mdi mdi-beach"></i>No leave requests yet — your balance is all yours.</p>
                 )}
             </div>
             <div className="pdb-quick">

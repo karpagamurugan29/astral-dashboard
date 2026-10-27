@@ -22,7 +22,7 @@ import { getLocationLog } from "../controller/locationLog.controller.js";
 import { createAudit, updateAudit, deleteAudit, getAuditById, getAllAudits, addAuditMember, removeAuditMember, startAuditTimer, stopAuditTimer, getMyActiveAuditTimer } from "../controller/auditEngagement.controller.js";
 import { getDepartments, createDepartment, updateDepartment, deleteDepartment } from "../controller/department.controller.js";
 import { getDesignations, createDesignation, updateDesignation, deleteDesignation } from "../controller/designation.controller.js";
-import { getExpenses, createExpense, updateExpenseStatus, deleteExpense, getReceipt } from "../controller/expense.controller.js";
+import { getExpenses, createExpense, updateExpense, updateExpenseStatus, deleteExpense, getReceipt } from "../controller/expense.controller.js";
 import { getAssets, myAssets, createAsset, updateAsset, assignAsset, returnAsset, deleteAsset } from "../controller/asset.controller.js";
 import { getTickets, getTicketMeta, getTicket, createTicket, updateTicketStatus, assignTicket, triageTicket, addTicketComment, ticketFeedback, downloadTicketFile, getHelpdeskSettings, saveHelpdeskSettings } from "../controller/ticket.controller.js";
 import { getAnnouncements, createAnnouncement, deleteAnnouncement } from "../controller/announcement.controller.js";
@@ -158,7 +158,7 @@ router.put("/leave/cancel/:id", authMiddleWare, cancelLeave);
 
 
 // Projects
-router.get("/projects", authMiddleWare, listAuditProjects);
+router.get("/projects", authMiddleWare, listProjects);
 router.get("/projects/:id", authMiddleWare, getProjectById);
 router.get("/projects/:id/workspace", authMiddleWare, projectWorkspace);
 router.post("/projects/:id/timer/start", authMiddleWare, startProjectTimer);
@@ -332,6 +332,7 @@ router.post("/expenses", authMiddleWare, docUpload.single("receipt"), createExpe
 router.get("/expenses/:id/receipt", authMiddleWare, getReceipt);
 router.get("/expenses/:id/receipt/:name", authMiddleWare, getReceipt);
 router.put("/expenses/:id/status", authMiddleWare, adminHRManager("expenses"), updateExpenseStatus);
+router.put("/expenses/:id", authMiddleWare, docUpload.single("receipt"), updateExpense); // owner: edit a draft / sent-back claim, resubmit
 router.delete("/expenses/:id", authMiddleWare, deleteExpense);
 
 // Assets

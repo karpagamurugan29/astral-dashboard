@@ -134,7 +134,7 @@ a.it-tool { text-decoration: none; }
 .ae-next i { font-size: 22px; }
 .ae-next span { flex: 1; }
 
-@media (max-width: 1199.98px) { .ae-econ { grid-template-columns: repeat(3, minmax(0, 1fr)); } .bl-two { grid-template-columns: 1fr; } }
+@media (max-width: 1199.98px) { .ae-econ { grid-template-columns: repeat(3, minmax(0, 1fr)); } .bl-two { grid-template-columns: minmax(0, 1fr); } .bl-two > * { min-width: 0; } }
 @media (max-width: 767.98px) {
     .bl-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .bl-kpi b { font-size: 19px; }
@@ -191,3 +191,6 @@ a.it-tool { text-decoration: none; }
 .ae-review button.ok { border-color: #059669; color: #059669; }
 .ae-review button.no { border-color: #e11d48; color: #e11d48; }
 .ae-review input { height: 28px; font-size: 12px; padding: 0 6px; border: 1px solid var(--pp-line); border-radius: 8px; }
+
+/* invoice / ledger tables scroll sideways inside their card on small screens */
+.bl-register .tk-table-wrap { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }

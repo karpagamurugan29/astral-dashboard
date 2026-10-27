@@ -318,13 +318,15 @@ export const complianceReport = async (req, res) => {
 const sumBy = (rows) => rows.reduce((t, e) => t + (Number(e.amount) || 0), 0);
 export const computeExpenses = async (req, { people, monthStart }) => {
     const me = req.user.id;
-    const mine = await expenseModel.find({ employeeId: me }).sort({ expenseDate: -1, createdAt: -1 }).limit(200).lean();
+    // drafts aren't claims yet; "to be paid" covers approved claims and those being reimbursed
+    const TO_PAY = ["Approved", "Processing"];
+    const mine = await expenseModel.find({ employeeId: me, status: { $ne: "Draft" } }).sort({ expenseDate: -1, createdAt: -1 }).limit(200).lean();
     const thisMonth = mine.filter((e) => new Date(e.expenseDate || e.createdAt) >= monthStart);
     const out = {
         me: {
             monthTotal: sumBy(thisMonth), monthCount: thisMonth.length,
             pending: { count: mine.filter((e) => e.status === "Pending").length, amount: sumBy(mine.filter((e) => e.status === "Pending")) },
-            toBePaid: { count: mine.filter((e) => e.status === "Approved").length, amount: sumBy(mine.filter((e) => e.status === "Approved")) },
+            toBePaid: { count: mine.filter((e) => TO_PAY.includes(e.status)).length, amount: sumBy(mine.filter((e) => TO_PAY.includes(e.status))) },
             reimbursed: sumBy(thisMonth.filter((e) => e.status === "Reimbursed")),
             recent: mine.slice(0, 4).map((e) => ({ _id: e._id, category: e.category, amount: e.amount, status: e.status, date: e.expenseDate || e.createdAt, description: e.description })),
         },
@@ -332,7 +334,7 @@ export const computeExpenses = async (req, { people, monthStart }) => {
     if (people) {
         const ids = people.map((p) => p._id);
         const sixAgo = new Date(monthStart); sixAgo.setMonth(sixAgo.getMonth() - 5);
-        const rows = await expenseModel.find({ employeeId: { $in: ids }, $or: [{ status: "Pending" }, { expenseDate: { $gte: sixAgo } }] }).populate("employeeId", "employeeId firstName lastName designation profileImage").lean();
+        const rows = await expenseModel.find({ employeeId: { $in: ids }, status: { $ne: "Draft" }, $or: [{ status: "Pending" }, { expenseDate: { $gte: sixAgo } }] }).populate("employeeId", "employeeId firstName lastName designation profileImage").lean();
         const pending = rows.filter((e) => e.status === "Pending");
         const month = rows.filter((e) => new Date(e.expenseDate || e.createdAt) >= monthStart && e.status !== "Rejected");
         const byCat = new Map(); month.forEach((e) => byCat.set(e.category, (byCat.get(e.category) || 0) + (Number(e.amount) || 0)));
@@ -346,7 +348,7 @@ export const computeExpenses = async (req, { people, monthStart }) => {
         const byPerson = new Map(); month.forEach((e) => { const k = String(e.employeeId?._id); const x = byPerson.get(k) || { employee: e.employeeId, amount: 0, count: 0 }; x.amount += Number(e.amount) || 0; x.count++; byPerson.set(k, x); });
         out.team = {
             pending: { count: pending.length, amount: sumBy(pending), oldestDays: pending.length ? Math.floor((Date.now() - Math.min(...pending.map((e) => new Date(e.createdAt).getTime()))) / 864e5) : 0 },
-            month: { amount: sumBy(month), count: month.length, toBePaid: sumBy(month.filter((e) => e.status === "Approved")) },
+            month: { amount: sumBy(month), count: month.length, toBePaid: sumBy(month.filter((e) => TO_PAY.includes(e.status))) },
             byCategory: [...byCat.entries()].map(([category, amount]) => ({ category, amount })).sort((a, b) => b.amount - a.amount),
             trend,
             topClaimants: [...byPerson.values()].sort((a, b) => b.amount - a.amount).slice(0, 3),

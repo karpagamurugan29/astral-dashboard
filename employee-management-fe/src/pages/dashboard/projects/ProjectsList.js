@@ -102,9 +102,9 @@ export const ProjectsList = () => {
                                     <p className="pw-pcard-sub">{p.clientName || 'Internal'}<span><i className={`mdi ${modeIcon(p.workMode)}`}></i>{p.location?.siteName || p.workMode || 'Office'}</span></p>
                                     <div className="pw-progress"><div><i style={{ width: `${p.progress}%` }}></i></div><b>{p.progress}%</b></div>
                                     <div className="pw-pcard-facts">
-                                        <span title="Tasks done / total"><i className="mdi mdi-checkbox-marked-circle-outline"></i>{p.taskCounts.done}/{p.taskCounts.total} tasks</span>
-                                        {p.taskCounts.overdue > 0 && <span className="bad"><i className="mdi mdi-alert-circle-outline"></i>{p.taskCounts.overdue} overdue</span>}
-                                        {!manage && p.taskCounts.mine > 0 && <span className="mine"><i className="mdi mdi-account-check-outline"></i>{p.taskCounts.mine} mine</span>}
+                                        <span title="Tasks done / total"><i className="mdi mdi-checkbox-marked-circle-outline"></i>{p.taskCounts?.done || 0}/{p.taskCounts?.total || 0} tasks</span>
+                                        {p.taskCounts?.overdue > 0 && <span className="bad"><i className="mdi mdi-alert-circle-outline"></i>{p.taskCounts.overdue} overdue</span>}
+                                        {!manage && p.taskCounts?.mine > 0 && <span className="mine"><i className="mdi mdi-account-check-outline"></i>{p.taskCounts.mine} mine</span>}
                                         <span title="Time logged"><i className="mdi mdi-timer-outline"></i>{hm(p.loggedMinutes)}{est ? ` / ${p.estimatedHours}h` : ''}</span>
                                     </div>
                                     {used !== null && <div className={`pw-budget ${used > 100 ? 'over' : used >= 80 ? 'near' : ''}`}><i style={{ width: `${Math.min(100, used)}%` }}></i></div>}

@@ -39,58 +39,58 @@ export const WorkflowTemplates = () => {
     return (
         <PeopleShell title="Audit checklists" root={{ label: 'Audits', to: '/audits' }} crumbs={[{ label: 'Audit checklists' }]} backTo="/audits"
             actions={canEdit && <button type="button" className="pp-btn primary" onClick={create}><i className="mdi mdi-plus"></i>New checklist</button>}>
-            <div className="ao cl">
+            <div className="ao ckl">
                 <ErrorBanner error={error} />
-                <div className="cl-how">
+                <div className="ckl-how">
                     <div><span>1</span><b>Write the steps</b><small>The tasks an audit goes through, grouped by stage, with the hours each should take.</small></div>
                     <i className="mdi mdi-arrow-right"></i>
                     <div><span>2</span><b>Switch it on</b><small>Only checklists marked <em>In use</em> are picked for new audits.</small></div>
                     <i className="mdi mdi-arrow-right"></i>
                     <div><span>3</span><b>New audits copy it</b><small>Creating an engagement turns the steps into the team's tasks. Running audits never change.</small></div>
                 </div>
-                {d && <p className="cl-sum">{d.length} checklist{d.length === 1 ? '' : 's'} · {inUse} in use. When several fit an audit, the most specific wins: <b>project</b> → <b>company</b> → <b>audit type</b> → <b>firm standard</b>.</p>}
+                {d && <p className="ckl-sum">{d.length} checklist{d.length === 1 ? '' : 's'} · {inUse} in use. When several fit an audit, the most specific wins: <b>project</b> → <b>company</b> → <b>audit type</b> → <b>firm standard</b>.</p>}
                 {!d ? <div className="pp-skel" style={{ height: 200 }}></div> : !d.length ? (
                     <div className="ao-card ao-empty"><i className="mdi mdi-format-list-checks"></i>No checklists yet. {canEdit && <button type="button" className="atk-link" onClick={create}>Create the first one</button>}</div>
                 ) : (
-                    <div className="cl-list">{d.map((fam) => {
+                    <div className="ckl-list">{d.map((fam) => {
                         const t = fam.active || fam.latest
                         const st = STATUS[fam.active ? 'Active' : t.status] || STATUS.Inactive
                         const used = fam.versions.reduce((n, v) => n + v.engagements, 0)
                         const isDraft = !fam.active && t.status === 'Draft'
                         return (
-                            <article key={fam.family} className="cl-card" style={{ '--c': st.c }}>
-                                <div className="cl-top">
-                                    <span className="cl-ic"><i className="mdi mdi-format-list-checks"></i></span>
-                                    <div className="cl-title">
+                            <article key={fam.family} className="ckl-card" style={{ '--c': st.c }}>
+                                <div className="ckl-top">
+                                    <span className="ckl-ic"><i className="mdi mdi-format-list-checks"></i></span>
+                                    <div className="ckl-title">
                                         <h4>{t.name}</h4>
-                                        <p><span className="cl-status"><i className={`mdi ${st.icon}`}></i>{st.label}</span><span>{st.say}</span></p>
+                                        <p><span className="ckl-status"><i className={`mdi ${st.icon}`}></i>{st.label}</span><span>{st.say}</span></p>
                                     </div>
-                                    <div className="cl-acts">
+                                    <div className="ckl-acts">
                                         <button type="button" className="pp-btn sm primary" onClick={() => nav(`/audits/workflows/${t._id}`)}><i className={`mdi ${canEdit && isDraft ? 'mdi-pencil-outline' : 'mdi-eye-outline'}`}></i>{canEdit && isDraft ? 'Edit steps' : 'View steps'}</button>
                                         {canEdit && fam.active && <button type="button" className="pp-btn sm" title="Make a new draft version to change the steps; the current one stays in use until you switch the new one on" onClick={() => run(() => api('POST', `/workflow-templates/${t._id}/version`), true)}><i className="mdi mdi-pencil-outline"></i>Change steps</button>}
                                         {canEdit && <button type="button" className="pp-btn sm" title="Start a separate checklist from this one" onClick={() => { setCopyOf(t); setCopyName(`${t.name} (copy)`) }}><i className="mdi mdi-content-copy"></i>Make a copy</button>}
                                         {canEdit && fam.active && <button type="button" className="pp-btn sm ghost" title="Stop using it for new audits" onClick={async () => (await confirmAction({ title: `Switch off “${t.name}”?`, message: 'New audits stop using these steps. Audits already running keep their copy.', confirmLabel: 'Switch off', tone: 'warn' })) && run(() => api('POST', `/workflow-templates/${fam.active._id}/deactivate`))}><i className="mdi mdi-pause-circle-outline"></i>Switch off</button>}
                                     </div>
                                 </div>
-                                <div className="cl-facts">
+                                <div className="ckl-facts">
                                     <span><i className="mdi mdi-target"></i>Used for: <b>{appliesTo(t)}</b></span>
                                     <span><i className="mdi mdi-format-list-numbered"></i><b>{t.taskCount}</b> step{t.taskCount === 1 ? '' : 's'}</span>
                                     <span><i className="mdi mdi-timer-outline"></i><b>{t.hours}h</b> planned</span>
                                     <span><i className="mdi mdi-briefcase-outline"></i>{used ? <><b>{used}</b> audit{used === 1 ? '' : 's'} used it</> : 'Not used by any audit yet'}</span>
                                 </div>
-                                {t.description && <p className="cl-desc">{t.description}</p>}
+                                {t.description && <p className="ckl-desc">{t.description}</p>}
                                 {t.stageSummary?.length > 0 && (
-                                    <div className="cl-flow" aria-label="Stages">
+                                    <div className="ckl-flow" aria-label="Stages">
                                         {t.stageSummary.map((x, i) => (
                                             <React.Fragment key={x.stage}>
-                                                {i > 0 && <i className="mdi mdi-chevron-right cl-arrow"></i>}
-                                                <span className="cl-stage" style={{ '--s': STAGE_C[x.stage] || '#64748b' }}><b>{x.stage}</b><small>{x.tasks} step{x.tasks === 1 ? '' : 's'}{x.hours ? ` · ${x.hours}h` : ''}</small></span>
+                                                {i > 0 && <i className="mdi mdi-chevron-right ckl-arrow"></i>}
+                                                <span className="ckl-stage" style={{ '--s': STAGE_C[x.stage] || '#64748b' }}><b>{x.stage}</b><small>{x.tasks} step{x.tasks === 1 ? '' : 's'}{x.hours ? ` · ${x.hours}h` : ''}</small></span>
                                             </React.Fragment>
                                         ))}
                                     </div>
                                 )}
                                 {fam.versions.length > 1 && (
-                                    <div className="cl-hist">
+                                    <div className="ckl-hist">
                                         <button type="button" className="atk-link" onClick={() => setHist((h) => ({ ...h, [fam.family]: !h[fam.family] }))}><i className={`mdi ${hist[fam.family] ? 'mdi-chevron-up' : 'mdi-history'}`}></i>{hist[fam.family] ? 'Hide' : 'Show'} earlier versions ({fam.versions.length})</button>
                                         {hist[fam.family] && <div className="ao-versions">{fam.versions.map((v) => <button key={v._id} type="button" className={v.status} onClick={() => nav(`/audits/workflows/${v._id}`)} title={v.changeNote || ''}>Version {v.version} · {(STATUS[v.status] || STATUS.Inactive).label}{v.engagements ? ` · ${v.engagements} audit${v.engagements === 1 ? '' : 's'}` : ''}</button>)}</div>}
                                     </div>

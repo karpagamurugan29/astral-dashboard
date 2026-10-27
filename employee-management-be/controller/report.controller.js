@@ -261,7 +261,7 @@ export const taskReport = async (req, res) => {
 export const expenseReport = async (req, res) => {
     try {
         const byCategory = await expenseModel.aggregate([
-            { $match: { status: { $in: ["Approved", "Reimbursed"] } } },
+            { $match: { status: { $in: ["Approved", "Processing", "Reimbursed"] } } },
             { $group: { _id: "$category", total: { $sum: "$amount" }, count: { $sum: 1 } } },
             { $sort: { total: -1 } },
         ]);

@@ -320,7 +320,11 @@ a, button, .btn, [role="button"], [role="tab"] { touch-action: manipulation; }
   .bnav-tab:hover { color: var(--brand, #2563eb); text-decoration: none; }
 
   /* leave room for the bar; the slide-over menu stops above it */
-  body.has-bottom-nav .main-content, body.has-bottom-nav .dash-body-right { padding-bottom: calc(78px + env(safe-area-inset-bottom)) !important; }
+  /* (only on the outer page column — padding it and .main-content inside it doubled the gap) */
+  body.has-bottom-nav .dash-body-right { padding-bottom: calc(74px + env(safe-area-inset-bottom)) !important; }
+  body.has-bottom-nav .main-content { padding-bottom: 0 !important; }
+  /* an app screen doesn't need the copyright footer above the tab bar */
+  body.has-bottom-nav .main-content > .footer, body.has-bottom-nav .footer { display: none; }
   body.has-bottom-nav.sidebar-enable .vertical-menu { bottom: calc(62px + env(safe-area-inset-bottom)) !important; }
   body.has-bottom-nav.sidebar-enable .sidebar-backdrop { bottom: calc(62px + env(safe-area-inset-bottom)); }
   /* the header's menu button duplicates "More" on phones */
@@ -390,4 +394,10 @@ a, button, .btn, [role="button"], [role="tab"] { touch-action: manipulation; }
   }
   body[data-sidebar-size=sm] .vertical-menu #sidebar-menu > ul > li:hover > ul a { width: 210px !important; padding: 8px 18px !important; font-size: 13px; color: #334155 !important; }
   body[data-sidebar-size=sm] .vertical-menu #sidebar-menu > ul > li:hover > ul a:hover, body[data-sidebar-size=sm] .vertical-menu #sidebar-menu > ul > li:hover > ul li.mm-active > a { color: #1e40af !important; background: #f8fbff; }
+}
+
+/* Swipe rows bleed to the screen edge; on small phones the page gutter is 10px, not 16px, so match it
+   (a 16px bleed overshot the screen by 6px on each side and clipped the first/last tile). */
+@media (max-width: 575.98px) {
+  .page-content .wk-kpis, .page-content .wk-econ-grid, .page-content .ao-days { margin-left: -10px; margin-right: -10px; padding-left: 10px; padding-right: 10px; }
 }
