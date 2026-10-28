@@ -367,22 +367,30 @@ export const businessPulse = async (req, res) => {
         const monthStart = localDayStart(new Date(today.getFullYear(), today.getMonth(), 1, 12));
         const twoWeeks = new Date(today.getTime() - 13 * 864e5);
 
-        const meDoc = await employeeModel.findById(req.user.id).select(`${PERSON} salary`).lean();
-        const meUtil = await computeUtilisation(req, { start: weekStart, end, people: meDoc ? [meDoc] : [] });
-        const viewer = await scopeOf(req);
+        // Independent reads run side by side (each is a long round trip to the database); only
+        // the steps that need the list of people wait for it.
+        const [meDoc, viewer] = await Promise.all([
+            employeeModel.findById(req.user.id).select(`${PERSON} salary`).lean(),
+            scopeOf(req),
+        ]);
         const senior = viewer.people || viewer.leads;
+        const quiet = (p) => { p?.catch(() => {}); return p; } // awaited below; avoid an unhandled rejection meanwhile
+        const meUtilP = quiet(computeUtilisation(req, { start: weekStart, end, people: meDoc ? [meDoc] : [] }));
+        const complianceP = senior ? quiet(computeCompliance(req)) : null;
+        const profitP = senior ? quiet(computeProfitability(req, { status: "open" })) : null;
         const people = senior ? await peopleInScope(req) : null;
-        const expenses = await computeExpenses(req, { people: people && people.filter((p) => String(p._id) !== String(req.user.id)), monthStart });
+        const [meUtil, expenses, week, month, recent, compliance, profit] = await Promise.all([
+            meUtilP,
+            computeExpenses(req, { people: people && people.filter((p) => String(p._id) !== String(req.user.id)), monthStart }),
+            senior ? computeUtilisation(req, { start: weekStart, end, people }) : null,
+            senior ? computePunctuality(req, { start: monthStart, end, people }) : null,
+            senior ? computePunctuality(req, { start: twoWeeks, end, people }) : null,
+            complianceP,
+            profitP,
+        ]);
         const data = { me: { utilisation: meUtil.rows[0] || null, weekStart, expenses: expenses.me } };
 
         if (senior) {
-            const [week, month, recent, compliance, profit] = await Promise.all([
-                computeUtilisation(req, { start: weekStart, end, people }),
-                computePunctuality(req, { start: monthStart, end, people }),
-                computePunctuality(req, { start: twoWeeks, end, people }),
-                computeCompliance(req),
-                computeProfitability(req, { status: "open" }),
-            ]);
             const withCapacity = week.rows.filter((r) => r.capacityHours > 0);
             data.team = {
                 utilisation: {

@@ -92,7 +92,7 @@ button.at-tile:hover { transform: translateY(-2px); box-shadow: 0 12px 24px -16p
 .at-tile span { font-size: 13px; color: var(--pp-muted); }
 
 /* shared table look (matches the Directory) */
-.at-table-wrap { overflow: hidden; }
+.at-table-wrap, .pp-card.at-table-wrap { overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; } /* wide tables scroll inside their card on small screens instead of being cut off */
 
 .at-table {
     width: 100%;

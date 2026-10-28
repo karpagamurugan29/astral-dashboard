@@ -62,9 +62,9 @@ export const getAuditInsights = async (req, res) => {
         const from30 = today - 29 * DAY;
         const weekStart = (() => { const d = new Date(today); const dow = (d.getDay() + 6) % 7; return today - dow * DAY; })(); // Monday
 
-        const viewer = await scopeOf(req);
         // same engagement visibility as the audit screens (HR sees audit data only for work they are on)
-        const scope = { isDeleted: false, ...(await visibleAuditFilter(req)) };
+        const [viewer, visible] = await Promise.all([scopeOf(req), visibleAuditFilter(req)]);
+        const scope = { isDeleted: false, ...visible };
 
         const audits = await AuditEngagementModel.find(scope)
             .select("auditCode clientName clientId engagementName auditType financialYear status endDate estimatedHours auditManager teamMembers")
@@ -72,10 +72,14 @@ export const getAuditInsights = async (req, res) => {
         const ids = audits.map((a) => a._id);
         const byId = new Map(audits.map((a) => [String(a._id), a]));
 
-        const logs = await AuditTimeLogModel.find({
-            auditId: { $in: ids },
-            $or: [{ endTime: null }, { endTime: { $gte: new Date(from30) } }],
-        }).populate("employeeId", PERSON).lean();
+        // recent sessions (charts, live timers) and every session (totals per audit), fetched together
+        const [logs, allLogs] = await Promise.all([
+            AuditTimeLogModel.find({
+                auditId: { $in: ids },
+                $or: [{ endTime: null }, { endTime: { $gte: new Date(from30) } }],
+            }).populate("employeeId", PERSON).lean(),
+            AuditTimeLogModel.find({ auditId: { $in: ids } }).select("auditId employeeId startTime endTime durationMinutes").lean(),
+        ]);
 
         // 1. Daily team hours, last 14 days (each day present, zero when nobody logged time).
         const daily = Array.from({ length: 14 }, (_, i) => {
@@ -115,7 +119,6 @@ export const getAuditInsights = async (req, res) => {
 
         // 5. Deadlines: open projects overdue or due in the next 21 days, with hours used vs estimate.
         const totalByAudit = new Map();
-        const allLogs = await AuditTimeLogModel.find({ auditId: { $in: ids } }).select("auditId employeeId startTime endTime durationMinutes").lean();
         allLogs.forEach((l) => totalByAudit.set(String(l.auditId), (totalByAudit.get(String(l.auditId)) || 0) + minutesOf(l, now)));
         const deadlines = audits
             .filter((a) => !CLOSED.includes(a.status) && a.endDate && new Date(a.endDate).getTime() <= today + 21 * DAY)

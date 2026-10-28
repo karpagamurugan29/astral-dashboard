@@ -30,14 +30,18 @@ const defaultPermissions = {
     Employee: [],
 };
 
-const ensureRoleSettings = async () => {
-    const roles = Object.keys(defaultPermissions);
-    for (const role of roles) {
-        const exists = await roleSettingModel.findOne({ role });
-        if (!exists) {
-            await roleSettingModel.create({ role, permissions: defaultPermissions[role] });
-        }
+// Make sure every role has a settings row. Checked once per server process with a single query
+// (it used to be one lookup per role on every request); a failed check is retried next time.
+let roleSettingsReady = null;
+const ensureRoleSettings = () => {
+    if (!roleSettingsReady) {
+        roleSettingsReady = (async () => {
+            const roles = Object.keys(defaultPermissions);
+            const have = new Set((await roleSettingModel.find({ role: { $in: roles } }).select("role").lean()).map((r) => r.role));
+            await Promise.all(roles.filter((r) => !have.has(r)).map((role) => roleSettingModel.create({ role, permissions: defaultPermissions[role] })));
+        })().catch((err) => { roleSettingsReady = null; throw err; });
     }
+    return roleSettingsReady;
 };
 
 export const getRoles = async (req, res) => {
@@ -76,9 +80,7 @@ export const getMyPermissions = async (req, res) => {
     try {
         await ensureRoleSettings();
 
-        const access = await getAccess(req.user, [...ALL_PERMISSION_MODULES, ...ALL_SCREENS]);
-
-        const scope = await scopeOf(req);
+        const [access, scope] = await Promise.all([getAccess(req.user, [...ALL_PERMISSION_MODULES, ...ALL_SCREENS]), scopeOf(req)]);
         return res.status(200).json({
             success: true,
             data: access.effective,

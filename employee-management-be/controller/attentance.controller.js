@@ -419,6 +419,13 @@ export const decideRegularization = async (req, res) => {
         if (String(regularization.employeeId) === String(req.user.id) || !(scope.people || scope.team.has(String(regularization.employeeId)))) {
             return res.status(403).json({ success: false, message: "Only someone above this person in the reporting line, or HR, can decide this." });
         }
+        if (!["Approved", "Rejected"].includes(status)) {
+            return res.status(400).json({ success: false, message: "Choose Approve or Reject." });
+        }
+        // decided once: approving again would re-apply the correction, rejecting later wouldn't undo it
+        if (regularization.status !== "Pending") {
+            return res.status(409).json({ success: false, message: `This request was already ${String(regularization.status).toLowerCase()}.` });
+        }
 
         regularization.status = status;
         regularization.approvedBy = req.user.id;
@@ -448,7 +455,7 @@ export const decideRegularization = async (req, res) => {
             await attendance.save();
         }
 
-        notify(regularization.employeeId, `Regularization ${status}`, `Your attendance correction for ${regularization.attendanceDate} was ${status.toLowerCase()}.`, "General", "/attendance/regularization", employeeId);
+        notify(regularization.employeeId, `Regularization ${status}`, `Your attendance correction for ${regularization.attendanceDate} was ${status.toLowerCase()}.`, "General", "/attendance/regularization");
         logAudit(req, "attendance.regularization_decision", `${status} a regularization request`, { type: "Regularization", id: regularization._id });
 
         return res.status(200).json({

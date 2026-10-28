@@ -21,6 +21,16 @@ const HEADER_THEMES = [
 const THEME_KEY = 'headerThemeV2'
 const readTheme = () => { try { return localStorage.getItem(THEME_KEY) || 'clean' } catch { return 'clean' } }
 
+// Last fetch time per header feed, shared across page changes. Sign-in / session restore already
+// loads permissions, so that one starts "fresh" and is re-checked each minute for admin edits.
+const lastFetch = { permissions: Date.now() }
+const due = (key, ms) => {
+    const now = Date.now()
+    if (lastFetch[key] && now - lastFetch[key] < ms) return false
+    lastFetch[key] = now
+    return true
+}
+
 export const TopHeader = () => {
     const [headerTheme, setHeaderTheme] = useState(readTheme)
     useEffect(() => {
@@ -55,9 +65,10 @@ export const TopHeader = () => {
     const hasPhoto = hasRealPhoto(user?.profileImage) && !photoBroken
 
     useEffect(() => {
-        dispatch({ type: notificationActions.GET_NOTIFICATIONS })
-        dispatch({ type: announcementActions.GET_ANNOUNCEMENTS })
-        dispatch({ type: roleActions.GET_MY_PERMISSIONS })
+        // The header remounts on every page change; only refetch when the copy in redux is a few seconds old.
+        if (due('notifications', 10000)) dispatch({ type: notificationActions.GET_NOTIFICATIONS })
+        if (due('announcements', 10000)) dispatch({ type: announcementActions.GET_ANNOUNCEMENTS })
+        if (due('permissions', 60000)) dispatch({ type: roleActions.GET_MY_PERMISSIONS })
         const interval = setInterval(() => {
             dispatch({ type: notificationActions.GET_NOTIFICATIONS })
             dispatch({ type: announcementActions.GET_ANNOUNCEMENTS })

@@ -196,9 +196,9 @@ export const ReportBuilder = () => {
                                 <div className="rp-two">
                                     <section className="pp-card rp-chart"><h3>By department</h3><div className="rp-chart-box"><ReactECharts style={{ height: '100%' }} option={hbar([...hc].reverse().map((h) => h.department), [...hc].reverse().map((h) => h.count), [...hc].reverse().map((h) => deptColor(h.department)))} notMerge /></div></section>
                                     <section className="pp-card">
-                                        <table className="at-table"><thead><tr><th>Department</th><th>Employees</th><th className="hide-sm">Share</th></tr></thead><tbody>
+                                        <div className="at-table-wrap"><table className="at-table"><thead><tr><th>Department</th><th>Employees</th><th className="hide-sm">Share</th></tr></thead><tbody>
                                             {hc.map((h) => <tr key={h.department}><td><DeptTag name={h.department} /></td><td className="rp-num">{h.count}</td><td className="hide-sm"><div className="rp-rate"><b>{hcTotal ? Math.round((h.count / hcTotal) * 100) : 0}%</b><span className="rp-bar"><span style={{ width: `${hcTotal ? (h.count / hcTotal) * 100 : 0}%`, background: deptColor(h.department) }}></span></span></div></td></tr>)}
-                                        </tbody></table>
+                                        </tbody></table></div>
                                     </section>
                                 </div>
                             )}
@@ -216,7 +216,7 @@ export const ReportBuilder = () => {
                             </div>
                             <section className="pp-card">
                                 {!att.length ? <EmptyState icon="mdi-clock-outline" title="No attendance records this month" /> : (
-                                    <table className="at-table"><thead><tr><th>Employee</th><th className="hide-md">Department</th><th>Present</th><th className="hide-sm">Late</th><th className="hide-sm">Half</th><th className="hide-sm">Leave</th><th>Absent</th><th className="hide-md">Hours</th><th>Attendance</th></tr></thead><tbody>
+                                    <div className="at-table-wrap"><table className="at-table"><thead><tr><th>Employee</th><th className="hide-md">Department</th><th>Present</th><th className="hide-sm">Late</th><th className="hide-sm">Half</th><th className="hide-sm">Leave</th><th>Absent</th><th className="hide-md">Hours</th><th>Attendance</th></tr></thead><tbody>
                                         {att.map((a) => (
                                             <tr key={a.employeeId}>
                                                 <td><div className="at-person"><Avatar person={a} size={32} /><b>{a.firstName} {a.lastName}</b></div></td>
@@ -230,7 +230,7 @@ export const ReportBuilder = () => {
                                                 <td><div className="rp-rate"><b>{a.rate}%</b><span className="rp-bar"><span style={{ width: `${a.rate}%`, background: a.rate >= 90 ? '#10b981' : a.rate >= 75 ? '#f59e0b' : '#f43f5e' }}></span></span></div></td>
                                             </tr>
                                         ))}
-                                    </tbody></table>
+                                    </tbody></table></div>
                                 )}
                             </section>
                         </>
@@ -279,9 +279,9 @@ export const ReportBuilder = () => {
                                         }} />
                                     </div></section>
                                     <section className="pp-card">
-                                        <table className="at-table"><thead><tr><th>Period</th><th className="hide-sm">Status</th><th className="hide-md">Gross</th><th className="hide-md">Deductions</th><th>Net</th></tr></thead><tbody>
+                                        <div className="at-table-wrap"><table className="at-table"><thead><tr><th>Period</th><th className="hide-sm">Status</th><th className="hide-md">Gross</th><th className="hide-md">Deductions</th><th>Net</th></tr></thead><tbody>
                                             {[...pay].reverse().map((p) => <tr key={p._id}><td><b>{periodLabel(p.period)}</b></td><td className="hide-sm"><PayStatus status={p.status} /></td><td className="hide-md"><span className="py-amount">{money(p.totalGross)}</span></td><td className="hide-md"><span className="py-amount neg">− {money(p.totalDeductions)}</span></td><td><span className="py-amount net">{money(p.totalNet)}</span></td></tr>)}
-                                        </tbody></table>
+                                        </tbody></table></div>
                                     </section>
                                 </>
                             )}
@@ -301,10 +301,10 @@ export const ReportBuilder = () => {
                                 <div className="rp-two">
                                     <section className="pp-card rp-chart"><h3>Spend by category</h3><div className="rp-chart-box"><ReactECharts style={{ height: '100%' }} option={{ ...donut(exCat.map((c) => ({ name: c.category, value: c.total, itemStyle: { color: categoryMeta(c.category).color } }))), tooltip: { trigger: 'item', formatter: (p) => `${p.name}: ${money(p.value)} (${p.percent}%)` } }} notMerge /></div></section>
                                     <section className="pp-card">
-                                        <table className="at-table"><thead><tr><th>Category</th><th>Claims</th><th>Total</th></tr></thead><tbody>
+                                        <div className="at-table-wrap"><table className="at-table"><thead><tr><th>Category</th><th>Claims</th><th>Total</th></tr></thead><tbody>
                                             {exCat.map((c) => { const m = categoryMeta(c.category); return <tr key={c.category}><td><span className="pp-tag" style={{ '--tag': m.color }}><i className={`mdi ${m.icon}`}></i>{c.category}</span></td><td className="rp-num">{c.count}</td><td><span className="py-amount">{money(c.total)}</span></td></tr> })}
                                             {exStatus.map((s) => <tr key={s.status}><td><span className="pp-tag" style={{ '--tag': expenseStatusMeta(s.status).color }}><i className={`mdi ${expenseStatusMeta(s.status).icon}`}></i>{s.status}</span></td><td className="rp-num">{s.count}</td><td><span className="py-amount">{money(s.total)}</span></td></tr>)}
-                                        </tbody></table>
+                                        </tbody></table></div>
                                     </section>
                                 </div>
                             )}
@@ -331,7 +331,7 @@ export const ReportBuilder = () => {
                                 <input type="date" className="pp-input" value={projectFilters.endDate} onChange={(e) => setProjectFilters((f) => ({ ...f, endDate: e.target.value }))} title="To" aria-label="To" />
                             </div>
                             {!projects?.length ? <EmptyState icon="mdi-folder-outline" title="No projects match these filters" /> : (
-                                <table className="at-table"><thead><tr><th>Project</th><th className="hide-md">Manager</th><th className="hide-sm">Status</th><th>Progress</th><th className="hide-lg">Done / total</th><th>Overdue</th></tr></thead><tbody>
+                                <div className="at-table-wrap"><table className="at-table"><thead><tr><th>Project</th><th className="hide-md">Manager</th><th className="hide-sm">Status</th><th>Progress</th><th className="hide-lg">Done / total</th><th>Overdue</th></tr></thead><tbody>
                                     {projects.map((p) => {
                                         const pct = p.totalTasks ? Math.round((p.completedTasks / p.totalTasks) * 100) : (p.progress || 0)
                                         return (
@@ -345,7 +345,7 @@ export const ReportBuilder = () => {
                                             </tr>
                                         )
                                     })}
-                                </tbody></table>
+                                </tbody></table></div>
                             )}
                         </section>
                     )}
@@ -375,7 +375,7 @@ export const ReportBuilder = () => {
                                 </button>
                             </div>
                             {!tasks?.length ? <EmptyState icon="mdi-format-list-checks" title="No tasks match these filters" /> : (
-                                <table className="at-table"><thead><tr><th>Task</th><th className="hide-md">Assignee</th><th className="hide-lg">Priority</th><th>Status</th><th className="hide-sm">Due</th></tr></thead><tbody>
+                                <div className="at-table-wrap"><table className="at-table"><thead><tr><th>Task</th><th className="hide-md">Assignee</th><th className="hide-lg">Priority</th><th>Status</th><th className="hide-sm">Due</th></tr></thead><tbody>
                                     {tasks.map((t) => (
                                         <tr key={t._id}>
                                             <td><b>{t.title}</b><div style={{ fontSize: 12, color: 'var(--pp-muted)' }}>{t.project?.projectName || 'No project'}</div></td>
@@ -385,7 +385,7 @@ export const ReportBuilder = () => {
                                             <td className="hide-sm"><span className={t.isOverdue ? 'rp-num bad' : ''}>{fmtDate(t.dueDate)}{t.isOverdue ? ' · overdue' : ''}</span></td>
                                         </tr>
                                     ))}
-                                </tbody></table>
+                                </tbody></table></div>
                             )}
                         </section>
                     )}

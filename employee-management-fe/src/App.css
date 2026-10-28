@@ -37,3 +37,8 @@
   }
 }
 
+
+/* thin progress bar shown while a screen's code downloads (first visit only) */
+.page-loading { position: fixed; top: 0; left: 0; right: 0; z-index: 2000; height: 3px; overflow: hidden; background: rgba(124, 58, 237, .12); }
+.page-loading span { position: absolute; top: 0; bottom: 0; width: 35%; border-radius: 3px; background: linear-gradient(90deg, #7c3aed, #0ea5e9); animation: pageLoading 1s ease-in-out infinite; }
+@keyframes pageLoading { from { left: -35%; } to { left: 100%; } }

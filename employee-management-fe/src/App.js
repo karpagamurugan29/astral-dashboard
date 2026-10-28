@@ -1,74 +1,94 @@
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import './App.css';
 import { Login } from './pages/dashboard/Login';
-import { ForgotPassword } from './pages/dashboard/ForgotPassword';
-import { ResetPassword } from './pages/dashboard/ResetPassword';
-import { ChangePassword } from './pages/dashboard/ChangePassword';
-import { MyProfile } from './pages/dashboard/MyProfile';
-import { Organisation } from './pages/dashboard/Organisation';
-import { NotificationCenter } from './pages/dashboard/NotificationCenter';
 import feather from "feather-icons";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { Toaster } from './components/common/Toaster';
-import { DashContent } from './pages/dashboard/dash/DashContent';
 import { Provider } from 'react-redux';
 import { store } from "./redux/Store"
-import { EmployeeGrid } from './pages/dashboard/employees/EmployeeGrid';
-import { AddEditEmployee } from './pages/dashboard/employees/AddEditEmployee';
-import { AttendanceToday } from './pages/dashboard/attendance/AttendanceToday';
-import { AttendanceHistory } from './pages/dashboard/attendance/AttendanceHistory';
-import { ApplyLeave } from './pages/dashboard/leave/ApplyLeave';
-import { LeaveHistory } from './pages/dashboard/leave/LeaveHistory';
-import { LeaveApprovals } from './pages/dashboard/leave/LeaveApprovals';
-import { DepartmentList } from './pages/dashboard/organization/DepartmentList';
-import { DesignationList } from './pages/dashboard/organization/DesignationList';
-import { BranchList } from './pages/dashboard/organization/BranchList';
-import { ExpenseList } from './pages/dashboard/expense/ExpenseList';
-import { ExpenseApprovals } from './pages/dashboard/expense/ExpenseApprovals';
-import { AssetList, MyAssets } from './pages/dashboard/asset/AssetList';
-import { TicketList } from './pages/dashboard/helpdesk/TicketList';
-import { HRTickets } from './pages/dashboard/helpdesk/HRTickets';
-import { TicketDetail } from './pages/dashboard/helpdesk/TicketDetail';
-import { HelpdeskSettings } from './pages/dashboard/helpdesk/HelpdeskSettings';
-import { AnnouncementFeed } from './pages/dashboard/announcements/AnnouncementFeed';
-import { ShiftList } from './pages/dashboard/calendar/ShiftList';
-import { HolidayList } from './pages/dashboard/calendar/HolidayList';
-import { RolesList } from './pages/dashboard/roles/RolesList';
-import { AccessControl } from './pages/dashboard/access/AccessControl';
 import { ScreenGuard } from './components/common/ScreenGuard';
-import { AuditLogViewer } from './pages/dashboard/audit/AuditLogViewer';
-import { CompanySettings } from './pages/dashboard/settings/CompanySettings';
-import { Chat } from './pages/dashboard/chat/Chat';
-import { DocumentCenter } from './pages/dashboard/documents/DocumentCenter';
-import { SalaryStructure } from './pages/dashboard/payroll/SalaryStructure';
-import { PayrollProcess } from './pages/dashboard/payroll/PayrollProcess';
-import { Payslips } from './pages/dashboard/payroll/Payslips';
-import { LoansAdvances } from './pages/dashboard/payroll/LoansAdvances';
-import { ProjectsList } from './pages/dashboard/projects/ProjectsList';
-import { ProjectDetail } from './pages/dashboard/projects/ProjectDetail';
-import { TasksBoard } from './pages/dashboard/projects/TasksBoard';
-import { AuditsList } from './pages/dashboard/audits/AuditsList';
-import { AuditDetail } from './pages/dashboard/audits/AuditDetail';
-import { MyWork } from './pages/dashboard/audits/MyWork';
-import { Timesheets } from './pages/dashboard/audits/Timesheets';
-import { WorkAllocation } from './pages/dashboard/audits/WorkAllocation';
-import { AuditDashboard } from './pages/dashboard/audits/AuditDashboard';
-import { AuditProjects, AuditProjectDetail } from './pages/dashboard/audits/AuditProjects';
-import { WorkflowTemplates, WorkflowTemplateEditor } from './pages/dashboard/audits/WorkflowTemplates';
-import { ClientsList } from './pages/dashboard/audits/ClientsList';
-import { ClientDetail } from './pages/dashboard/audits/ClientDetail';
-import { Billing } from './pages/dashboard/audits/Billing';
-import { Files } from './pages/dashboard/files/Files';
-import { SubordinateAttendance } from './pages/dashboard/attendance/SubordinateAttendance';
-import { InvoicePrint } from './pages/dashboard/audits/InvoicePrint';
-import { LocationLog } from './pages/dashboard/locationLog/LocationLog';
-import { ReportBuilder } from './pages/dashboard/reports/ReportBuilder';
-import { EmployeeProfile } from './pages/dashboard/employees/EmployeeProfile';
-import { EmployeeOnboarding } from './pages/dashboard/employees/EmployeeOnboarding';
-import { EmployeeOffboarding } from './pages/dashboard/employees/EmployeeOffboarding';
-import { TeamAttendance } from './pages/dashboard/attendance/TeamAttendance';
-import { AttendanceRegularization } from './pages/dashboard/attendance/AttendanceRegularization';
-import { TeamLeaveCalendar } from './pages/dashboard/leave/TeamLeaveCalendar';
+
+// Each screen is its own download, fetched the first time someone opens it, so sign-in and the
+// first page load only what they need (all styles still ship up front — see allStyles.js). If a
+// deploy replaced the files while the app was open, the old chunk is gone: reload once.
+const retry = (load) => load().catch((err) => {
+  if (!sessionStorage.getItem('chunk-reload')) { sessionStorage.setItem('chunk-reload', '1'); window.location.reload(); }
+  throw err;
+});
+const loaders = {};
+const page = (name, load) => { loaders[name] = load; return lazy(() => retry(load).then((m) => { sessionStorage.removeItem('chunk-reload'); return { default: m[name] }; })); };
+const ForgotPassword = page('ForgotPassword', () => import('./pages/dashboard/ForgotPassword'));
+const ResetPassword = page('ResetPassword', () => import('./pages/dashboard/ResetPassword'));
+const ChangePassword = page('ChangePassword', () => import('./pages/dashboard/ChangePassword'));
+const MyProfile = page('MyProfile', () => import('./pages/dashboard/MyProfile'));
+const Organisation = page('Organisation', () => import('./pages/dashboard/Organisation'));
+const NotificationCenter = page('NotificationCenter', () => import('./pages/dashboard/NotificationCenter'));
+const DashContent = page('DashContent', () => import('./pages/dashboard/dash/DashContent'));
+const EmployeeGrid = page('EmployeeGrid', () => import('./pages/dashboard/employees/EmployeeGrid'));
+const AddEditEmployee = page('AddEditEmployee', () => import('./pages/dashboard/employees/AddEditEmployee'));
+const AttendanceToday = page('AttendanceToday', () => import('./pages/dashboard/attendance/AttendanceToday'));
+const AttendanceHistory = page('AttendanceHistory', () => import('./pages/dashboard/attendance/AttendanceHistory'));
+const ApplyLeave = page('ApplyLeave', () => import('./pages/dashboard/leave/ApplyLeave'));
+const LeaveHistory = page('LeaveHistory', () => import('./pages/dashboard/leave/LeaveHistory'));
+const LeaveApprovals = page('LeaveApprovals', () => import('./pages/dashboard/leave/LeaveApprovals'));
+const DepartmentList = page('DepartmentList', () => import('./pages/dashboard/organization/DepartmentList'));
+const DesignationList = page('DesignationList', () => import('./pages/dashboard/organization/DesignationList'));
+const BranchList = page('BranchList', () => import('./pages/dashboard/organization/BranchList'));
+const ExpenseList = page('ExpenseList', () => import('./pages/dashboard/expense/ExpenseList'));
+const ExpenseApprovals = page('ExpenseApprovals', () => import('./pages/dashboard/expense/ExpenseApprovals'));
+const AssetList = page('AssetList', () => import('./pages/dashboard/asset/AssetList'));
+const MyAssets = page('MyAssets', () => import('./pages/dashboard/asset/AssetList'));
+const TicketList = page('TicketList', () => import('./pages/dashboard/helpdesk/TicketList'));
+const HRTickets = page('HRTickets', () => import('./pages/dashboard/helpdesk/HRTickets'));
+const TicketDetail = page('TicketDetail', () => import('./pages/dashboard/helpdesk/TicketDetail'));
+const HelpdeskSettings = page('HelpdeskSettings', () => import('./pages/dashboard/helpdesk/HelpdeskSettings'));
+const AnnouncementFeed = page('AnnouncementFeed', () => import('./pages/dashboard/announcements/AnnouncementFeed'));
+const ShiftList = page('ShiftList', () => import('./pages/dashboard/calendar/ShiftList'));
+const HolidayList = page('HolidayList', () => import('./pages/dashboard/calendar/HolidayList'));
+const RolesList = page('RolesList', () => import('./pages/dashboard/roles/RolesList'));
+const AccessControl = page('AccessControl', () => import('./pages/dashboard/access/AccessControl'));
+const AuditLogViewer = page('AuditLogViewer', () => import('./pages/dashboard/audit/AuditLogViewer'));
+const CompanySettings = page('CompanySettings', () => import('./pages/dashboard/settings/CompanySettings'));
+const Chat = page('Chat', () => import('./pages/dashboard/chat/Chat'));
+const DocumentCenter = page('DocumentCenter', () => import('./pages/dashboard/documents/DocumentCenter'));
+const SalaryStructure = page('SalaryStructure', () => import('./pages/dashboard/payroll/SalaryStructure'));
+const PayrollProcess = page('PayrollProcess', () => import('./pages/dashboard/payroll/PayrollProcess'));
+const Payslips = page('Payslips', () => import('./pages/dashboard/payroll/Payslips'));
+const LoansAdvances = page('LoansAdvances', () => import('./pages/dashboard/payroll/LoansAdvances'));
+const ProjectsList = page('ProjectsList', () => import('./pages/dashboard/projects/ProjectsList'));
+const ProjectDetail = page('ProjectDetail', () => import('./pages/dashboard/projects/ProjectDetail'));
+const TasksBoard = page('TasksBoard', () => import('./pages/dashboard/projects/TasksBoard'));
+const AuditsList = page('AuditsList', () => import('./pages/dashboard/audits/AuditsList'));
+const AuditDetail = page('AuditDetail', () => import('./pages/dashboard/audits/AuditDetail'));
+const MyWork = page('MyWork', () => import('./pages/dashboard/audits/MyWork'));
+const Timesheets = page('Timesheets', () => import('./pages/dashboard/audits/Timesheets'));
+const WorkAllocation = page('WorkAllocation', () => import('./pages/dashboard/audits/WorkAllocation'));
+const AuditDashboard = page('AuditDashboard', () => import('./pages/dashboard/audits/AuditDashboard'));
+const AuditProjects = page('AuditProjects', () => import('./pages/dashboard/audits/AuditProjects'));
+const AuditProjectDetail = page('AuditProjectDetail', () => import('./pages/dashboard/audits/AuditProjects'));
+const WorkflowTemplates = page('WorkflowTemplates', () => import('./pages/dashboard/audits/WorkflowTemplates'));
+const WorkflowTemplateEditor = page('WorkflowTemplateEditor', () => import('./pages/dashboard/audits/WorkflowTemplates'));
+const ClientsList = page('ClientsList', () => import('./pages/dashboard/audits/ClientsList'));
+const ClientDetail = page('ClientDetail', () => import('./pages/dashboard/audits/ClientDetail'));
+const Billing = page('Billing', () => import('./pages/dashboard/audits/Billing'));
+const Files = page('Files', () => import('./pages/dashboard/files/Files'));
+const SubordinateAttendance = page('SubordinateAttendance', () => import('./pages/dashboard/attendance/SubordinateAttendance'));
+const InvoicePrint = page('InvoicePrint', () => import('./pages/dashboard/audits/InvoicePrint'));
+const LocationLog = page('LocationLog', () => import('./pages/dashboard/locationLog/LocationLog'));
+const ReportBuilder = page('ReportBuilder', () => import('./pages/dashboard/reports/ReportBuilder'));
+const EmployeeProfile = page('EmployeeProfile', () => import('./pages/dashboard/employees/EmployeeProfile'));
+const EmployeeOnboarding = page('EmployeeOnboarding', () => import('./pages/dashboard/employees/EmployeeOnboarding'));
+const EmployeeOffboarding = page('EmployeeOffboarding', () => import('./pages/dashboard/employees/EmployeeOffboarding'));
+const TeamAttendance = page('TeamAttendance', () => import('./pages/dashboard/attendance/TeamAttendance'));
+const AttendanceRegularization = page('AttendanceRegularization', () => import('./pages/dashboard/attendance/AttendanceRegularization'));
+const TeamLeaveCalendar = page('TeamLeaveCalendar', () => import('./pages/dashboard/leave/TeamLeaveCalendar'));
+
+// Screens most people open next, fetched quietly once the first page has settled.
+const PREFETCH = ['DashContent', 'MyWork', 'Timesheets', 'AttendanceToday', 'ApplyLeave', 'ExpenseList', 'AuditsList', 'AuditDetail', 'NotificationCenter'];
+const prefetch = () => PREFETCH.forEach((n) => loaders[n]?.().catch(() => {}));
+const idle = window.requestIdleCallback || ((fn) => setTimeout(fn, 1500));
+
+const PageLoading = () => <div className="page-loading" role="progressbar" aria-label="Loading page"><span></span></div>;
 
 function FeatherIcons() {
   const location = useLocation();
@@ -85,9 +105,7 @@ function FeatherIcons() {
 }
 
 function App() {
-  const hasSession = localStorage.getItem('session')
-
-  console.log(hasSession)
+  useEffect(() => { const t = setTimeout(() => idle(prefetch), 2500); return () => clearTimeout(t); }, []);
 
   return (
     <Provider store={store}>
@@ -95,6 +113,7 @@ function App() {
         <BrowserRouter>
           <FeatherIcons />
           <Toaster />
+          <Suspense fallback={<PageLoading />}>
           <Routes>
             <Route path="/" element={<Login />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -178,6 +197,7 @@ function App() {
             <Route path="/settings/holidays" element={<HolidayList />} />
             <Route path="/settings/audit" element={<AuditLogViewer />} />
           </Routes>
+          </Suspense>
         </BrowserRouter>
       </div>
     </Provider>

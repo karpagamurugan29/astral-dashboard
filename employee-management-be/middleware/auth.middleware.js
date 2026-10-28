@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
 import employeeModel from "../models/employeeModel.js";
+import { cachedStatus } from "../utils/authCache.js";
 
 const authMiddleWare = async (req, res, next) => {
     try {
@@ -23,9 +24,10 @@ const authMiddleWare = async (req, res, next) => {
         // A JWT stays valid for up to 24h even after someone is offboarded —
         // check current status on every request so access is actually revoked,
         // not just delayed until the token expires on its own.
-        const employee = await employeeModel.findById(decoded.id).select("status");
+        // (remembered for up to 30s; cleared the moment anyone's status changes — utils/authCache.js)
+        const status = await cachedStatus(String(decoded.id), async () => (await employeeModel.findById(decoded.id).select("status").lean())?.status || null);
 
-        if (!employee || employee.status !== "Active") {
+        if (status !== "Active") {
             res.clearCookie("token");
             return res.status(401).json({
                 success: false,

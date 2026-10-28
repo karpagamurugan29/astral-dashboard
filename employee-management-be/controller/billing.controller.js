@@ -150,14 +150,15 @@ export const listInvoices = async (req, res) => {
         const byClient = new Map();
         live.forEach((i) => { const k = i.billTo?.name || "—"; const x = byClient.get(k) || { name: k, billed: 0, balance: 0 }; x.billed += i.total; x.balance += i.balance; byClient.set(k, x); });
         // fee still to bill on open engagements
-        const scope = await scopeOf(req);
-        await closeStaleTimers();
+        // stale timers are closed first, so the billable time below reads finished sessions
+        const [scope] = await Promise.all([scopeOf(req), closeStaleTimers()]);
         const open = await AuditEngagementModel.find({ isDeleted: false, status: { $ne: "Cancelled" }, $or: [{ fee: { $gt: 0 } }, { "charges.0": { $exists: true } }] }).select("fee estimatedHours auditCode clientName engagementName status charges auditType financialYear clientId").lean();
-        const econ = await economicsFor(open);
         const pFrom = from || new Date(new Date().getFullYear(), new Date().getMonth(), 1), pTo = to || new Date();
+        // each engagement's billable work is read independently — side by side, in the same order
+        const [econ, bills] = await Promise.all([economicsFor(open), Promise.all(open.map((a) => billableFor(a, pFrom, pTo)))]);
         const unbilled = [];
-        for (const a of open) {
-            const b = await billableFor(a, pFrom, pTo);
+        for (const [i, a] of open.entries()) {
+            const b = bills[i];
             if (b.amount > 0 || b.warnings.length) unbilled.push({ _id: a._id, auditCode: a.auditCode, clientName: a.clientName, engagementName: a.engagementName, status: a.status, fee: a.fee, ...econ.get(idStr(a._id)), unbilled: Math.round(b.amount), lines: b.lines.map((l) => ({ description: l.description, amount: Math.round((l.qty || 1) * (l.rate || 0)) })), warnings: b.warnings, charges: (a.charges || []).length });
         }
         unbilled.sort((a, b) => b.unbilled - a.unbilled);

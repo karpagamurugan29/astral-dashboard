@@ -244,7 +244,8 @@
 .ep-muted a { color: var(--pp-brand-ink); }
 
 @media (max-width: 1199px) {
-    .ep-layout { grid-template-columns: 1fr; }
+    .ep-layout { grid-template-columns: minmax(0, 1fr); } /* minmax: a wide tab bar can't push the profile card off-screen */
+    .ep-layout > * { min-width: 0; }
     .ep-id { position: static; }
 }
 

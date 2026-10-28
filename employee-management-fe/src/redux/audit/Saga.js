@@ -1,4 +1,4 @@
-import { all, call, put, takeEvery, select } from "redux-saga/effects";
+import { all, call, put, takeEvery, select, takeLeading } from "redux-saga/effects";
 import { Get, Post, Put, Delete } from "../../components/common/ApiCall";
 import { API_URL } from "../../utils/Constants";
 import actions from "./Actions";
@@ -13,7 +13,9 @@ const rootSaga = function* () {
     yield takeEvery(actions.UPDATE_AUDIT, updateAudit),
     yield takeEvery(actions.ADD_AUDIT_MEMBER, addMember),
     yield takeEvery(actions.REMOVE_AUDIT_MEMBER, removeMember),
-    yield takeEvery(actions.GET_ACTIVE_AUDIT_TIMER, fetchActiveTimer),
+    // several widgets ask for the running timer as they mount; one request answers them all
+    // (start/stop refresh it directly, so a fresh read is never skipped)
+    yield takeLeading(actions.GET_ACTIVE_AUDIT_TIMER, fetchActiveTimer),
     yield takeEvery(actions.START_AUDIT_TIMER, startTimer),
     yield takeEvery(actions.STOP_AUDIT_TIMER, stopTimer),
     yield takeEvery(actions.GET_AUDIT_CLIENTS, fetchClients),

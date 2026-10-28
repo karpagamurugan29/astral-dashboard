@@ -1,3 +1,4 @@
+import { clearAuthCache } from "../utils/authCache.js";
 import mongoose from "mongoose";
 
 const EmployeeSchema = new mongoose.Schema(
@@ -222,5 +223,12 @@ const EmployeeSchema = new mongoose.Schema(
         timestamps: true,
     }
 );
+
+// Status changes and removals clear the short auth-status cache (utils/authCache.js). Routine writes
+// (last seen, profile edits) leave it alone, so it keeps saving the per-request database trip.
+const touchesStatus = (u) => !!u && JSON.stringify(u).includes('"status"');
+EmployeeSchema.pre("save", function () { if (this.isNew || this.isModified("status")) clearAuthCache(); });
+["findOneAndUpdate", "updateOne", "updateMany", "replaceOne"].forEach((op) => EmployeeSchema.pre(op, function () { if (touchesStatus(this.getUpdate())) clearAuthCache(); }));
+["findOneAndDelete", "deleteOne", "deleteMany"].forEach((op) => EmployeeSchema.pre(op, () => clearAuthCache()));
 
 export default mongoose.model("Employee", EmployeeSchema);

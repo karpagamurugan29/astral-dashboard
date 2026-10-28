@@ -59,36 +59,44 @@ export const DashContent = () => {
     const [checkInNote, setCheckInNote] = useState('')
     const [updatedAt, setUpdatedAt] = useState(() => new Date())
 
-    const loadAll = () => {
+    // Everyone's widgets load once; the role-based ones load separately as soon as access is known,
+    // so permissions arriving after the first render don't re-request everything (that used to fetch
+    // most of this page two or three times). Announcements come from the header (TopHeader.js).
+    const loadMine = () => {
         const d = new Date()
         dispatch({ type: dashboardActions.GET_DASHBOARD_SUMMARY })
         dispatch({ type: dashboardActions.GET_AUDIT_INSIGHTS })
         dispatch({ type: dashboardActions.GET_BUSINESS_PULSE })
         dispatch({ type: attendanceActions.GET_TODAY_ATTENDANCE })
         dispatch({ type: attendanceActions.GET_ATTENDANCE_HISTORY, month: d.getMonth() + 1, year: d.getFullYear() })
-        dispatch({ type: announcementActions.GET_ANNOUNCEMENTS })
-        if (canSeeTeamAttendance) dispatch({ type: dashboardActions.GET_TODAY_CHECKINS })
-        if (firmWide) {
-            dispatch({ type: dashboardActions.GET_ATTENDANCE_TREND })
-            dispatch({ type: reportActions.GET_HEADCOUNT_REPORT })
-        }
-        if (canApprove) dispatch({ type: leaveActions.GET_PENDING_LEAVES })
         dispatch({ type: leaveActions.GET_LEAVE_BALANCE })
         dispatch({ type: leaveActions.GET_LEAVE_HISTORY })
         setUpdatedAt(new Date())
     }
+    const loadTeam = () => { if (canSeeTeamAttendance) dispatch({ type: dashboardActions.GET_TODAY_CHECKINS }) }
+    const loadFirm = () => { if (firmWide) { dispatch({ type: dashboardActions.GET_ATTENDANCE_TREND }); dispatch({ type: reportActions.GET_HEADCOUNT_REPORT }) } }
+    const loadApprovals = () => { if (canApprove) dispatch({ type: leaveActions.GET_PENDING_LEAVES }) }
+    // the Refresh button: everything, including announcements
+    const loadAll = () => { loadMine(); loadTeam(); loadFirm(); loadApprovals(); dispatch({ type: announcementActions.GET_ANNOUNCEMENTS }) }
 
     useEffect(() => {
-        loadAll()
-        // Live widgets (who's in, timers, approvals) refresh every minute.
-        const t = setInterval(() => {
-            dispatch({ type: dashboardActions.GET_AUDIT_INSIGHTS })
-            if (canSeeTeamAttendance) dispatch({ type: dashboardActions.GET_TODAY_CHECKINS })
-            setUpdatedAt(new Date())
-        }, 60000)
+        loadMine()
+        // Live widgets (timers) refresh every minute.
+        const t = setInterval(() => { dispatch({ type: dashboardActions.GET_AUDIT_INSIGHTS }); setUpdatedAt(new Date()) }, 60000)
         return () => clearInterval(t)
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [dispatch, canSeeTeamAttendance, canApprove, firmWide])
+    }, [dispatch])
+    useEffect(() => {
+        loadTeam()
+        if (!canSeeTeamAttendance) return undefined
+        const t = setInterval(loadTeam, 60000) // who's in, live
+        return () => clearInterval(t)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [canSeeTeamAttendance])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    useEffect(() => { loadFirm() }, [firmWide])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    useEffect(() => { loadApprovals() }, [canApprove])
 
     useEffect(() => {
         const timer = setInterval(() => setNow(new Date()), 30000)

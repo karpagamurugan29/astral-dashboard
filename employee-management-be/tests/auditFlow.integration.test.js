@@ -14,6 +14,9 @@ const API = process.env.API_URL;
 const skip = !API && "set API_URL to run the integration tests";
 const U = {};
 const made = { clients: [], projects: [], audits: [], templates: [] };
+const startedAt = new Date();
+// automatic timesheet notifications the flows trigger — removed afterwards
+const SYSTEM_TITLES = ["Timesheet to approve", "Timesheet approved", "Timesheet returned for correction", "Time correction requested"];
 const loc = { latitude: 11.0168, longitude: 76.9558, accuracy: 20 };
 const people = { admin: "director@astral.test", sm: "senior.manager@astral.test", hrHead: "hr.head@astral.test", accHead: "accounts.head@astral.test", mgr: "kavya.raman@astral.test", otherMgr: "deepak.rao@astral.test", tl: "suresh.babu@astral.test", member: "pooja.iyer@astral.test", junior: "vignesh.kumar@astral.test", outsider: "gokul.raj@astral.test", hr: "revathi.sundar@astral.test", acc: "bala.murali@astral.test" };
 
@@ -44,7 +47,7 @@ after(async () => {
     await db.collection("auditprojects").deleteMany({ _id: { $in: ids(made.projects) } });
     await db.collection("auditclients").deleteMany({ _id: { $in: ids(made.clients) } });
     await db.collection("workflowtemplates").deleteMany({ _id: { $in: ids(made.templates) } });
-    await db.collection("notifications").deleteMany({ message: /\[QA\]|QA-WF/ });
+    await db.collection("notifications").deleteMany({ $or: [{ message: /\[QA\]|QA-WF/ }, { createdAt: { $gte: startedAt }, title: { $in: SYSTEM_TITLES } }] });
     await mongoose.disconnect();
 });
 

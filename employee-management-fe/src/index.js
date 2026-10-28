@@ -1,3 +1,5 @@
+// All stylesheets first, in the original order (see allStyles.js).
+import './allStyles';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
