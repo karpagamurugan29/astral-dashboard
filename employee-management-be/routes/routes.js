@@ -36,7 +36,7 @@ import { getNotifications, markNotificationRead, markAllNotificationsRead } from
 import { uploadDocument, getDocuments, deleteDocument, downloadDocument } from "../controller/document.controller.js";
 import { utilisationReport, profitabilityReport, punctualityReport, complianceReport, businessPulse, executiveOverview } from "../controller/businessReport.controller.js";
 import { chatContacts, listConversations, createConversation, getConversation, getMessages, sendMessage, editMessage, deleteMessage, reactToMessage, starMessage, markRead, setTyping, updateConversation, chatUpdates, chatUnread, chatFile, searchMessages, deleteGroup, adminListGroups, adminUpdateGroup } from "../controller/chat.controller.js";
-import { listProjects, projectWorkspace, createProjectV2, updateProjectV2, startProjectTimer, stopProjectTimer, createProjectTask, updateProjectTask, moveTask, commentOnTask, deleteProjectTask, myTasks, getTask, watchTask, bulkMoveTasks, closeTask, bulkCloseTasks, reopenTask } from "../controller/projectWorkspace.controller.js";
+import { listProjects, projectWorkspace, createProjectV2, updateProjectV2, startProjectTimer, stopProjectTimer, createProjectTask, updateProjectTask, moveTask, commentOnTask, deleteProjectTask, myTasks, getTask, watchTask, bulkMoveTasks, closeTask, bulkCloseTasks, reopenTask, createTodo, listTodos } from "../controller/projectWorkspace.controller.js";
 import { orgTree, setManager } from "../controller/org.controller.js";
 import { uploadMyPhoto, removeMyPhoto, uploadEmployeePhoto, servePhoto } from "../controller/photo.controller.js";
 import { listFiles, getFile, downloadFile, uploadFiles, uploadVersion, shareFile, unshareFile, updateFile, starFile, deleteFile, restoreFile, createFolder, updateFolder, deleteFolder, restoreFolder, shareFolder, shareTargets } from "../controller/files.controller.js";
@@ -47,7 +47,8 @@ const docUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 
 import upload from "../middleware/upload.middleware.js";
 import { getSalaryStructure, saveSalaryStructure, generatePayroll, getPayrollRuns, getPayrollRunDetail, approvePayrollRun, markPayrollPaid, getMyPayslips, getPayslipById } from "../controller/payroll.controller.js";
 import { requestLoan, getMyLoans, getAllLoans, decideLoan, markLoanDisbursed } from "../controller/loanAdvance.controller.js";
-import { getTasks, getTaskById, createTask, updateTask, updateTaskStatus, addTaskComment, deleteTask } from "../controller/task.controller.js";
+import { calendarFeed, listEvents, createEvent, getEvent, updateEvent, deleteEvent, duplicateEvent, completeEvent, dueReminders, snoozeReminder, acknowledgeReminder, getNotificationPrefs, updateNotificationPrefs, cronReminders } from "../controller/calendarEvent.controller.js";
+import { getTasks, getTaskById, createTask, updateTask, addTaskComment, deleteTask } from "../controller/task.controller.js";
 import { getDashboardSummary, getAttendanceTrend, getLeaveTrend, getHeadcountByDepartment, getTaskStatusBreakdown, getLeaveBreakdown, getProjectProgress } from "../controller/dashboard.controller.js";
 import { attendanceReport, leaveReport, payrollReport, headcountReport, expenseReport, projectReport, taskReport } from "../controller/report.controller.js";
 
@@ -277,6 +278,8 @@ router.post("/audits/:id/timer/stop", authMiddleWare, stopAuditTimer);
 
 // Tasks
 router.get("/tasks/mine", authMiddleWare, myTasks);
+router.get("/todos", authMiddleWare, listTodos); // personal to-dos — separate from project tasks
+router.post("/todos", authMiddleWare, createTodo);
 
 // Organisation: reporting tree for everyone; HR / leadership change reporting lines
 router.get("/org/tree", authMiddleWare, orgTree);
@@ -291,7 +294,7 @@ router.post("/tasks/:id/reopen", authMiddleWare, reopenTask);
 router.post("/tasks/:id/watch", authMiddleWare, watchTask);
 router.put("/tasks/:id", authMiddleWare, updateProjectTask); // assignee, creator, project lead or manager
 router.put("/tasks/:id/move", authMiddleWare, moveTask);
-router.put("/tasks/:id/status", authMiddleWare, updateTaskStatus);
+router.put("/tasks/:id/status", authMiddleWare, moveTask); // older screens: same permission and review rules as the board
 router.post("/tasks/:id/comments", authMiddleWare, commentOnTask);
 router.delete("/tasks/:id", authMiddleWare, deleteProjectTask);
 
@@ -315,6 +318,21 @@ router.put("/branches/:id", authMiddleWare, adminOnly("branches"), updateBranch)
 router.delete("/branches/:id", authMiddleWare, adminOnly("branches"), deleteBranch);
 
 // Work calendar — holidays
+// Calendar: events, reminders and notification settings (calendarEvent.controller.js)
+router.get("/calendar", authMiddleWare, calendarFeed);
+router.get("/calendar/events", authMiddleWare, listEvents);
+router.post("/calendar/events", authMiddleWare, createEvent);
+router.get("/calendar/events/:id", authMiddleWare, getEvent);
+router.put("/calendar/events/:id", authMiddleWare, updateEvent);
+router.delete("/calendar/events/:id", authMiddleWare, deleteEvent);
+router.post("/calendar/events/:id/duplicate", authMiddleWare, duplicateEvent);
+router.post("/calendar/events/:id/complete", authMiddleWare, completeEvent);
+router.get("/reminders/due", authMiddleWare, dueReminders);
+router.post("/reminders/:id/snooze", authMiddleWare, snoozeReminder);
+router.post("/reminders/:id/ack", authMiddleWare, acknowledgeReminder);
+router.get("/notification-prefs", authMiddleWare, getNotificationPrefs);
+router.put("/notification-prefs", authMiddleWare, updateNotificationPrefs);
+router.get("/cron/reminders", cronReminders); // Vercel Cron / external scheduler (CRON_SECRET)
 router.get("/holidays", authMiddleWare, getHolidays);
 router.post("/holidays", authMiddleWare, adminOnly("attendance"), createHoliday);
 router.put("/holidays/:id", authMiddleWare, adminOnly("attendance"), updateHoliday);

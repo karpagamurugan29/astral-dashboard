@@ -10,6 +10,7 @@ import router from "./routes/routes.js";
 import { startAutoCheckoutScheduler } from "./utils/autoCheckout.js";
 import { startHelpdeskScheduler } from "./utils/helpdesk.js";
 import { startAuditJobs } from "./utils/auditJobs.js";
+import { startReminderScheduler } from "./utils/reminders.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -88,6 +89,12 @@ if (process.env.NODE_ENV !== "production") {
 
     // Audit task / timesheet reminders and escalation
     startAuditJobs(() => {
+        if (!dbReady) dbReady = connectDB();
+        return dbReady;
+    });
+
+    // Calendar reminders and task deadline alerts, every minute (Vercel: /api/cron/reminders).
+    startReminderScheduler(() => {
         if (!dbReady) dbReady = connectDB();
         return dbReady;
     });

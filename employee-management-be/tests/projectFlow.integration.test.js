@@ -84,16 +84,19 @@ test("tasks: lead assigns, members only take their own, outsiders can't add", { 
     assert.equal(t2.s, 201); T2 = t2.j.data._id;
 });
 
-test("status flow: To Do → In Progress → In Review → Blocked → In Progress → Done, with history", { skip }, async () => {
-    for (const status of ["In Progress", "In Review", "Blocked", "In Progress", "Done"]) {
+test("status flow: To Do → In Progress → In Review → Blocked → In Progress → In Review → Done (lead approves), with history", { skip }, async () => {
+    for (const status of ["In Progress", "In Review", "Blocked", "In Progress", "In Review"]) {
         const r = await call("member", "PUT", `/tasks/${T1}/move`, { status, note: `[QA] to ${status}` });
         assert.equal(r.s, 200, `${status}: ${r.j.message}`);
     }
+    assert.equal((await call("member", "PUT", `/tasks/${T1}/move`, { status: "Done" })).s, 403, "the assignee can't approve their own work");
+    const ok = await call("tl", "PUT", `/tasks/${T1}/move`, { status: "Done", note: "[QA] approved" });
+    assert.equal(ok.s, 200, ok.j.message);
     const t = (await call("member", "GET", `/tasks/${T1}`)).j.data;
     assert.equal(t.status, "Done");
     assert.ok(t.completedAt, "Done stamps completedAt");
     const moves = t.history.filter((h) => h.action === "status").map((h) => `${h.from}→${h.to}`);
-    assert.deepEqual(moves, ["To Do→In Progress", "In Progress→In Review", "In Review→Blocked", "Blocked→In Progress", "In Progress→Done"], "every move is in the history");
+    assert.deepEqual(moves, ["To Do→In Progress", "In Progress→In Review", "In Review→Blocked", "Blocked→In Progress", "In Progress→In Review", "In Review→Done"], "every move is in the history");
     assert.equal((await call("outsider", "PUT", `/tasks/${T1}/move`, { status: "To Do" })).s, 403, "outsider can't move it");
     assert.equal((await call("member", "PUT", `/tasks/${T2}/move`, { status: "Done" })).s, 403, "member can't move someone else's task");
     const list = (await call("member", "GET", "/projects")).j.data.find((p) => p._id === P);

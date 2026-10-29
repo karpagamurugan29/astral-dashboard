@@ -19,6 +19,7 @@ import { MyAuditsWidget } from '../../../components/dashboard/widgets/MyAuditsWi
 import { BirthdayLineUp } from '../../../components/dashboard/widgets/BirthdayLineUp'
 import { KpiCard, Panel, MonthAttendance, Ring, EmptyState, CountUp } from '../../../components/dashboard/widgets/PremiumUI'
 import { ChartWidget } from '../../../components/dashboard/widgets/ChartWidget'
+import { CalendarUpNext } from '../../../components/dashboard/widgets/CalendarUpNext'
 import { CheckInOptions, ModeTag, hoursLabel } from '../../../components/attendance/AttendanceUI'
 import { fmtDuration } from '../../../components/audits/AuditUI'
 import { useAccess } from '../../../hooks/useAccess'
@@ -377,6 +378,9 @@ export const DashContent = () => {
                                     ) : null}
                                 </div>
                             </div>
+
+                            {/* --------------------------- calendar · next up --------------------------- */}
+                            <CalendarUpNext />
 
                             {/* ------------------------------ my audits ------------------------------ */}
                             {canSeeAudits && auditInsights && ((ai.myAudits || []).length > 0 || !senior) && <MyAuditsWidget audits={ai.myAudits || []} />}

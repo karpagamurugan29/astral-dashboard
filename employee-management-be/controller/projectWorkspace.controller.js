@@ -13,7 +13,7 @@ import { scopeOf, workFilter } from "../utils/hierarchy.js";
 // view and a time log. People who manage projects (Admin / HR / Managers with the "projects"
 // permission) see and run every project; everyone else works in the projects they're part of.
 
-const PERSON = "employeeId firstName lastName designation department profileImage";
+const PERSON = "employeeId firstName lastName email designation department profileImage";
 const fail = (res, err) => res.status(err.status || 500).json({ success: false, message: err.message });
 const httpError = (status, message) => Object.assign(new Error(message), { status });
 const idStr = (x) => String(x?._id || x || "");
@@ -246,6 +246,23 @@ const pickTask = (b) => {
     if (Array.isArray(b.checklist)) o.checklist = b.checklist.filter((c) => String(c.text || "").trim()).slice(0, 30).map((c) => ({ text: String(c.text).trim().slice(0, 200), done: !!c.done }));
     return o;
 };
+// The workflow rules every status change goes through (task window, board drag, bulk, older routes).
+// On project tasks the assignee sends work for review and the lead marks it Done; "Blocked" and
+// sending work back from review need a reason so the next person knows what to do.
+const reasonOk = (note) => String(note || "").trim().length >= 3;
+const checkTransition = (t, to, me, manageable, note) => {
+    if (!to || to === t.status) return;
+    if (t.projectId && to === "Done" && !manageable) throw httpError(403, "Send it for review — the project lead marks it Done.");
+    if (to === "Blocked" && !reasonOk(note)) throw httpError(400, "Say what's blocking it, so the lead can help.");
+    if (t.projectId && t.status === "In Review" && ["To Do", "In Progress"].includes(to) && idStr(t.assignedTo) !== me && !reasonOk(note)) throw httpError(400, "Say what needs to change before sending it back.");
+};
+const START_STATUSES = ["To Do", "In Progress"];
+const checkDue = (d) => {
+    if (!d) return;
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    if (new Date(d) < today) throw httpError(400, "Pick a due date from today onwards.");
+};
+
 const populateTask = (q) => q.populate("assignedTo", PERSON).populate("createdBy", "firstName lastName").populate("comments.employeeId", "firstName lastName profileImage");
 const TASK_TYPES = ["Task", "Issue", "Query", "Review point"];
 
@@ -266,7 +283,7 @@ const track = (t, by, action, from = "", to = "", note = "") => t.history.push({
 const tellFollowers = (t, by, title, message, p) => {
     const ids = new Set([t.assignedTo, t.createdBy, ...(t.watchers || [])].map(idStr).filter(Boolean));
     ids.delete(idStr(by));
-    ids.forEach((id) => notify(id, title, message, "Task", p ? `/projects/${idStr(p._id || p)}` : "/tasks"));
+    ids.forEach((id) => notify(id, title, message, "Task", p ? `/projects/${idStr(p._id || p)}` : "/projects/my-tasks"));
 };
 const tag = (t) => `#T-${String(t.taskNo || 0).padStart(4, "0")}`;
 
@@ -276,6 +293,8 @@ export const createProjectTask = async (req, res) => {
         if (!manager && !isMember(p, me)) throw httpError(403, "Only people on this project can add tasks.");
         const data = pickTask(req.body || {});
         if (!data.title) throw httpError(400, "Give the task a title.");
+        if (data.status && !START_STATUSES.includes(data.status)) data.status = "To Do";
+        checkDue(data.dueDate);
         if (data.assignedTo && !isMember(p, idStr(data.assignedTo))) throw httpError(400, "Assign the task to someone on this project.");
         if (!(manager || lead) && data.assignedTo && idStr(data.assignedTo) !== me) throw httpError(403, "Only the project lead can assign tasks to others.");
         const last = await taskModel.findOne({ projectId: p._id, status: data.status || "To Do" }).sort({ order: -1 }).select("order").lean();
@@ -286,10 +305,41 @@ export const createProjectTask = async (req, res) => {
     } catch (err) { return fail(res, err); }
 };
 
+// POST /todos — a personal to-do: just for me, no project and no review step.
+export const createTodo = async (req, res) => {
+    try {
+        const me = idStr(req.user.id);
+        const data = pickTask(req.body || {});
+        if (!data.title) throw httpError(400, "What do you need to do?");
+        checkDue(data.dueDate);
+        await ensureTaskNos();
+        const t = await taskModel.create({
+            title: data.title, description: data.description || "", priority: data.priority || "Medium", dueDate: data.dueDate || null,
+            checklist: data.checklist || [], labels: data.labels || [], personal: true, projectId: null, assignedTo: me, createdBy: me,
+            status: "To Do", taskNo: await nextTaskNo(), watchers: [me], history: [{ by: me, action: "created", to: "To Do" }],
+        });
+        return res.status(201).json({ success: true, message: "Added to your to-do list.", data: await populateTask(taskModel.findById(t._id)).lean() });
+    } catch (err) { return fail(res, err); }
+};
+
+// GET /todos — my personal to-dos: everything open, plus what I finished in the last 30 days.
+export const listTodos = async (req, res) => {
+    try {
+        const since = new Date(Date.now() - 30 * 864e5);
+        const data = await taskModel.find({ personal: true, createdBy: req.user.id, $or: [{ status: { $ne: "Done" } }, { completedAt: { $gte: since } }] })
+            .select("title description priority status dueDate checklist completedAt createdAt updatedAt personal").sort({ dueDate: 1, createdAt: -1 }).limit(500).lean();
+        return res.status(200).json({ success: true, data: data.map((t) => ({ ...t, personal: true })) });
+    } catch (err) { return fail(res, err); }
+};
+
 const loadTask = async (req, id) => {
     if (!mongoose.isValidObjectId(id)) throw httpError(404, "Task not found.");
     const t = await taskModel.findById(id);
     if (!t) throw httpError(404, "Task not found.");
+    if (t.personal) {
+        if (idStr(t.createdBy) !== idStr(req.user.id)) throw httpError(404, "Task not found.");
+        return { t, me: idStr(req.user.id), manager: false, lead: false, p: null };
+    }
     const scope = await scopeOf(req);
     const ctx = t.projectId ? await loadProject(req, t.projectId) : { me: idStr(req.user.id), manager: scope.firm || scope.team.has(idStr(t.assignedTo)), lead: false, p: null };
     if (!t.projectId && !ctx.manager && idStr(t.assignedTo) !== ctx.me) throw httpError(403, "This task isn't yours.");
@@ -303,19 +353,26 @@ export const updateProjectTask = async (req, res) => {
         if (!canEditTask(t, me, manageable)) throw httpError(403, "Only the person on the task or the project lead can change it.");
         if (t.closedAt) throw httpError(409, "This task is closed — reopen it first.");
         const data = pickTask(req.body || {});
+        const note = String(req.body?.note || "").trim().slice(0, 1000);
+        if (t.personal) delete data.assignedTo; // personal to-dos stay with their owner
+        checkTransition(t, data.status, me, manageable, note);
         if (data.assignedTo !== undefined && idStr(data.assignedTo) !== idStr(t.assignedTo)) {
             if (!manageable) throw httpError(403, "Only the project lead can reassign tasks.");
             if (data.assignedTo && p && !isMember(p, idStr(data.assignedTo))) throw httpError(400, "Assign the task to someone on this project.");
-            if (data.assignedTo && idStr(data.assignedTo) !== me) notify(data.assignedTo, "Task assigned to you", `“${t.title}”${p ? ` in ${p.projectName}` : ""}`, "Task", p ? `/projects/${p._id}` : "/tasks");
+            if (data.assignedTo && idStr(data.assignedTo) !== me) notify(data.assignedTo, "Task assigned to you", `“${t.title}”${p ? ` in ${p.projectName}` : ""}`, "Task", p ? `/projects/${p._id}` : "/projects/my-tasks");
         }
         if (data.status && data.status !== t.status) data.completedAt = data.status === "Done" ? new Date() : null;
         // history of what changed
-        if (data.status && data.status !== t.status) track(t, me, "status", t.status, data.status);
+        if (data.status && data.status !== t.status) { track(t, me, "status", t.status, data.status, note); if (note) t.comments.push({ employeeId: me, message: note }); }
         if (data.assignedTo !== undefined && idStr(data.assignedTo) !== idStr(t.assignedTo)) track(t, me, "assigned", await nameOf(t.assignedTo), await nameOf(data.assignedTo));
         if (data.priority && data.priority !== t.priority) track(t, me, "priority", t.priority, data.priority);
         if (data.type && data.type !== t.type) track(t, me, "type", t.type, data.type);
         if (data.title && data.title !== t.title) track(t, me, "title", t.title, data.title);
-        if (data.dueDate !== undefined && fmtDate(data.dueDate) !== fmtDate(t.dueDate)) track(t, me, "due", fmtDate(t.dueDate), fmtDate(data.dueDate));
+        if (data.dueDate !== undefined && fmtDate(data.dueDate) !== fmtDate(t.dueDate)) {
+            track(t, me, "due", fmtDate(t.dueDate), fmtDate(data.dueDate));
+            data.dueSoonNotifiedAt = null; data.overdueNotifiedAt = null; // deadline alerts follow the new date
+            if (!t.personal && t.assignedTo && idStr(t.assignedTo) !== me) notify(t.assignedTo, "Due date changed", `“${t.title}” is now due ${data.dueDate ? fmtDate(data.dueDate) : "with no date"}.`, "Task", p ? `/projects/${p._id}` : "/projects/my-tasks");
+        }
         if (data.checklist) {
             const before = (t.checklist || []).filter((c) => c.done).length, after = data.checklist.filter((c) => c.done).length;
             if (before !== after || (t.checklist || []).length !== data.checklist.length) track(t, me, "checklist", `${before}/${(t.checklist || []).length}`, `${after}/${data.checklist.length}`);
@@ -323,7 +380,7 @@ export const updateProjectTask = async (req, res) => {
         const statusChanged = data.status && data.status !== t.status;
         Object.assign(t, data);
         await t.save();
-        if (statusChanged) tellFollowers(t, me, `${tag(t)} is now ${t.status}`, `“${t.title}”`, p);
+        if (statusChanged) tellFollowers(t, me, `${tag(t)} is now ${t.status}`, `“${t.title}”${note ? ` — ${note.slice(0, 80)}` : ""}`, p);
         return res.status(200).json({ success: true, message: "Task updated.", data: await populateTask(taskModel.findById(t._id)).lean() });
     } catch (err) { return fail(res, err); }
 };
@@ -336,6 +393,7 @@ export const moveTask = async (req, res) => {
         if (t.closedAt) throw httpError(409, "This task is closed — reopen it first.");
         const status = TASK_STATUSES.includes(req.body?.status) ? req.body.status : t.status;
         const note = String(req.body?.note || "").trim().slice(0, 1000);
+        checkTransition(t, status, me, manager || lead, note);
         if (status !== t.status) { t.completedAt = status === "Done" ? new Date() : null; track(t, me, "status", t.status, status, note); }
         if (note) t.comments.push({ employeeId: me, message: note });
         const changed = status !== t.status;
@@ -382,7 +440,7 @@ export const myTasks = async (req, res) => {
         const PROJ = "projectName projectCode status isDeleted projectManager";
         const recent = { $or: [{ status: { $ne: "Done" } }, { completedAt: { $gte: since } }, { updatedAt: { $gte: since } }] };
         const me = req.user.id;
-        const find = (filter) => taskModel.find({ ...filter, ...recent, closedAt: null }).select("-history -comments.message")
+        const find = (filter) => taskModel.find({ ...filter, ...recent, closedAt: null, personal: { $ne: true } }).select("-history -comments.message")
             .populate("projectId", PROJ).populate("assignedTo", PERSON).populate("createdBy", "firstName lastName").sort({ updatedAt: -1 }).limit(800).lean();
         let projectIds = null;
         if (req.query.scope === "team") projectIds = (await ProjectModel.find({ isDeleted: false, ...(await workFilter(req)) }).select("_id").lean()).map((p) => p._id);
@@ -392,7 +450,7 @@ export const myTasks = async (req, res) => {
             ProjectTimeLogModel.findOne({ employeeId: me, endTime: null }).populate("projectId", "projectName projectCode").populate("taskId", "title taskNo").lean(),
             projectIds ? find({ projectId: { $in: projectIds } }) : null,
         ]);
-        const closedList = await taskModel.find({ $or: [{ assignedTo: me }, { createdBy: me }, { watchers: me }], closedAt: { $ne: null, $gte: new Date(Date.now() - 365 * 864e5) } })
+        const closedList = await taskModel.find({ $or: [{ assignedTo: me }, { createdBy: me }, { watchers: me }], personal: { $ne: true }, closedAt: { $ne: null, $gte: new Date(Date.now() - 365 * 864e5) } })
             .select("taskNo title type priority projectId assignedTo closedAt closedBy closeNote completedAt").populate("projectId", PROJ).populate("assignedTo", PERSON).populate("closedBy", "firstName lastName").sort({ closedAt: -1 }).limit(300).lean();
         const review = ledProjects.length ? await taskModel.find({ projectId: { $in: ledProjects.map((p) => p._id) }, status: "In Review", assignedTo: { $ne: me }, closedAt: null })
             .select("-history").populate("projectId", PROJ).populate("assignedTo", PERSON).sort({ updatedAt: -1 }).lean() : [];
@@ -431,13 +489,15 @@ export const bulkMoveTasks = async (req, res) => {
         const status = req.body?.status;
         if (!TASK_STATUSES.includes(status)) throw httpError(400, "Pick a status.");
         const ids = (Array.isArray(req.body?.ids) ? req.body.ids : []).filter((id) => mongoose.isValidObjectId(id)).slice(0, 200);
-        let done = 0, skipped = 0;
+        const note = String(req.body?.note || "").trim().slice(0, 1000);
+        let done = 0, skipped = 0, needReview = 0;
         for (const id of ids) {
             try {
                 const { t, me, manager, lead } = await loadTask(req, id);
                 if (!canEditTask(t, me, manager || lead) || t.closedAt) { skipped++; continue; }
                 if (t.status === status) continue;
-                track(t, me, "status", t.status, status, "bulk update");
+                try { checkTransition(t, status, me, manager || lead, note); } catch (e) { if (e.status === 403) needReview++; else skipped++; continue; }
+                track(t, me, "status", t.status, status, note || "bulk update");
                 t.completedAt = status === "Done" ? new Date() : null;
                 t.status = status;
                 await t.save();
@@ -445,7 +505,8 @@ export const bulkMoveTasks = async (req, res) => {
                 done++;
             } catch { skipped++; }
         }
-        return res.status(200).json({ success: true, message: `${done} task${done === 1 ? "" : "s"} moved to ${status}${skipped ? ` · ${skipped} skipped (not yours to change)` : ""}.`, data: { done, skipped } });
+        const extra = [needReview && `${needReview} need the lead's review`, skipped && `${skipped} skipped (not yours to change)`].filter(Boolean).join(" · ");
+        return res.status(200).json({ success: true, message: `${done} task${done === 1 ? "" : "s"} moved to ${status}${extra ? ` · ${extra}` : ""}.`, data: { done, skipped, needReview } });
     } catch (err) { return fail(res, err); }
 };
 

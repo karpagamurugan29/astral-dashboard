@@ -2,6 +2,7 @@ import React from 'react'
 import { Sidebar } from './Sidebar'
 import { TopHeader } from './TopHeader'
 import { BottomNav } from './BottomNav'
+import { ReminderPopup } from '../../reminders/ReminderPopup'
 
 export const DashNav = ({ children }) => {
     return (
@@ -16,6 +17,7 @@ export const DashNav = ({ children }) => {
                 </div>
             </div>
             <BottomNav />
+            <ReminderPopup />
         </div>
     )
 }

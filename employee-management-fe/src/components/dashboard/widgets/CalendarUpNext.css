@@ -1,0 +1,37 @@
+/* Dashboard widget: Calendar · next up */
+.cun { display: flex; flex-direction: column; gap: 12px; }
+.cun-week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+.cun-week button { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 7px 2px 6px; border-radius: 12px; border: 1px solid #eef1f5; background: #fff; transition: all .15s; min-width: 0; }
+.cun-week button:hover { border-color: #bfdbfe; background: #f8fbff; }
+.cun-week small { font-size: 10px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: #94a3b8; }
+.cun-week b { font-size: 16px; color: #0f172a; line-height: 1.2; }
+.cun-dots { display: flex; gap: 2px; height: 5px; }
+.cun-dots i { width: 5px; height: 5px; border-radius: 50%; }
+.cun-week button.today { background: linear-gradient(160deg, #3b82f6, #1d4ed8); border-color: transparent; box-shadow: 0 10px 20px -14px rgba(29, 78, 216, .9); }
+.cun-week button.today small, .cun-week button.today b { color: #fff; }
+.cun-week button.today .cun-dots i { box-shadow: 0 0 0 1.5px #fff; }
+.cun-week button.on:not(.today) { border-color: #3b82f6; background: #eff6ff; }
+.cun-week button.on.today { outline: 2px solid #93c5fd; outline-offset: 2px; }
+.cun-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.cun-list li { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 12px; border: 1px solid #f1f4f8; border-left: 3px solid var(--c); cursor: pointer; transition: background .12s; min-width: 0; }
+.cun-list li:hover { background: #f8fbff; }
+.cun-list li.late { background: #fff7f7; border-left-color: #dc2626; }
+.cun-time { flex: none; width: 66px; display: flex; flex-direction: column; line-height: 1.2; }
+.cun-time b { font-size: 12.5px; color: #0f172a; }
+.cun-time em { font-style: normal; font-size: 12px; font-weight: 700; color: #475569; }
+.cun-time small { font-size: 10.5px; color: #94a3b8; font-weight: 600; }
+.cun-ic { flex: none; width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; font-size: 16px; color: var(--c); background: color-mix(in srgb, var(--c) 12%, #fff); }
+.cun-main { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.3; }
+.cun-main b { font-size: 13px; color: #0f172a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cun-main small { font-size: 11.5px; color: #64748b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cun-prio { flex: none; padding: 1px 8px; border-radius: 99px; font-size: 10.5px; font-weight: 800; color: #fff; }
+.cun-prio.high { background: #d97706; }
+.cun-prio.critical { background: #dc2626; }
+.cun-empty { display: flex; align-items: center; gap: 8px; padding: 12px; border-radius: 12px; background: #f8fafc; color: #64748b; font-size: 13px; margin: 0; }
+.cun-empty > i { font-size: 20px; color: #3b82f6; }
+.cun-empty .pp-link { margin-left: auto; }
+.cun-skel { display: flex; flex-direction: column; gap: 6px; }
+.cun-skel i { height: 44px; border-radius: 12px; background: linear-gradient(90deg, #f1f5f9, #f8fafc, #f1f5f9); background-size: 200% 100%; animation: cunShimmer 1.2s infinite; }
+@keyframes cunShimmer { to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .cun-skel i { animation: none; } }
+@media (max-width: 480px) { .cun-week { gap: 4px; } .cun-week b { font-size: 14px; } .cun-time { width: 56px; } }

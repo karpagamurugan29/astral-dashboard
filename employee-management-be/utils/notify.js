@@ -2,9 +2,18 @@ import notificationModel from "../models/notificationModel.js";
 import employeeModel from "../models/employeeModel.js";
 
 // Fire-and-forget notification. Never blocks or fails the request that triggered it.
-export const notify = (employeeId, title, message, type = "General", link = "") => {
+// Categories a person can switch off in Notification settings.
+const MUTABLE = ["Task", "Project", "Calendar", "Reminder"];
+export const notify = (employeeId, title, message, type = "General", link = "", priority = "Medium") => {
     if (!employeeId) return;
-    notificationModel.create({ employeeId, title, message, type, link }).catch(() => {});
+    (async () => {
+        if (MUTABLE.includes(type)) {
+            const { default: NotificationPrefModel } = await import("../models/notificationPrefModel.js");
+            const pref = await NotificationPrefModel.findOne({ employeeId }).select("muted").lean();
+            if (pref?.muted?.includes(type)) return;
+        }
+        await notificationModel.create({ employeeId, title, message, type, link, priority });
+    })().catch(() => {});
 };
 
 // Tell the people who can approve a request. With `forEmployeeId`, that's the person's own

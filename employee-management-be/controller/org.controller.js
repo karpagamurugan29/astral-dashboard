@@ -22,7 +22,7 @@ const liveStats = async (ids) => {
     const [att, leaves, tasks, projects, pending] = await Promise.all([
         attendanceModel.find({ employeeId: { $in: oids }, "checkIn.time": { $gte: new Date(since.getTime() - 864e5) } }).lean(),
         leaveModel.find({ employeeId: { $in: oids }, status: "Approved", fromDate: { $lte: now }, toDate: { $gte: since } }).select("employeeId leaveType").lean(),
-        taskModel.find({ assignedTo: { $in: oids }, status: { $ne: "Done" } }).select("assignedTo dueDate").lean(),
+        taskModel.find({ assignedTo: { $in: oids }, status: { $ne: "Done" }, personal: { $ne: true } }).select("assignedTo dueDate").lean(),
         ProjectModel.find({ isDeleted: false, status: { $nin: ["Completed", "Cancelled"] }, $or: [{ projectManager: { $in: oids } }, { teamMembers: { $in: oids } }] }).select("projectManager teamMembers").lean(),
         leaveModel.find({ employeeId: { $in: oids }, status: "Pending" }).select("employeeId").lean(),
     ]);

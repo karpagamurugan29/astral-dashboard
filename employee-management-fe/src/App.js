@@ -58,6 +58,8 @@ const LoansAdvances = page('LoansAdvances', () => import('./pages/dashboard/payr
 const ProjectsList = page('ProjectsList', () => import('./pages/dashboard/projects/ProjectsList'));
 const ProjectDetail = page('ProjectDetail', () => import('./pages/dashboard/projects/ProjectDetail'));
 const TasksBoard = page('TasksBoard', () => import('./pages/dashboard/projects/TasksBoard'));
+const TodoPage = page('TodoPage', () => import('./pages/dashboard/projects/TodoPage'));
+const CalendarPage = page('CalendarPage', () => import('./pages/dashboard/calendar/CalendarPage'));
 const AuditsList = page('AuditsList', () => import('./pages/dashboard/audits/AuditsList'));
 const AuditDetail = page('AuditDetail', () => import('./pages/dashboard/audits/AuditDetail'));
 const MyWork = page('MyWork', () => import('./pages/dashboard/audits/MyWork'));
@@ -168,7 +170,10 @@ function App() {
 
             <Route path="/projects" element={<ScreenGuard screen="screen:projects"><ProjectsList /></ScreenGuard>} />
             <Route path="/projects/:id" element={<ScreenGuard screen="screen:projects"><ProjectDetail /></ScreenGuard>} />
-            <Route path="/tasks" element={<ScreenGuard screen="screen:projects"><TasksBoard /></ScreenGuard>} />
+            {/* To-do is everyone's personal list; project tasks live under Projects */}
+            <Route path="/tasks" element={<TodoPage />} />
+            <Route path="/calendar" element={<CalendarPage />} />
+            <Route path="/projects/my-tasks" element={<ScreenGuard screen="screen:projects"><TasksBoard /></ScreenGuard>} />
             <Route path="/audits" element={<ScreenGuard screen="screen:audits"><AuditsList /></ScreenGuard>} />
             <Route path="/audits/clients" element={<ScreenGuard screen="screen:audits"><ClientsList /></ScreenGuard>} />
             <Route path="/audits/clients/:id" element={<ScreenGuard screen="screen:audits"><ClientDetail /></ScreenGuard>} />

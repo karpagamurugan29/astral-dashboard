@@ -30,6 +30,7 @@ export const getTasks = async (req, res) => {
         }
 
         if (isOrgWide) filter = {};
+        filter = { ...filter, personal: { $ne: true } }; // personal to-dos are private to their owner
 
         const tasks = await taskModel
             .find(filter)
@@ -74,7 +75,7 @@ export const createTask = async (req, res) => {
         });
 
         if (assignedTo) {
-            notify(assignedTo, "New task assigned", `You've been assigned: ${title}`, "General", "/tasks");
+            notify(assignedTo, "New task assigned", `You've been assigned: ${title}`, "General", "/projects/my-tasks");
         }
 
         return res.status(201).json({ success: true, message: "Task created successfully.", data: task });
@@ -104,25 +105,6 @@ export const updateTask = async (req, res) => {
     }
 };
 
-export const updateTaskStatus = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { status } = req.body;
-
-        const task = await taskModel.findByIdAndUpdate(id, { status }, { new: true });
-
-        if (!task) {
-            return res.status(404).json({ success: false, message: "Task not found." });
-        }
-
-        logAudit(req, "task.status_change", `Moved task "${task.title}" to ${status}`, { type: "Task", id: task._id });
-
-        return res.status(200).json({ success: true, message: "Task status updated.", data: task });
-    } catch (error) {
-        return res.status(500).json({ success: false, message: error.message });
-    }
-};
-
 export const addTaskComment = async (req, res) => {
     try {
         const { id } = req.params;
@@ -139,7 +121,7 @@ export const addTaskComment = async (req, res) => {
         }
 
         if (task.assignedTo && String(task.assignedTo) !== req.user.id) {
-            notify(task.assignedTo, "New comment on your task", `New comment on "${task.title}"`, "General", "/tasks");
+            notify(task.assignedTo, "New comment on your task", `New comment on "${task.title}"`, "General", "/projects/my-tasks");
         }
 
         return res.status(200).json({ success: true, message: "Comment added.", data: task });

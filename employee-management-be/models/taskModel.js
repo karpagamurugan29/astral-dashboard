@@ -7,6 +7,8 @@ const TaskSchema = new mongoose.Schema(
             ref: "Projects",
             default: null,
         },
+        // a personal to-do: only its owner (createdBy) sees it, and it has no review step
+        personal: { type: Boolean, default: false },
         title: {
             type: String,
             required: true,
@@ -58,6 +60,9 @@ const TaskSchema = new mongoose.Schema(
         // position within its board column (lower first)
         order: { type: Number, default: 0 },
         completedAt: { type: Date, default: null },
+        // deadline alerts already sent for the current due date (cleared when the date changes)
+        dueSoonNotifiedAt: { type: Date, default: null },
+        overdueNotifiedAt: { type: Date, default: null },
         comments: [
             {
                 employeeId: { type: mongoose.Schema.Types.ObjectId, ref: "Employee" },

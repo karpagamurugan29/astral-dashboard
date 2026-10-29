@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom'
 import { Avatar, fullName } from '../../../components/people/PeopleUI'
 import { TASK_COLUMNS, TASK_STATUS, PriorityTag, DueTag } from '../../../components/projects/ProjectUI'
 import { toast } from '../../../components/common/Toaster'
-import { api, taskTag, TaskModal, fmtDay, CloseTaskModal } from './ProjectParts'
+import { api, taskTag, TaskModal, fmtDay, CloseTaskModal, lockedDone, needsReason } from './ProjectParts'
 
 /* The full view of one task, bug-tracker style: details, description, checklist, notes,
    who's monitoring it and the complete history of changes. Change status with a note,
@@ -54,6 +54,7 @@ export const IssueView = ({ id, me, onClose, onChanged, onTimer, timerOn }) => {
     const st = TASK_STATUS[t.status] || TASK_STATUS['To Do']
     const p = t.projectId
 
+    const reasonNeeded = needsReason(t, status, me)
     const changeStatus = async () => {
         if (status === t.status && !note.trim()) return
         setBusy('status')
@@ -139,9 +140,10 @@ export const IssueView = ({ id, me, onClose, onChanged, onTimer, timerOn }) => {
                     {d.canEdit && !t.closedAt && (
                         <section className="it-sec it-change">
                             <h4>Update</h4>
-                            <div className="it-flow">{TASK_COLUMNS.map((s) => <button key={s} type="button" className={status === s ? 'on' : ''} style={{ '--s': TASK_STATUS[s].color }} onClick={() => setStatus(s)}><i className={`mdi ${TASK_STATUS[s].icon}`}></i>{s}</button>)}</div>
-                            <textarea className="pp-input" rows={2} value={note} onChange={(e) => setNote(e.target.value)} placeholder={status !== t.status ? `Why is it moving to ${status}? (optional note)` : 'Add a note…'} />
-                            <div className="it-change-foot"><button type="button" className="pp-btn primary" disabled={busy === 'status' || (status === t.status && !note.trim())} onClick={changeStatus}><i className="mdi mdi-check"></i>{status !== t.status ? `Change to ${status}` : 'Add note'}</button></div>
+                            <div className="it-flow">{TASK_COLUMNS.map((s) => { const locked = s === 'Done' && t.status !== 'Done' && lockedDone(t, d.canManage); return <button key={s} type="button" className={status === s ? 'on' : ''} style={{ '--s': TASK_STATUS[s].color }} onClick={() => setStatus(s)} disabled={locked} title={locked ? 'The project lead marks it Done — send it for review' : undefined}><i className={`mdi ${locked ? 'mdi-lock-outline' : TASK_STATUS[s].icon}`}></i>{s}</button> })}</div>
+                            {lockedDone(t, d.canManage) && t.status !== 'Done' && t.status !== 'In Review' && <p className="pw-hint"><i className="mdi mdi-information-outline"></i>Finished? Move it to In Review and the project lead will approve it.</p>}
+                            <textarea className="pp-input" rows={2} value={note} onChange={(e) => setNote(e.target.value)} placeholder={reasonNeeded ? (status === 'Blocked' ? 'What’s blocking it? (needed)' : 'What needs to change? (needed)') : status !== t.status ? `Why is it moving to ${status}? (optional note)` : 'Add a note…'} />
+                            <div className="it-change-foot"><button type="button" className="pp-btn primary" disabled={busy === 'status' || (status === t.status && !note.trim()) || (reasonNeeded && note.trim().length < 3)} onClick={changeStatus}><i className="mdi mdi-check"></i>{status !== t.status ? `Change to ${status}` : 'Add note'}</button></div>
                         </section>
                     )}
 

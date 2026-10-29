@@ -176,6 +176,7 @@ export const Sidebar = () => {
     const menuItems = [
         { name: "main-title", isTitle: true, label: "Main" },
         { name: "dashboard", label: "Dashboard", icon: "home", link: "/dashboard" },
+        { name: "calendar", label: "Calendar", icon: "calendar", link: "/calendar", match: "/calendar" }, // work and personal plans, reminders, deadlines
         { name: "messages", label: "Messages", icon: "message-circle", link: "/messages" },
         { name: "files", label: "Files", icon: "hard-drive", link: "/files" },
         { name: "notifications", label: "Notifications", icon: "bell", link: "/notifications" },
@@ -249,15 +250,9 @@ export const Sidebar = () => {
                 { name: "audits-billing", label: "Billing & Invoices", link: "/audits/billing", money: true },
             ],
         },
-        {
-            name: "projects",
-            label: "Projects",
-            icon: "folder",
-            children: [
-                { name: "projects-list", label: "Projects", link: "/projects", screen: "screen:projects" },
-                { name: "projects-tasks", label: "My Tasks", link: "/tasks", screen: "screen:projects" },
-            ],
-        },
+        // Audits, Projects and To-do are separate kinds of work, so each gets its own menu.
+        { name: "projects", label: "Projects", icon: "folder", link: "/projects", match: "/projects", screen: "screen:projects" },
+        { name: "todo", label: "To-do", icon: "check-square", link: "/tasks", match: "/tasks" }, // personal list — everyone has one
 
         { name: "finance-title", isTitle: true, label: "Finance" },
         {

@@ -254,3 +254,6 @@
 .tk-reopen { display: inline-flex; align-items: center; gap: 4px; height: 30px; padding: 0 10px; border: 1px solid var(--pp-line); border-radius: 9px; background: #fff; font-size: 12.5px; font-weight: 700; color: #b45309; }
 .tk-reopen:hover { border-color: #f59e0b; background: #fffbeb; }
 @media (max-width: 767.98px) { .tk-tabs button { padding: 0 4px; font-size: 12.5px; gap: 4px; } .tk-closed li { grid-template-columns: auto minmax(0, 1fr); } .tk-reopen { grid-column: 2; justify-self: start; } }
+.it-flow button:disabled { opacity: .45; cursor: not-allowed; }
+.tk-duechip { display: inline-flex; align-items: center; gap: 5px; height: 34px; padding: 0 12px; border-radius: 99px; border: 1px solid #fed7aa; background: #fff7ed; color: #c2410c; font-size: 12.5px; font-weight: 700; }
+.tk-duechip .mdi-close { opacity: .7; }

@@ -182,7 +182,7 @@ export const Organisation = () => {
                 <div style={{ '--c': '#475569' }}><i className="mdi mdi-eye-outline"></i><b className="sm">{data.scope.firm ? 'Firm-wide' : data.scope.leads ? `${data.scope.teamSize} people` : 'Yourself'}</b><small>You can see</small></div>
             </div>
 
-            <details className="pp-card og-ladder" open={window.innerWidth >= 992}>
+            <details className="pp-card og-ladder">
                 <summary><i className="mdi mdi-stairs"></i><b>Levels &amp; responsibilities</b><span>{reachText(data.scope)}</span><i className="mdi mdi-chevron-down"></i></summary>
                 <ol>
                     {levels.map((t) => data.ladder.filter((l) => l.tier === t).map((l) => (

@@ -18,13 +18,14 @@ const NotificationSchema = new mongoose.Schema(
         },
         type: {
             type: String,
-            enum: ["Leave", "Expense", "Asset", "Ticket", "General", "Task", "Project", "Attendance", "Audit", "Document"],
+            enum: ["Leave", "Expense", "Asset", "Ticket", "General", "Task", "Project", "Attendance", "Audit", "Document", "Calendar", "Reminder"],
             default: "General",
         },
         link: {
             type: String,
             default: "",
         },
+        priority: { type: String, enum: ["Low", "Medium", "High", "Critical"], default: "Medium" },
         isRead: {
             type: Boolean,
             default: false,

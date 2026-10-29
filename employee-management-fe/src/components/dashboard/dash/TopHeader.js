@@ -31,6 +31,13 @@ const due = (key, ms) => {
     return true
 }
 
+// icon and colour per notification type, for the bell
+const NOTE_TYPES = {
+    Reminder: ['mdi-bell-ring-outline', '#d97706'], Calendar: ['mdi-calendar-account-outline', '#2563eb'], Task: ['mdi-checkbox-marked-circle-outline', '#7c3aed'],
+    Project: ['mdi-folder-outline', '#0891b2'], Leave: ['mdi-beach', '#059669'], Expense: ['mdi-receipt', '#0d9488'], Attendance: ['mdi-map-marker-check-outline', '#0284c7'],
+    Ticket: ['mdi-lifebuoy', '#e11d48'], Audit: ['mdi-briefcase-outline', '#b91c1c'], Document: ['mdi-file-document-outline', '#475569'], Asset: ['mdi-laptop', '#64748b'],
+}
+
 export const TopHeader = () => {
     const [headerTheme, setHeaderTheme] = useState(readTheme)
     useEffect(() => {
@@ -83,8 +90,11 @@ export const TopHeader = () => {
         if (window.feather) window.feather.replace()
     }, [user, notifications, unreadCount])
 
-    const onNotificationClick = (id) => {
-        dispatch({ type: notificationActions.MARK_NOTIFICATION_READ, id })
+    // open what the notification is about (task, event, project…) and mark it read
+    const onNotificationClick = (e, n) => {
+        e.preventDefault()
+        if (!n.isRead) dispatch({ type: notificationActions.MARK_NOTIFICATION_READ, id: n._id })
+        if (n.link && n.link.startsWith('/')) navigate(n.link)
     }
 
     const onMarkAllRead = () => {
@@ -222,7 +232,7 @@ export const TopHeader = () => {
                                             <h6 className="m-0"> Notifications </h6>
                                         </div>
                                         <div className="col-auto">
-                                            <a href="#!" className="small text-reset text-decoration-underline" onClick={onMarkAllRead}> Unread ({unreadCount})</a>
+                                            {unreadCount > 0 ? <a href="#!" className="small text-reset text-decoration-underline" onClick={(e) => { e.preventDefault(); onMarkAllRead() }}>Mark all as read ({unreadCount})</a> : <span className="small text-muted">All caught up</span>}
                                         </div>
                                     </div>
                                 </div>
@@ -231,15 +241,15 @@ export const TopHeader = () => {
                                         <p className="text-center text-muted py-4 mb-0">No notifications yet.</p>
                                     )}
                                     {notifications?.map((n) => (
-                                        <a href="#!" key={n._id} className="text-reset notification-item" onClick={() => onNotificationClick(n._id)}>
+                                        <a href={n.link || '#!'} key={n._id} className={`text-reset notification-item ${n.isRead ? '' : 'unread'}`} onClick={(e) => onNotificationClick(e, n)}>
                                             <div className="d-flex">
                                                 <div className="flex-shrink-0 avatar-sm me-3">
-                                                    <span className={`avatar-title rounded-circle font-size-16 ${n.isRead ? 'bg-light text-dark' : 'bg-primary text-white'}`}>
-                                                        <i className="bx bx-bell"></i>
+                                                    <span className={`avatar-title rounded-circle font-size-16 ${n.isRead ? 'bg-light text-dark' : 'text-white'}`} style={n.isRead ? undefined : { background: NOTE_TYPES[n.type]?.[1] || '#2563eb' }}>
+                                                        <i className={`mdi ${NOTE_TYPES[n.type]?.[0] || 'mdi-bell-outline'}`}></i>
                                                     </span>
                                                 </div>
                                                 <div className="flex-grow-1">
-                                                    <h6 className="mb-1">{n.title}{!n.isRead && <span className="badge bg-success-subtle text-success ms-2">New</span>}</h6>
+                                                    <h6 className="mb-1">{n.title}{(n.priority === 'Critical' || n.priority === 'High') && <span className={`badge ms-2 ${n.priority === 'Critical' ? 'bg-danger' : 'bg-warning text-dark'}`}>{n.priority}</span>}{!n.isRead && <span className="badge bg-success-subtle text-success ms-2">New</span>}</h6>
                                                     <div className="font-size-13 text-muted">
                                                         <p className="mb-1">{n.message}</p>
                                                         <p className="mb-0"><i className="mdi mdi-clock-outline"></i> <span>{new Date(n.createdAt).toLocaleString()}</span></p>

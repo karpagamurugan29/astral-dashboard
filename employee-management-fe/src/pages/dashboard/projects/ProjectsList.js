@@ -48,7 +48,7 @@ export const ProjectsList = () => {
     return (
         <PeopleShell title={manage ? 'All projects' : 'My projects'} root={PROJECTS_ROOT} crumbs={[{ label: manage ? 'All projects' : 'My projects' }]}
             actions={<>
-                <Link to="/tasks" className="pp-btn"><i className="mdi mdi-format-list-checks"></i>My tasks{myOpenTasks ? <b className="pw-count">{myOpenTasks}</b> : null}</Link>
+                <Link to="/projects/my-tasks" className="pp-btn"><i className="mdi mdi-format-list-checks"></i>My tasks{myOpenTasks ? <b className="pw-count">{myOpenTasks}</b> : null}</Link>
                 {manage && <button type="button" className="pp-btn primary" onClick={() => setCreating(true)}><i className="mdi mdi-plus"></i>New project</button>}
             </>}>
             <ErrorBanner error={error} />

@@ -156,7 +156,7 @@ export const getTaskStatusBreakdown = async (req, res) => {
         }
 
         const counts = await taskModel.aggregate([
-            { $match: filter },
+            { $match: { ...filter, personal: { $ne: true } } },
             { $group: { _id: "$status", count: { $sum: 1 } } },
         ]);
 

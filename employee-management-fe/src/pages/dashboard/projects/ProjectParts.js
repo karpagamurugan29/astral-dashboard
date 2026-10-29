@@ -90,6 +90,17 @@ export const ProjectForm = ({ project, people, onClose, onSaved }) => {
 export const TASK_TYPES = ['Task', 'Issue', 'Query', 'Review point']
 export const taskTag = (t) => (t?.taskNo ? `#T-${String(t.taskNo).padStart(4, '0')}` : '')
 
+// Mirrors the server's workflow rules, so the screens guide people before they hit an error:
+// on project tasks only the lead marks Done; Blocked and sending work back from review need a reason.
+const idOfP = (x) => x?._id || x
+export const START_STATUSES = ['To Do', 'In Progress']
+export const lockedDone = (task, canManage) => !!task?.projectId && !task?.personal && !canManage
+export const needsReason = (task, to, me) => !!task && to !== task.status && (to === 'Blocked' || (!!task.projectId && task.status === 'In Review' && START_STATUSES.includes(to) && idOfP(task.assignedTo) !== me))
+export const todayISO = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10) }
+
+// "Name — Position · Code · email", so people with similar names are easy to tell apart.
+const memberLabel = (m) => [fullName(m), [m.designation, m.employeeId, m.email].filter(Boolean).join(' · ')].filter(Boolean).join(' — ')
+
 export const TaskModal = ({ task, project, members, me, canManage, onClose, onSaved, onDeleted, defaultStatus }) => {
     const isNew = !task?._id
     const mine = task && ((task.assignedTo?._id || task.assignedTo) === me || (task.createdBy?._id || task.createdBy) === me)
@@ -99,16 +110,28 @@ export const TaskModal = ({ task, project, members, me, canManage, onClose, onSa
         assignedTo: task?.assignedTo?._id || task?.assignedTo || (canManage ? '' : me), dueDate: task?.dueDate ? String(task.dueDate).slice(0, 10) : '',
         estimatedHours: task?.estimatedHours ?? '', labels: (task?.labels || []).join(', '), checklist: task?.checklist || [],
     }))
+    const [initial] = useState(() => JSON.stringify(t))
+    const [reason, setReason] = useState('')
     const [comments, setComments] = useState(task?.comments || [])
     const [newItem, setNewItem] = useState('')
     const [comment, setComment] = useState('')
     const [busy, setBusy] = useState(false)
     const [err, setErr] = useState('')
     const set = (k) => (e) => setT((x) => ({ ...x, [k]: e && e.target ? e.target.value : e }))
-    const body = () => ({ ...t, labels: t.labels.split(',').map((x) => x.trim()).filter(Boolean) })
+    const body = () => ({ ...t, labels: t.labels.split(',').map((x) => x.trim()).filter(Boolean), ...(askReason ? { note: reason.trim() } : {}) })
+    const askReason = !isNew && needsReason(task, t.status, me)
+    const doneLocked = !isNew && lockedDone(task, canManage)
+    // checklist ticks on a saved task are saved straight away, so they don't count as unsaved edits
+    const snap = (x) => JSON.stringify(isNew ? x : { ...x, checklist: undefined })
+    const dirty = editable && snap(t) !== snap(JSON.parse(initial))
+    const closeSafe = async () => {
+        if (dirty && !(await confirmAction({ title: 'Discard your changes?', message: 'You have changes on this task that aren’t saved yet.', confirmLabel: 'Discard', cancelLabel: 'Keep editing', tone: 'warn' }))) return
+        onClose()
+    }
 
     const save = async () => {
         if (!t.title.trim()) return setErr('Give the task a title.')
+        if (askReason && reason.trim().length < 3) return setErr(t.status === 'Blocked' ? 'Say what’s blocking it.' : 'Say what needs to change.')
         setBusy(true); setErr('')
         try {
             const j = isNew ? await api('POST', `/projects/${project._id}/tasks`, body()) : await api('PUT', `/tasks/${task._id}`, body())
@@ -133,8 +156,8 @@ export const TaskModal = ({ task, project, members, me, canManage, onClose, onSa
     const st = TASK_STATUS[t.status] || {}
 
     return (
-        <Modal title={isNew ? 'New task' : `${taskTag(task)} ${task.title}`.trim()} sub={`${project.projectCode} · ${project.projectName}`} icon={<span className="pw-dicon" style={{ '--c': st.color }}><i className={`mdi ${st.icon || 'mdi-checkbox-marked-circle-outline'}`}></i></span>} onClose={onClose} wide
-            footer={<>{!isNew && (canManage || (task.createdBy?._id || task.createdBy) === me) && <button type="button" className="pw-del" onClick={remove}><i className="mdi mdi-delete-outline"></i>Delete</button>}<span className="pw-err">{err}</span><button type="button" className="pp-btn" onClick={onClose}>Close</button>{editable && <button type="button" className="pp-btn primary" disabled={busy} onClick={save}><i className="mdi mdi-check"></i>{busy ? 'Saving…' : isNew ? 'Add task' : 'Save'}</button>}</>}>
+        <Modal title={isNew ? 'New task' : `${taskTag(task)} ${task.title}`.trim()} sub={`${project.projectCode} · ${project.projectName}`} icon={<span className="pw-dicon" style={{ '--c': st.color }}><i className={`mdi ${st.icon || 'mdi-checkbox-marked-circle-outline'}`}></i></span>} onClose={closeSafe} wide
+            footer={<>{!isNew && (canManage || (task.createdBy?._id || task.createdBy) === me) && <button type="button" className="pw-del" onClick={remove}><i className="mdi mdi-delete-outline"></i>Delete</button>}<span className="pw-err">{err}</span><button type="button" className="pp-btn" onClick={closeSafe}>Close</button>{editable && <button type="button" className="pp-btn primary" disabled={busy} onClick={save}><i className="mdi mdi-check"></i>{busy ? 'Saving…' : isNew ? 'Add task' : 'Save'}</button>}</>}>
             <div className="pw-task">
                 <div className="pw-task-main">
                     <input className="pw-title-input" value={t.title} onChange={set('title')} placeholder="What needs to be done?" disabled={!editable} autoFocus={isNew} />
@@ -164,16 +187,26 @@ export const TaskModal = ({ task, project, members, me, canManage, onClose, onSa
                     )}
                 </div>
                 <aside className="pw-task-side">
-                    <label className="pw-field"><span>Status</span><select className="pp-select" value={t.status} onChange={set('status')} disabled={!editable}>{TASK_COLUMNS.map((s) => <option key={s}>{s}</option>)}</select></label>
+                    <label className="pw-field"><span>Status</span>
+                        <select className="pp-select" value={t.status} onChange={set('status')} disabled={!editable}>
+                            {(isNew ? START_STATUSES : TASK_COLUMNS).map((s) => <option key={s} value={s} disabled={s === 'Done' && doneLocked && task.status !== 'Done'}>{s === 'Done' && doneLocked && task.status !== 'Done' ? 'Done — the lead approves' : s}</option>)}
+                        </select>
+                        {doneLocked && task.status !== 'Done' && <small className="pw-hint"><i className="mdi mdi-information-outline"></i>Finished? Move it to In Review — the project lead marks it Done.</small>}
+                    </label>
+                    {askReason && (
+                        <label className="pw-field pw-reason"><span>{t.status === 'Blocked' ? 'What’s blocking it?' : 'What needs to change?'}</span>
+                            <textarea className="pp-input" rows={2} value={reason} onChange={(e) => setReason(e.target.value)} autoFocus placeholder={t.status === 'Blocked' ? 'e.g. Waiting for the client’s bank statements' : 'e.g. Please add the March reconciliation'} />
+                        </label>
+                    )}
                     <label className="pw-field"><span>Assigned to</span>
                         <select className="pp-select" value={t.assignedTo} onChange={set('assignedTo')} disabled={!canManage && !isNew}>
                             <option value="">Unassigned</option>
-                            {members.filter((m) => canManage || m._id === me).map((m) => <option key={m._id} value={m._id}>{fullName(m)}</option>)}
+                            {members.filter((m) => canManage || m._id === me).map((m) => <option key={m._id} value={m._id}>{memberLabel(m)}</option>)}
                         </select>
                     </label>
                     <label className="pw-field"><span>Type</span><select className="pp-select" value={t.type} onChange={set('type')} disabled={!editable}>{TASK_TYPES.map((x) => <option key={x}>{x}</option>)}</select></label>
                     <label className="pw-field"><span>Priority</span><select className="pp-select" value={t.priority} onChange={set('priority')} disabled={!editable}>{['Low', 'Medium', 'High'].map((p) => <option key={p}>{p}</option>)}</select></label>
-                    <label className="pw-field"><span>Due date</span><input type="date" className="pp-input" value={t.dueDate} onChange={set('dueDate')} disabled={!editable} /></label>
+                    <label className="pw-field"><span>Due date</span><input type="date" className="pp-input" value={t.dueDate} onChange={set('dueDate')} disabled={!editable} min={isNew ? todayISO() : undefined} /></label>
                     <label className="pw-field"><span>Estimate (hours)</span><input type="number" min="0" step="0.5" className="pp-input" value={t.estimatedHours} onChange={set('estimatedHours')} disabled={!editable} /></label>
                     <label className="pw-field"><span>Labels</span><input className="pp-input" value={t.labels} onChange={set('labels')} placeholder="e.g. Fieldwork, Urgent" disabled={!editable} /></label>
                     {!isNew && <div className="pw-meta"><span><i className="mdi mdi-timer-outline"></i>{hm(task.loggedMinutes)} logged</span>{task.createdBy && <span><i className="mdi mdi-account-plus-outline"></i>by {fullName(task.createdBy)}</span>}{task.dueDate && <DueTag date={task.dueDate} done={task.status === 'Done'} />}</div>}

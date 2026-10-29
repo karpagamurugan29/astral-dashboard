@@ -1,0 +1,57 @@
+/* "Today's reminders" pop-up */
+.rem-overlay { position: fixed; inset: 0; z-index: 1400; display: grid; place-items: center; padding: 16px; background: rgba(15, 23, 42, .5); backdrop-filter: blur(3px); }
+.rem-dialog { width: min(620px, 100%); max-height: calc(100vh - 32px); display: flex; flex-direction: column; border-radius: 22px; background: #fff; overflow: hidden; box-shadow: 0 40px 90px -24px rgba(15, 23, 42, .55); animation: remPop .22s cubic-bezier(.2, .9, .3, 1.2); }
+@keyframes remPop { from { opacity: 0; transform: translateY(12px) scale(.97); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .rem-dialog { animation: none; } }
+.rem-head { position: relative; display: flex; gap: 14px; align-items: flex-start; padding: 20px 22px 16px; background: linear-gradient(135deg, #eff6ff 0%, #fff 70%); border-bottom: 1px solid #e6eefb; }
+.rem-bell { flex: none; width: 46px; height: 46px; display: grid; place-items: center; border-radius: 14px; font-size: 24px; color: #fff; background: linear-gradient(135deg, #60a5fa, #2563eb); box-shadow: 0 12px 24px -10px rgba(37, 99, 235, .8); }
+.rem-head h3 { margin: 0; font-size: 19px; font-weight: 800; color: #0f172a; letter-spacing: -.01em; }
+.rem-head p { margin: 4px 0 0; font-size: 14px; color: #475569; }
+.rem-head p em { font-style: normal; color: #dc2626; font-weight: 700; }
+.rem-x { position: absolute; top: 14px; right: 14px; width: 34px; height: 34px; border: 0; border-radius: 10px; background: transparent; color: #64748b; font-size: 20px; }
+.rem-x:hover { background: #f1f5f9; }
+.rem-body { flex: 1; overflow: auto; padding: 8px 22px 16px; }
+.rem-body h4 { margin: 14px 0 8px; font-size: 11.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #64748b; }
+.rem-list, .rem-today { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.rem-item { --c: #2563eb; display: flex; align-items: center; gap: 12px; padding: 12px 12px 12px 14px; border-radius: 16px; border: 1px solid #e6e8f0; border-left: 4px solid var(--c); background: #fff; }
+.rem-item.p-high { --c: #d97706; background: #fffbeb; border-color: #fde68a; }
+.rem-item.p-critical { --c: #dc2626; background: #fef2f2; border-color: #fecaca; }
+.rem-item.p-low { --c: #64748b; }
+.rem-time { flex: none; width: 62px; display: flex; flex-direction: column; line-height: 1.2; }
+.rem-time b { font-size: 14px; color: #0f172a; }
+.rem-time small { font-size: 10.5px; color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.rem-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.rem-main b { font-size: 14.5px; color: #0f172a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rem-main small { font-size: 12.5px; color: #64748b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rem-prio { align-self: flex-start; margin-top: 3px; padding: 1px 8px; border-radius: 99px; font-size: 10.5px; font-weight: 800; color: #fff; background: var(--c); }
+.rem-actions { flex: none; display: flex; align-items: center; gap: 4px; }
+.rem-btn { display: inline-flex; align-items: center; gap: 4px; height: 32px; padding: 0 10px; border-radius: 10px; border: 1px solid #e2e8f0; background: #fff; font-size: 12.5px; font-weight: 700; color: #334155; }
+.rem-btn:hover { background: #f8fafc; border-color: #cbd5e1; }
+.rem-btn.ok { color: #15803d; border-color: #bbf7d0; background: #f0fdf4; }
+.rem-btn.ghost { border-color: transparent; color: #94a3b8; padding: 0 8px; }
+.rem-btn:focus-visible, .rem-x:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+.rem-snooze { position: relative; }
+.rem-menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 2; width: 220px; padding: 6px; border-radius: 14px; background: #fff; border: 1px solid #e2e8f0; box-shadow: 0 18px 40px -12px rgba(15, 23, 42, .35); display: flex; flex-direction: column; }
+.rem-menu > button { text-align: left; padding: 8px 10px; border: 0; border-radius: 9px; background: none; font-size: 13.5px; color: #0f172a; }
+.rem-menu > button:hover { background: #eff6ff; }
+.rem-custom { display: flex; gap: 6px; padding: 6px 4px 2px; border-top: 1px solid #f1f5f9; margin-top: 4px; }
+.rem-custom input { flex: 1; min-width: 0; height: 32px; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0 6px; font-size: 12px; }
+.rem-custom button { height: 32px; padding: 0 10px; border: 0; border-radius: 8px; background: #2563eb; color: #fff; font-weight: 700; font-size: 12.5px; }
+.rem-custom button:disabled { opacity: .4; }
+.rem-today li { display: grid; grid-template-columns: 70px minmax(0, 1fr); column-gap: 10px; padding: 10px 12px; border-radius: 12px; background: #f8fafc; cursor: pointer; }
+.rem-today li:hover { background: #eff6ff; }
+.rem-today li span { grid-row: span 2; font-size: 13px; font-weight: 700; color: #334155; }
+.rem-today li b { font-size: 14px; color: #0f172a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rem-today li small { font-size: 12px; color: #64748b; }
+.rem-today li.late b { color: #b91c1c; }
+.rem-foot { display: flex; align-items: center; gap: 8px; padding: 14px 22px; border-top: 1px solid #eef1f5; background: #fafbfc; }
+.rem-foot > span { flex: 1; }
+.rem-link { display: inline-flex; align-items: center; gap: 6px; border: 0; background: none; color: #2563eb; font-weight: 700; font-size: 13.5px; }
+@media (max-width: 600px) {
+    .rem-overlay { place-items: end center; padding: 0; }
+    .rem-dialog { width: 100%; border-radius: 22px 22px 0 0; max-height: 88vh; }
+    .rem-item { flex-wrap: wrap; }
+    .rem-actions { width: 100%; justify-content: flex-end; padding-top: 4px; }
+    .rem-btn span { display: none; }
+    .rem-btn { padding: 0 11px; }
+}
